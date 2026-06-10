@@ -46,9 +46,9 @@ const cardStyles = css`
     align-items: center;
     padding: 0 20px;
     background: #000000;
-    border-bottom: 1px solid #1a2744;
+    border-bottom: 1px solid #1a1a1a;
   }
-  .re-title { font-size: 14px; font-weight: bold; letter-spacing: 2px; color: #ffffff; }
+  .re-title { font-size: 16px; font-weight: bold; letter-spacing: 2px; color: #ffffff; }
   .ecg-container { display: flex; align-items: center; gap: 10px; }
   .status-text { color: var(--re-green); font-size: 11px; text-shadow: 0 0 4px var(--re-green-glow); }
   .ecg-svg { width: 90px; height: 25px; }
@@ -61,15 +61,16 @@ const cardStyles = css`
     background: #111111; 
     border-bottom: 2px solid var(--re-red); 
     box-shadow: 0 4px 8px var(--re-red-glow);
+    overflow: hidden;
   }
   .main-nav-item { padding: 12px 20px; font-weight: bold; font-size: 12px; cursor: pointer; color: var(--re-text-gray); border-right: 1px solid #222; white-space: nowrap; transition: all 0.2s ease; }
   .main-nav-item:hover { color: #ffffff; background: #1c0202; }
   .main-nav-item.active { color: #ffffff; background: var(--re-red); text-shadow: 0 0 5px #ffaaaa; }
   
-  .re-body { display: flex; flex: 1; height: calc(100% - 93px); overflow: hidden; background: var(--re-bg); }
-  .re-sidebar { width: 180px; background: #090909; border-right: 1px dashed var(--re-border-color); display: flex; flex-direction: column; gap: 8px; padding: 15px 0px 15px 10px; overflow-y: auto; }
+  .re-body { display: flex; flex: 1; height: calc(100% - 95px); overflow: hidden; background: var(--re-bg); }
+  .re-sidebar { width: 180px; background: #090909; border-right: 1px dashed var(--re-border-color); display: flex; flex-direction: column; gap: 8px; padding: 15px 0px 15px 10px; overflow: hidden; }
   
-  .submenu-btn { background: #121212; border: 1px solid #222; border-right: none; color: var(--re-text-gray); padding: 12px 10px; text-align: left; display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: inherit; transition: all 0.2s ease; }
+  .submenu-btn { background: #121212; border: 1px solid #222; border-right: none; color: var(--re-text-gray); padding: 12px 10px; text-align: left; display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: inherit; transition: all 0.2s ease; transform: translateX(0px); }
   .submenu-btn:hover { color: var(--re-green); background: #151515; transform: translateX(5px); }
   .submenu-btn.active { background: #1a1a1a; color: var(--re-green); font-weight: bold; border: 1px solid var(--re-green); border-right: 3px solid var(--re-bg); transform: translateX(8px); box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.5); z-index: 2; }
   .submenu-btn ha-icon { --mdc-icon-size: 18px; min-width: 18px; }
@@ -82,62 +83,103 @@ const cardStyles = css`
   .filter-item.active { background: #1f1402; color: #ff9900; border-color: #ff9900; text-shadow: 0 0 4px rgba(255,153,0,0.4); }
 
   .re-content-scroll { flex: 1; padding: 20px; overflow-y: auto; background: #030303; border-left: 1px solid #1c1c1c; display: flex; flex-direction: column; box-sizing: border-box; position: relative; }
-  
-  .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; min-height: 400px; display: block; border: none; }
-  .re-iframe { width: 100%; height: 100%; border: none; background: #000; }
+  .re-content-scroll::-webkit-scrollbar { width: 6px; }
+  .re-content-scroll::-webkit-scrollbar-thumb { background: var(--re-red); }
 
-  .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; width: 100%; z-index: 1; }
-  .sensor-card { background: #0d0d0d; border: 1px solid #222; padding: 12px; cursor: pointer; position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 80px; }
-  .sensor-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: #333; }
+  .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; width: 100%; z-index: 2; }
+  
+  .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; display: flex; margin: 0; padding: 0; overflow: hidden; min-height: 0; z-index: 2; }
+  .re-iframe { width: 100%; height: 100%; border: none; background: transparent; display: block; min-height: 0; }
+
+  .sensor-card { 
+    background: #0d0d0d; 
+    border: 1px solid #222; 
+    padding: 12px; 
+    cursor: pointer; 
+    position: relative; 
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 80px;
+  }
+  .sensor-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: #333; transition: background 0.25s; }
   .sensor-card:hover { border-color: var(--re-green); background: #111; }
   .sensor-card:hover::before { background: var(--re-green); }
-  .sensor-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .sensor-name { font-size: 10px; color: var(--re-text-gray); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-  .sensor-icon { --mdc-icon-size: 20px; color: var(--re-text-gray); }
-  .sensor-value { font-size: 17px; color: #aaaaaa; font-weight: bold; margin-top: 8px; }
-  .sensor-value .unit { font-size: 11px; color: #666; }
   
-  .error { border-color: var(--re-red-bright); color: var(--re-red-bright); }
-  .umbrella-img-logo { width: 24px; height: 24px; animation: umbrella-rotate 8s linear infinite; }
-  @keyframes umbrella-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .umbrella-bg-watermark { position: absolute; top: 50%; left: 50%; width: 320px; height: 320px; transform: translate(-50%, -50%); pointer-events: none; z-index: 0; opacity: 0.03; }
+  .card-battery-indicator {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 9px;
+    font-weight: bold;
+    color: #8a8a8a;
+    z-index: 2;
+  }
+  .card-battery-indicator ha-icon { --mdc-icon-size: 12px; }
+  .batt-high { color: #00ff00; }
+  .batt-medium { color: #ff9900; }
+  .batt-low { color: #ff3333; animation: batt-flash 1s infinite alternate; }
+  @keyframes batt-flash { 0% { opacity: 0.2; } 100% { opacity: 1; } }
+
+  .sensor-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; width: 100%; }
+  .sensor-name { font-size: 10px; color: var(--re-text-gray); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .sensor-icon { --mdc-icon-size: 20px; color: var(--re-text-gray); transition: all 0.25s ease; }
+  .sensor-value { font-size: 18px; color: #aaaaaa; font-weight: bold; margin-top: 8px; }
+  .sensor-value .unit { font-size: 11px; color: #666; font-weight: normal; }
+
+  .umbrella-bg-watermark {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    width: 140px;
+    height: 140px;
+    object-fit: contain;
+    opacity: 0.05;
+    pointer-events: none;
+    z-index: 1;
+  }
 `;
 
-// ==========================================
-// 2. COMPOSANT DE LA CARTE PRINCIPALE
-// ==========================================
 class ResidentEvilCard extends LitElement {
   static styles = cardStyles;
 
-  static getConfigElement() {
-    return document.createElement("resident-evil-card-editor");
+  static get properties() {
+    return {
+      hass: { type: Object },
+      config: { type: Object },
+      _activeCategoryIndex: { type: Number },
+      _activeSubmenuIndex: { type: Number },
+      _activeFilter: { type: String }
+    };
   }
-
-  static properties = {
-    hass: { type: Object },
-    config: { type: Object },
-    _activeMenuIdx: { type: Number, state: true },
-    _activeSubmenuIdx: { type: Number, state: true },
-    _activeFilter: { type: String, state: true }
-  };
 
   constructor() {
     super();
-    this._activeMenuIdx = 0;
-    this._activeSubmenuIdx = 0;
+    this._activeCategoryIndex = 0;
+    this._activeSubmenuIndex = 0;
     this._activeFilter = 'all';
   }
 
   setConfig(config) {
     if (!config.categories || !Array.isArray(config.categories)) {
-      throw new Error('Veuillez spécifier des catégories valides.');
+      throw new Error("Veuillez configurer une liste de 'categories' valide.");
     }
     this.config = config;
   }
 
-  _handleAction(entityId, isSwitch) {
+  getCardSize() {
+    return 6;
+  }
+
+  _handleAction(entityId, isLong) {
     if (!entityId) return;
-    if (isSwitch) {
+    const domain = entityId.split('.')[0];
+    
+    if (domain === 'light' || domain === 'switch' || domain === 'input_boolean') {
       this.hass.callService('homeassistant', 'toggle', { entity_id: entityId });
     } else {
       const event = new CustomEvent('hass-more-info', {
@@ -152,106 +194,138 @@ class ResidentEvilCard extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``;
 
-    const cat = this.config.categories[this._activeMenuIdx];
-    const sidebarItems = cat && cat.submenus ? cat.submenus : [];
-    const currentSubmenu = sidebarItems[this._activeSubmenuIdx];
-    const filters = currentSubmenu && currentSubmenu.subsubmenus ? currentSubmenu.subsubmenus : [];
+    const categories = this.config.categories || [];
+    const currentCategory = categories[this._activeCategoryIndex] || null;
+    const submenus = currentCategory ? (currentCategory.submenus || []) : [];
+    const currentSubmenu = submenus[this._activeSubmenuIndex] || null;
+
+    // Détermination automatique des filtres (subcat uniques)
+    let availableFilters = ['all'];
+    if (currentSubmenu && currentSubmenu.sensors) {
+      currentSubmenu.sensors.forEach(s => {
+        if (s.subcat && !availableFilters.includes(s.subcat)) {
+          availableFilters.push(s.subcat);
+        }
+      });
+    }
 
     return html`
       <ha-card>
         <div class="crt-overlay"></div>
         
         <div class="re-header">
-          <div class="re-title">☣ UMBRELLA CORP. MAINFRAME SYSTEMS</div>
+          <div class="re-title">${(this.config.title || 'UMBRELLA SYSTEM').toUpperCase()}</div>
           <div class="ecg-container">
-            <span class="status-text">SYSTEM STATUS: ONLINE</span>
+            <span class="status-text">SYSTEM ONLINE</span>
             <svg class="ecg-svg" viewBox="0 0 100 30">
-              <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,15 L50,15 L53,10 L56,20 L60,15 L100,15"></path>
+              <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,12 L48,18 L52,15 L100,15" />
             </svg>
-            <img src="/local/Umbrella.png" class="umbrella-bg-watermark" />
           </div>
         </div>
 
         <div class="re-main-menu">
-          ${this.config.categories.map((c, idx) => html`
-            <div class="main-nav-item ${this._activeMenuIdx === idx ? 'active' : ''}"
-                 @click="${() => { this._activeMenuIdx = idx; this._activeSubmenuIdx = 0; this._activeFilter = 'all'; }}">
-              ${c.name.toUpperCase()}
+          ${categories.map((cat, idx) => html`
+            <div class="main-nav-item ${this._activeCategoryIndex === idx ? 'active' : ''}"
+                 @click="${() => { this._activeCategoryIndex = idx; this._activeSubmenuIndex = 0; this._activeFilter = 'all'; }}">
+              ${(cat.name || `SECTEUR ${idx}`).toUpperCase()}
             </div>
           `)}
         </div>
 
         <div class="re-body">
           
-          ${sidebarItems.length > 0 ? html`
+          ${submenus.length > 0 ? html`
             <div class="re-sidebar">
-              ${sidebarItems.map((sub, idx) => html`
-                <button class="submenu-btn ${this._activeSubmenuIdx === idx ? 'active' : ''}"
-                        @click="${() => { this._activeSubmenuIdx = idx; this._activeFilter = 'all'; }}">
-                  <ha-icon icon="${sub.icon || 'mdi:folder-outline'}"></ha-icon>
-                  <span>${sub.name.toUpperCase()}</span>
+              ${submenus.map((sub, idx) => html`
+                <button class="submenu-btn ${this._activeSubmenuIndex === idx ? 'active' : ''}"
+                        @click="${() => { this._activeSubmenuIndex = idx; this._activeFilter = 'all'; }}">
+                  <ha-icon icon="${sub.icon || 'mdi:shield-alert'}"></ha-icon>
+                  <span>${(sub.name || 'SOUS-MODULE').toUpperCase()}</span>
                 </button>
               `)}
             </div>
-          ` : ''}
+          ` : html``}
 
           <div class="re-content-container">
             
-            ${filters.length > 1 ? html`
+            ${availableFilters.length > 1 ? html`
               <div class="re-filter-bar">
-                ${filters.map(f => html`
-                  <button class="filter-item ${this._activeFilter === f.id ? 'active' : ''}"
-                          @click="${() => this._activeFilter = f.id}">
-                    // ${f.name.toUpperCase()}
+                ${availableFilters.map(filter => html`
+                  <button class="filter-item ${this._activeFilter === filter ? 'active' : ''}"
+                          @click="${() => this._activeFilter = filter}">
+                    ${filter.toUpperCase()}
                   </button>
                 `)}
               </div>
-            ` : ''}
+            ` : html``}
 
             <div class="re-content-scroll">
-              <img src="/local/Umbrella_Corporation_logo.svg.png" class="umbrella-bg-watermark" />
+              <img src="/local/Umbrella.png" class="umbrella-bg-watermark" />
 
-              ${currentSubmenu && currentSubmenu.mode === 'iframe' ? html`
-                <div class="re-iframe-wrapper">
-                  <iframe class="re-iframe" src="${currentSubmenu.iframe_url || ''}"></iframe>
-                </div>
-              ` : ''}
+              ${(() => {
+                if (!currentSubmenu) {
+                  return html`<div class="empty-tab">SÉLECTIONNEZ UN SOU-MODULE DANS LA SIDEBAR</div>`;
+                }
 
-              ${currentSubmenu && currentSubmenu.mode === 'design' ? html`
-                <div class="design-view">
-                  ${currentSubmenu.widgets ? currentSubmenu.widgets.map(w => html`
-                    <div style="border: 1px dashed var(--re-border-color); padding: 10px; margin-bottom: 10px; background: #080808;">
-                      <span style="color: var(--re-green); font-size: 11px;">[WIDGET MODULE: ${w.type.toUpperCase()}]</span>
-                      <div style="color: #fff; font-size: 12px; margin-top:5px;">Entité cible : ${w.entity || 'Aucune'}</div>
+                // FORCE LE RENDU IFRAME EN PRIORITÉ SI URL PRÉSENTE OU MODE IFRAME ACTIVÉ
+                if (currentSubmenu.mode === 'iframe' || currentSubmenu.iframe_url) {
+                  return html`
+                    <div class="re-iframe-wrapper">
+                      <iframe class="re-iframe" src="${currentSubmenu.iframe_url}"></iframe>
                     </div>
-                  `) : html`<div style="color:var(--re-text-gray);">Aucun widget configuré pour ce module.</div>`}
-                </div>
-              ` : ''}
+                  `;
+                }
 
-              ${currentSubmenu && (!currentSubmenu.mode || currentSubmenu.mode === 'grid') ? html`
-                <div class="sensors-grid">
-                  ${(() => {
-                    let sensorsToRender = currentSubmenu.sensors || [];
-                    if (this._activeFilter !== 'all') {
-                      sensorsToRender = sensorsToRender.filter(s => s.subcat === this._activeFilter);
-                    }
-                    
-                    if (sensorsToRender.length === 0) {
-                      return html`<div style="text-align:center; color:#555; padding-top:40px;">AUCUNE DONNÉE ACCESSIBLE</div>`;
-                    }
+                // RENDU DU MODE DESIGN PERSONNALISÉ (WIDGETS COMPOSITES)
+                if (currentSubmenu.mode === 'design') {
+                  return html`
+                    <div class="design-grid">
+                      ${currentSubmenu.widgets ? currentSubmenu.widgets.map(w => html`
+                        <div style="border: 1px dashed var(--re-border-color); padding: 12px; margin-bottom: 5px; background: #080808; width: 100%; box-sizing: border-box;">
+                          <span style="color: var(--re-green); font-size: 11px;">[MODULE CONFIGURÉ: ${String(w.type).toUpperCase()}]</span>
+                          <div style="color: #fff; font-size: 12px; margin-top:4px;">Entité cible détectée : ${w.entity || 'Aucune'}</div>
+                        </div>
+                      `) : html`<div style="color:var(--re-text-gray); font-size:11px;">Aucun widget configuré dans ce design.</div>`}
+                    </div>
+                  `;
+                }
 
-                    return sensorsToRender.map(s => {
+                // PAR DÉFAUT : RENDU EN MODE GRILLE DE CAPTEURS CLASSIQUE (GRID)
+                let sensorsToRender = currentSubmenu.sensors || [];
+                if (this._activeFilter !== 'all') {
+                  sensorsToRender = sensorsToRender.filter(s => s.subcat === this._activeFilter);
+                }
+                
+                if (sensorsToRender.length === 0) {
+                  return html`<div class="empty-tab">AUCUNE DONNÉE ACCESSIBLE DANS CE SECTEUR</div>`;
+                }
+
+                return html`
+                  <div class="sensors-grid">
+                    ${sensorsToRender.map(s => {
                       const stateObj = this.hass.states[s.entity];
                       if (!stateObj) {
                         return html`
                           <div class="sensor-card error">
-                            <div class="sensor-card-header"><div class="sensor-name">${s.name || s.entity}</div></div>
-                            <div class="sensor-value" style="font-size:11px;">ABSENT / OFFLINE</div>
+                            <div class="sensor-card-header">
+                              <div class="sensor-name">${s.name || s.entity}</div>
+                            </div>
+                            <div class="sensor-value" style="font-size:11px; color:#ff3333; margin-top:8px;">OFFLINE</div>
                           </div>
                         `;
                       }
+
+                      // Classe dynamique selon le domaine pour appliquer les effets CSS retro
+                      const domain = s.entity.split('.')[0];
+                      let effectClass = 'type-generic';
+                      if (domain === 'light') effectClass = 'effect-light';
+                      if (domain === 'switch') effectClass = 'effect-switch';
+                      if (domain === 'binary_sensor') effectClass = 'effect-binary';
+                      
+                      const isActive = stateObj.state === 'on' || stateObj.state === 'home' || stateObj.state === 'open';
+
                       return html`
-                        <div class="sensor-card" @click="${() => this._handleAction(s.entity, false)}">
+                        <div class="sensor-card ${effectClass} ${isActive ? 'state-active' : ''}" @click="${() => this._handleAction(s.entity, false)}">
                           <div class="sensor-card-header">
                             <div class="sensor-name">${(s.name || stateObj.attributes.friendly_name || s.entity).toUpperCase()}</div>
                             <ha-icon icon="${s.icon || 'mdi:eye'}" class="sensor-icon"></ha-icon>
@@ -261,163 +335,17 @@ class ResidentEvilCard extends LitElement {
                           </div>
                         </div>
                       `;
-                    });
-                  })()}
-                </div>
-              ` : ''}
-
+                    })}
+                  </div>
+                `;
+              })()}
             </div>
-          </div>
 
+          </div>
         </div>
       </ha-card>
     `;
   }
 }
+
 customElements.define('resident-evil-card', ResidentEvilCard);
-
-
-// ==========================================
-// 3. CODE DE L'ÉDITEUR VISUEL COMPLET
-// ==========================================
-class ResidentEvilCardEditor extends LitElement {
-  static properties = {
-    hass: { type: Object },
-    _config: { type: Object },
-    _activeTab: { type: Number, state: true }
-  };
-
-  constructor() {
-    super();
-    this._activeTab = 0;
-  }
-
-  setConfig(config) {
-    this._config = config;
-  }
-
-  _inp(label, path, value) {
-    return html`
-      <div style="margin-bottom:10px;">
-        <label style="display:block;font-size:11px;color:#8a8a8a;margin-bottom:4px;text-transform:uppercase;">${label}</label>
-        <input type="text" .value="${value || ''}" @change="${e => this._updateConfig(path, e.target.value)}"
-               style="width:100%;background:#111;border:1px solid #2a2a2a;color:#fff;padding:6px;font-family:inherit;box-sizing:border-box;"/>
-      </div>
-    `;
-  }
-
-  _toggle(label, path, value) {
-    return html`
-      <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:#8a8a8a;margin-bottom:10px;cursor:pointer;text-transform:uppercase;">
-        <input type="checkbox" ?checked="${!!value}" @change="${e => this._updateConfig(path, e.target.checked)}" style="accent-color:#8b0000;"/>
-        ${label}
-      </label>
-    `;
-  }
-
-  _updateConfig(path, value) {
-    if (!this._config) return;
-    const newConfig = JSON.parse(JSON.stringify(this._config));
-    const parts = path.split('.');
-    let current = newConfig;
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (!current[parts[i]]) current[parts[i]] = {};
-      current = current[parts[i]];
-    }
-    current[parts[parts.length - 1]] = value;
-    this._config = newConfig;
-    
-    const event = new CustomEvent("config-changed", {
-      detail: { config: this._config },
-      bubbles: true,
-      composed: true
-    });
-    this.dispatchEvent(event);
-  }
-
-  render() {
-    if (!this.hass || !this._config) return html``;
-    const self = this;
-
-    const tabs = ["Général", "Météo", "Zones", "Vidéo", "Serveurs", "Spa", "Énergie", "Santé", "Tracker"];
-    const tabStyle = (idx) => `
-      padding:6px 10px;font-family:inherit;font-size:10px;font-weight:bold;cursor:pointer;
-      background:${self._activeTab === idx ? '#8b0000' : '#111'};
-      color:${self._activeTab === idx ? '#fff' : '#8a8a8a'};
-      border:1px solid #2a2a2a;border-bottom:none;text-transform:uppercase;margin-right:2px;
-    `;
-
-    // ─────────────────────────────────────────────────────────
-    // PANELS DE CONFIGURATION DE L'EDITEUR VISUEL
-    // ─────────────────────────────────────────────────────────
-    const renderGeneral = () => html`<div><h4>PARAMÈTRES GÉNÉRAUX</h4><p style="color:#666;font-size:11px;">Console Centrale de Supervision Générale.</p></div>`;
-    
-    const renderMeteo = () => {
-      const ci = self._config.categories?.findIndex(c => c.name.toLowerCase() === 'meteo') !== -1 ? self._config.categories.findIndex(c => c.name.toLowerCase() === 'meteo') : 0;
-      const sub = self._config.categories?.[ci]?.submenus?.[0] || {};
-      return html`
-        <div>
-          <h4>CONFIGURATION CONFIGURATION MÉTÉO</h4>
-          ${self._inp('Lien iFrame Météo (URL)', `categories.${ci}.submenus.0.iframe_url`, sub.iframe_url)}
-        </div>`;
-    };
-
-    const renderZones = () => html`<div><h4>SECTEURS & ZONES</h4></div>`;
-    const renderVideo = () => html`<div><h4>SYSTÈMES VIDÉO</h4></div>`;
-    const renderServeurs = () => html`<div><h4>INFRASTRUCTURE SERVEURS</h4></div>`;
-    
-    const renderSpa = () => {
-      const ci = self._config.categories?.findIndex(c => c.name.toLowerCase() === 'spa') !== -1 ? self._config.categories.findIndex(c => c.name.toLowerCase() === 'spa') : 0;
-      const w = self._config.categories?.[ci]?.submenus?.[0]?.widgets?.[0] || {};
-      return html`
-        <div>
-          <h4>MODULE LAY-Z-SPA</h4>
-          ${self._inp('Capteur Température Eau', `categories.${ci}.submenus.0.widgets.0.entity`, w.entity)}
-          ${self._inp('Contrôle Climate', `categories.${ci}.submenus.0.widgets.0.targetEntity`, w.targetEntity)}
-          ${self._inp('Image d\'arrière plan', `categories.${ci}.submenus.0.widgets.0.bgImage`, w.bgImage)}
-        </div>`;
-    };
-
-    const renderEnergie = () => html`<div><h4>FLUX ÉNERGÉTIQUES</h4></div>`;
-    const renderSante = () => html`<div><h4>BIOMÉTRIE / PHYTOLOGIE</h4></div>`;
-    
-    const renderTracker = () => {
-      const ci = self._config.categories?.findIndex(c => c.name.toLowerCase().includes('biom')) !== -1 ? self._config.categories.findIndex(c => c.name.toLowerCase().includes('biom')) : 0;
-      const p = self._config.categories?.[ci]?.submenus?.[0]?.widgets?.[0]?.people?.[0] || {};
-      const pi = 0;
-      return html`
-        <div>
-          <h4>LOCALISATION TRACKERS</h4>
-          ${self._inp('Geocodage', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.geocoded_entity`, p.geocoded_entity)}
-        </div>`;
-    };
-
-    const panels = [renderGeneral, renderMeteo, renderZones, renderVideo, renderServeurs, renderSpa, renderEnergie, renderSante, renderTracker];
-
-    return html`
-      <div style="font-family:'Courier New',monospace;background:#080d14;border-radius:8px;overflow:hidden;">
-        <div style="background:#0d1b2e;border-bottom:1px solid #1a2744;padding:10px 12px;">
-          <div style="font-size:14px;font-weight:800;color:#ef4444;letter-spacing:2px;margin-bottom:8px;">
-            ☣ RESIDENT EVIL CARD — ÉDITEUR
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;">
-            ${tabs.map((t, i) => html`
-              <button style="${tabStyle(i)}" @click="${() => { self._activeTab = i; self.requestUpdate(); }}">${t}</button>
-            `)}
-          </div>
-        </div>
-        <div style="padding:14px;max-height:500px;overflow-y:auto;">
-          ${panels[self._activeTab] ? panels[self._activeTab]() : html``}
-        </div>
-        <div style="padding:8px 14px;background:#0b1321;font-size:10px;color:#4f5e7d;text-align:right;border-top:1px solid #142238;">
-          UMBRELLA OS v4.2 // ENGINE CONNECTED
-        </div>
-      </div>
-    `;
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// LA LIGNE CRUCIALE QUI MANQUAIT : ENREGISTREMENT DE L'ÉDITEUR
-// ─────────────────────────────────────────────────────────
-customElements.define('resident-evil-card-editor', ResidentEvilCardEditor);
