@@ -338,7 +338,9 @@ const cardStyles = css`
     50%      { opacity: 0.08; transform: scale(1.02); }
   }
 
-  /* DESIGN WIDGETS */
+  /* ==========================================
+     DESIGN WIDGETS STYLE
+     ========================================== */
   .design-grid {
     display: flex;
     flex-wrap: wrap;
@@ -347,6 +349,18 @@ const cardStyles = css`
     align-items: flex-start;
     box-sizing: border-box;
   }
+
+  .dw-card {
+    background: #0d0d0d;
+    border: 1px solid #222;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .dw-card.no-border { border: none !important; background: transparent !important; }
+
+  /* SHAPE widget */
   .dw-shape-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 12px; width: 100%; height: 100%; box-sizing: border-box; }
   .dw-circle  { border-radius: 50%; flex-shrink: 0; }
   .dw-square  { border-radius: 0; flex-shrink: 0; }
@@ -354,12 +368,16 @@ const cardStyles = css`
   .dw-line-h  { height: 3px !important; width: 100%; border-radius: 2px; }
   .dw-line-v  { width: 3px !important; height: 100%; border-radius: 2px; }
   .dw-shape-label { font-size: 11px; font-weight: bold; letter-spacing: 1px; text-align: center; }
+
+  /* GAUGE widget */
   .dw-gauge-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 10px 8px; gap: 4px; width: 100%; height: 100%; box-sizing: border-box; }
   .dw-gauge-svg { overflow: visible; flex-shrink: 0; }
   .dw-gauge-track { fill: none; stroke: #2a2a2a; }
   .dw-gauge-fill  { fill: none; stroke-linecap: round; transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1); }
   .dw-gauge-center { font-family: 'Courier New', monospace; font-weight: bold; }
   .dw-gauge-label { font-size: 11px; font-weight: bold; letter-spacing: 1px; text-align: center; }
+
+  /* SPARKLINE widget */
   .dw-spark-wrap { display: flex; flex-direction: column; padding: 12px 10px 8px; gap: 6px; width: 100%; height: 100%; box-sizing: border-box; justify-content: space-between; }
   .dw-spark-header { display: flex; justify-content: space-between; align-items: baseline; }
   .dw-spark-name { font-size: 11px; font-weight: bold; letter-spacing: 1px; }
@@ -368,665 +386,739 @@ const cardStyles = css`
   .dw-spark-svg  { width: 100%; overflow: visible; flex: 1; }
   .dw-spark-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
   .dw-spark-area { opacity: 0.12; }
-  .dw-badge-wrap { display: flex; align-items: center; justify-content: center; padding: 12px 10px; gap: 8px; width: 100%; height: 100%; box-sizing: border-box; }
+
+  /* BADGE widget */
+  .dw-badge-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 10px;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+  }
   .dw-badge-wrap.icon-top    { flex-direction: column; }
   .dw-badge-wrap.icon-bottom { flex-direction: column-reverse; }
   .dw-badge-wrap.icon-left   { flex-direction: row; }
   .dw-badge-wrap.icon-right  { flex-direction: row-reverse; }
   .dw-badge-icon  { flex-shrink: 0; }
   .dw-badge-texts { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .dw-badge-wrap.icon-left  .dw-badge-texts, .dw-badge-wrap.icon-right .dw-badge-texts { align-items: flex-start; }
+  .dw-badge-wrap.icon-left .dw-badge-texts,
+  .dw-badge-wrap.icon-right .dw-badge-texts { align-items: flex-start; }
   .dw-badge-label { font-size: 11px; font-weight: bold; letter-spacing: 1px; }
   .dw-badge-value { font-size: 22px; font-weight: bold; line-height: 1; }
   .dw-badge-unit  { font-size: 12px; opacity: 0.7; font-weight: normal; }
+
+  /* PROGRESS widget */
   .dw-progress-wrap { display: flex; flex-direction: column; padding: 12px 12px 10px; gap: 8px; width: 100%; height: 100%; box-sizing: border-box; justify-content: center; }
   .dw-progress-header { display: flex; justify-content: space-between; align-items: baseline; }
-  .dw-progress-name  { font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+  .dw-progress-name { font-size: 12px; font-weight: bold; letter-spacing: 1px; }
   .dw-progress-valstr { font-size: 16px; font-weight: bold; }
   .dw-progress-track { width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; position: relative; overflow: hidden; flex-shrink: 0; }
-  .dw-progress-fill  { height: 100%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); position: relative; }
-  .dw-progress-fill::after { content: ''; position: absolute; top: 0; right: 0; width: 3px; height: 100%; background: rgba(255,255,255,0.35); }
+  .dw-progress-fill { height: 100%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); position: relative; }
+  .dw-progress-fill::after { content: ''; position: absolute; top:0; right:0; width: 3px; height: 100%; background: rgba(255,255,255,0.35); }
+
+  /* SPA TEMP widget */
   .dw-spa-wrap { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 12px 14px; width: 100%; height: 100%; box-sizing: border-box; position: relative; }
-  .dw-spa-adj-btn { background: none; border: 1px solid #333; color: #888; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; width: 36px; height: 36px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .dw-spa-adj-btn:hover { border-color: #fff; color: #fff; background: rgba(255,255,255,0.05); }
-  .dw-spa-center { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; justify-content: center; }
-  .dw-spa-label  { font-size: 11px; font-weight: bold; letter-spacing: 2px; }
-  .dw-spa-temp   { font-size: 52px; font-weight: bold; line-height: 1; font-family: 'Courier New', monospace; }
-  .dw-spa-unit   { font-size: 14px; opacity: 0.6; }
-  .dw-spa-target { font-size: 13px; font-weight: bold; letter-spacing: 1px; margin-top: 2px; }
-  .dw-spa-row    { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; }
-  .dw-spa-heating { font-size: 10px; font-weight: bold; letter-spacing: 2px; padding: 3px 10px; border: 1px solid; }
-  .dw-card { background: #0a0a0a; cursor: pointer; position: relative; transition: border-color 0.2s, box-shadow 0.2s; overflow: hidden; box-sizing: border-box; flex-shrink: 0; min-height: 60px; border: 1px solid #1e1e1e; }
-  .dw-card.no-border { border-color: transparent !important; background: transparent; }
-  .dw-card.no-border:hover { border-color: #222 !important; }
-  .dw-card::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; transition: background 0.2s; }
-  .dw-card.no-border::before { display: none; }
-  .dw-card:hover { border-color: #333; }
+  .dw-spa-adj-btn { background: none; border: 1px solid #333; color: #fff; cursor: pointer; padding: 2px 10px; font-family: inherit; font-size: 14px; transition: all 0.15s; }
+  .dw-spa-adj-btn:hover { background: #fff; color: #000; }
 `;
 
+// ==========================================
+// 2. LOGIQUE PRINCIPALE DU COMPOSANT LIT
+// ==========================================
 class ResidentEvilCard extends LitElement {
-  static get properties() {
-    return {
-      hass: {},
-      config: {},
-      _activeMainMenu: { type: Number },
-      _activeSubMenu: { type: Number },
-      _activeFilter: { type: String },
-      _timeString: { type: String }
-    };
-  }
+  static styles = cardStyles;
+
+  static properties = {
+    hass: { type: Object },
+    config: { type: Object },
+    _activeMenuIdx: { type: Number, state: true },
+    _activeSubmenuIdx: { type: Number, state: true },
+    _activeFilter: { type: String, state: true },
+    _lastCardUpdate: { type: String, state: true }
+  };
 
   constructor() {
     super();
-    this._activeMainMenu = 0;
-    this._activeSubMenu = 0;
-    this._activeFilter = "all";
-    this._timeString = "";
-    this._timeUpdater = null;
-    this._sparkHistory = {};
-  }
+    this._activeMenuIdx = 0;
+    this._activeSubmenuIdx = 0;
+    this._activeFilter = 'all';
+    this._lastCardUpdate = new Date().toLocaleTimeString();
 
-  connectedCallback() {
-    super.connectedCallback();
-    this._timeUpdater = setInterval(() => {
-      const now = new Date();
-      this._timeString = now.toLocaleDateString('fr-FR') + " " + now.toLocaleTimeString('fr-FR');
+    setInterval(() => {
+      this._lastCardUpdate = new Date().toLocaleTimeString();
     }, 1000);
   }
 
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    if (this._timeUpdater) clearInterval(this._timeUpdater);
-  }
-
-  _umbrellaLogoSvg(size=28, cssClass='umbrella-spin') {
-    return html`
-      <svg class="${cssClass}" width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
-        <circle cx="50" cy="50" r="48" fill="#111" stroke="#8b0000" stroke-width="2"/>
-        <path d="M50,50 L50,4 A46,46 0 0,1 96,50 Z" fill="#8b0000"/>
-        <path d="M50,50 L96,50 A46,46 0 0,1 50,96 Z" fill="#8b0000"/>
-        <path d="M50,50 L50,96 A46,46 0 0,1 4,50 Z" fill="#8b0000"/>
-        <path d="M50,50 L4,50 A46,46 0 0,1 50,4 Z" fill="#8b0000"/>
-        <path d="M50,50 L82,18 A46,46 0 0,1 96,50 Z" fill="#ddd"/>
-        <path d="M50,50 L82,82 A46,46 0 0,1 50,96 Z" fill="#ddd"/>
-        <path d="M50,50 L18,82 A46,46 0 0,1 4,50 Z" fill="#ddd"/>
-        <path d="M50,50 L18,18 A46,46 0 0,1 50,4 Z" fill="#ddd"/>
-        <circle cx="50" cy="50" r="8" fill="#050505"/>
-      </svg>
-    `;
-  }
-
-  static get styles() {
-    return cardStyles;
-  }
-
   setConfig(config) {
-    if (!config.categories) {
-      throw new Error("Veuillez configurer au moins une catégorie.");
+    if (!config.categories || !Array.isArray(config.categories)) {
+      throw new Error('Veuillez définir une liste de "categories" valide.');
     }
     this.config = config;
   }
 
-  getCardSize() {
-    return 6;
+  _getGridIcon(entityId) {
+    const stateObj = this.hass.states[entityId];
+    if (stateObj && stateObj.attributes.icon) return stateObj.attributes.icon;
+    const domain = entityId.split('.')[0];
+    switch (domain) {
+      case 'light': return 'mdi:lightbulb';
+      case 'switch': return 'mdi:toggle-switch';
+      case 'binary_sensor': return 'mdi:shield-alert';
+      case 'sensor': return 'mdi:eye';
+      case 'sun': return 'mdi:white-balance-sunny';
+      default: return 'mdi:view-grid';
+    }
+  }
+
+  _handleAction(entityId, isSwitch, currentActive) {
+    if (!entityId) return;
+    if (isSwitch) {
+      this.hass.callService('homeassistant', 'toggle', { entity_id: entityId });
+    } else {
+      const event = new CustomEvent('hass-more-info', {
+        detail: { entityId },
+        bubbles: true,
+        composed: true
+      });
+      this.dispatchEvent(event);
+    }
+  }
+
+  _callSpaTargetTemp(entityId, step) {
+    const stateObj = this.hass.states[entityId];
+    if (!stateObj) return;
+    const current = parseFloat(stateObj.attributes.temperature || stateObj.state);
+    if (isNaN(current)) return;
+    this.hass.callService('climate', 'set_temperature', {
+      entity_id: entityId,
+      temperature: current + step
+    });
+  }
+
+  _callButton(entityId) {
+    if (!entityId) return;
+    this.hass.callService('button', 'press', { entity_id: entityId });
+  }
+
+  _renderDesignWidget(w) {
+    const sizeStyle = `width: ${w.widthPct || 100}%; height: ${w.heightPx || 200}px;`;
+    const noBorder = w.noBorder || false;
+    const bgBlur = w.bgBlur ? `filter: blur(${w.bgBlur}px);` : '';
+    const bgStyle = w.bgImage ? `background-image: url('${w.bgImage}'); background-size: cover; background-position: center;` : '';
+
+    switch (w.type) {
+      case 'health':
+        return this._renderHealthWidget(w, sizeStyle, noBorder);
+      case 'plant':
+        return this._renderPlantWidget(w, sizeStyle, noBorder);
+      case 'shape':
+        return this._renderShapeWidget(w, sizeStyle, noBorder);
+      case 'gauge':
+        return this._renderGaugeWidget(w, sizeStyle, noBorder);
+      case 'sparkline':
+        return this._renderSparklineWidget(w, sizeStyle, noBorder);
+      case 'badge':
+        return this._renderBadgeWidget(w, sizeStyle, noBorder);
+      case 'progress':
+        return this._renderProgressWidget(w, sizeStyle, noBorder);
+      case 'spa_temp':
+        return this._renderSpaTempWidget(w, sizeStyle, noBorder, bgStyle, bgBlur);
+      default:
+        return html`<div class="dw-card" style="${sizeStyle} padding:10px; color:red;">Widget type absent/inconnu : ${w.type}</div>`;
+    }
+  }
+
+  // ==========================================
+  // RENDU DU WIDGET BIOMÉTRIQUE (SANTÉ CRITIQUE)
+  // ==========================================
+  _renderHealthWidget(w, sizeStyle, noBorder) {
+    return html`
+      <div class="dw-card ${noBorder ? 'no-border' : ''}" style="border-color: var(--re-border-color, #ff0000); ${sizeStyle}; overflow-y: auto; background: #000;">
+        <div style="padding: 15px; font-family: 'Courier New', monospace;">
+          <div style="color: #ff3333; font-size: 13px; font-weight: bold; letter-spacing: 2px; margin-bottom: 15px; text-shadow: 0 0 4px rgba(255,51,51,0.6);">
+            ☣️ UMBRELLA CORP. // SUIVI BIOMÉTRIQUE DU PERSONNEL
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+            ${w.people.map(person => {
+              const weightState = this.hass.states[person.weight_entity];
+              const weight = weightState ? parseFloat(weightState.state).toFixed(1) : '--';
+              
+              return html`
+                <div style="background: #080808; border: 1px solid #222; padding: 10px; position: relative;">
+                  <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px dashed #333; padding-bottom: 8px; margin-bottom: 10px;">
+                    <img src="${person.image}" style="width: 42px; height: 42px; border: 1px solid #444; filter: grayscale(100%) contrast(1.2);" />
+                    <div>
+                      <div style="font-size: 12px; font-weight: bold; color: #fff; letter-spacing: 1px;">SUJET: ${person.name.toUpperCase()}</div>
+                      <div style="font-size: 10px; color: #00ff00; text-shadow: 0 0 3px rgba(0,255,0,0.4);">STATUT VITAL: ACTIF</div>
+                    </div>
+                  </div>
+                  
+                  <div style="font-size: 14px; font-weight: bold; color: #ff9900; margin-bottom: 8px; font-family: monospace;">
+                    MASSE GLOBALE: ${weight} kg <span style="font-size: 10px; color: #555;">(Seuil ciblé: ${person.ideal}kg)</span>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10px;">
+                    ${person.sensors.map(s => {
+                      const sState = this.hass.states[s.entity];
+                      const val = sState ? sState.state : '--';
+                      return html`
+                        <div style="background: #030303; border: 1px solid #111; padding: 3px 5px; display: flex; align-items: center; justify-content: space-between;">
+                          <div style="display: flex; align-items: center; gap: 4px; color: #888;">
+                            <ha-icon icon="${s.icon}" style="--mdc-icon-size: 12px; color: ${s.col || '#aaa'};"></ha-icon>
+                            <span>${s.name}</span>
+                          </div>
+                          <span style="color: #fff; font-weight: bold;">${val}${s.unit}</span>
+                        </div>
+                      `;
+                    })}
+                  </div>
+                </div>
+              `;
+            })}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ==========================================
+  // RENDU DU WIDGET PHYTOLOGIQUE (PLANTES)
+  // ==========================================
+  _renderPlantWidget(w, sizeStyle, noBorder) {
+    const battState = this.hass.states[w.battery_sensor];
+    const battery = battState ? parseInt(battState.state) : null;
+
+    return html`
+      <div class="dw-card ${noBorder ? 'no-border' : ''}" style="border-color: #222; ${sizeStyle}; background: #050505; box-sizing: border-box; display: inline-block; vertical-align: top;">
+        <div style="padding: 10px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; font-family: 'Courier New', monospace;">
+          
+          <div style="display: flex; gap: 8px; border-bottom: 1px solid #1a1a1a; padding-bottom: 6px;">
+            <img src="${w.plant_image}" style="width: 40px; height: 40px; border: 1px solid #333; object-fit: cover; filter: grayscale(30%) brightness(0.9);" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 11px; font-weight: bold; color: #00ff00; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${w.plant_name}
+              </div>
+              <div style="font-size: 8px; color: #444; font-style: italic;">${w.latin_name}</div>
+            </div>
+            ${battery !== null ? html`
+              <div style="font-size: 9px; color: ${battery < 20 ? '#ff3333' : '#666'};">
+                <ha-icon icon="mdi:battery" style="--mdc-icon-size: 11px;"></ha-icon>${battery}%
+              </div>
+            ` : html``}
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 6px; flex: 1;">
+            ${w.sensors.map(s => {
+              const sState = this.hass.states[s.entity];
+              const val = sState ? parseFloat(sState.state).toFixed(0) : '--';
+              return html`
+                <div style="background: #090909; border: 1px solid #111; padding: 4px; display: flex; flex-direction: column; justify-content: center;">
+                  <div style="display: flex; align-items: center; gap: 3px; font-size: 8px; color: #555; text-transform: uppercase;">
+                    <ha-icon icon="${s.icon}" style="--mdc-icon-size: 10px; color: ${s.color || '#fff'};"></ha-icon>
+                    ${s.name}
+                  </div>
+                  <div style="font-size: 11px; font-weight: bold; color: #eee; margin-top: 1px;">
+                    ${val}<span style="font-size: 8px; color: #444; font-weight: normal;">${s.unit}</span>
+                  </div>
+                </div>
+              `;
+            })}
+          </div>
+
+        </div>
+      </div>
+    `;
+  }
+
+  _renderShapeWidget(w, sizeStyle, noBorder) {
+    const sh = w.shape || 'circle';
+    const radius = w.radiusPx || 40;
+    const thick  = w.thicknessPx || 4;
+    const bgCol  = w.backgroundColor || '#222';
+    const borderCol = w.borderColor || '#444';
+    const labelCol  = w.labelColor || '#aaa';
+    
+    let geomStyle = `width:${radius*2}px; height:${radius*2}px; background:${bgCol}; border:${thick}px solid ${borderCol};`;
+    if (sh === 'circle') geomStyle += 'border-radius:50%;';
+    if (sh === 'rect')   geomStyle += 'border-radius:4px;';
+    if (sh === 'line-h') geomStyle = `width:100%; height:${thick}px; background:${bgCol};`;
+    if (sh === 'line-v') geomStyle = `width:${thick}px; height:100%; background:${bgCol};`;
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}">
+        <div class="dw-shape-wrap">
+          <div class="dw-${sh}" style="${geomStyle}"></div>
+          ${w.label ? html`<div class="dw-shape-label" style="color:${labelCol};">${w.label}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  _renderGaugeWidget(w, sizeStyle, noBorder) {
+    const sObj = this.hass.states[w.entity];
+    const val  = sObj ? parseFloat(sObj.state) : 0;
+    const min  = w.min !== undefined ? w.min : 0;
+    const max  = w.max !== undefined ? w.max : 100;
+    const col  = w.color || 'var(--re-green)';
+    const name = w.name || (sObj ? sObj.attributes.friendly_name : 'Gauge');
+    const unit = w.unit || (sObj ? sObj.attributes.unit_of_measurement : '');
+
+    const pct   = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
+    const rad   = 34;
+    const circ  = 2 * Math.PI * rad;
+    const off   = circ - (pct / 100) * circ;
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}">
+        <div class="dw-gauge-wrap">
+          <svg class="dw-gauge-svg" width="80" height="80" viewBox="0 0 80 80">
+            <circle class="dw-gauge-track" cx="40" cy="40" r="${rad}" stroke-width="6" />
+            <circle class="dw-gauge-fill" cx="40" cy="40" r="${rad}" stroke-width="6"
+                    stroke="${col}" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 40 40)" />
+            <text class="dw-gauge-center" cx="40" cy="45" text-anchor="middle" font-size="14" fill="#fff">
+              ${sObj ? Math.round(val) : '--'}
+            </text>
+          </svg>
+          <div class="dw-gauge-label" style="color:var(--re-text-gray); font-size:10px;">${name.toUpperCase()} ${unit}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  _renderSparklineWidget(w, sizeStyle, noBorder) {
+    const sObj = this.hass.states[w.entity];
+    const valStr = sObj ? sObj.state : '--';
+    const unit = w.unit || (sObj ? sObj.attributes.unit_of_measurement : '');
+    const name = w.name || (sObj ? sObj.attributes.friendly_name : 'Sparkline');
+    const col  = w.color || 'var(--re-green)';
+
+    let points = [40, 35, 45, 20, 55, 30, 42, 50, 25, 38, 48];
+    if (sObj && sObj.attributes.history) {
+      const h = sObj.attributes.history;
+      if (Array.isArray(h) && h.length > 1) points = h.map(v => parseFloat(v));
+    }
+
+    const minP = Math.min(...points);
+    const maxP = Math.max(...points) || 1;
+    const range = maxP - minP || 1;
+    
+    const wSvg = 140;
+    const hSvg = 40;
+    const mapped = points.map((p, idx) => {
+      const x = (idx / (points.length - 1)) * wSvg;
+      const y = hSvg - ((p - minP) / range) * hSvg;
+      return [x, y];
+    });
+
+    const pathD = mapped.map((pt, i) => `${i===0?'M':'L'} ${pt[0]} ${pt[1]}`).join(' ');
+    const areaD = mapped.length ? `${pathD} L ${mapped[mapped.length-1][0]} ${hSvg} L ${mapped[0][0]} ${hSvg} Z` : '';
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}">
+        <div class="dw-spark-wrap">
+          <div class="dw-spark-header">
+            <div class="dw-spark-name" style="color:var(--re-text-gray); font-size:10px;">${name.toUpperCase()}</div>
+            <div class="dw-spark-val" style="color:#fff;">${valStr}<span class="dw-spark-unit">${unit}</span></div>
+          </div>
+          <svg class="dw-spark-svg" viewBox="0 0 ${wSvg} ${hSvg}" preserveAspectRatio="none">
+            <path class="dw-spark-area" d="${areaD}" fill="${col}"></path>
+            <path class="dw-spark-line" d="${pathD}" stroke="${col}"></path>
+          </svg>
+        </div>
+      </div>
+    `;
+  }
+
+  _renderBadgeWidget(w, sizeStyle, noBorder) {
+    const sObj = this.hass.states[w.entity];
+    const val  = sObj ? sObj.state : '--';
+    const unit = w.unit || (sObj ? sObj.attributes.unit_of_measurement : '');
+    const name = w.name || (sObj ? sObj.attributes.friendly_name : 'Badge');
+    const icon = w.icon || (sObj ? sObj.attributes.icon : 'mdi:numeric');
+    const pos  = w.iconPosition || 'left';
+    const col  = w.color || '#fff';
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}" @click="${()=>this._handleAction(w.entity, false)}">
+        <div class="dw-badge-wrap icon-${pos}">
+          <ha-icon class="dw-badge-icon" icon="${icon}" style="color:${col}; --mdc-icon-size: 26px;"></ha-icon>
+          <div class="dw-badge-texts">
+            <div class="dw-badge-label" style="color:var(--re-text-gray); font-size:9px;">${name.toUpperCase()}</div>
+            <div class="dw-badge-value" style="color:#fff;">${val}<span class="dw-badge-unit">${unit}</span></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  _renderProgressWidget(w, sizeStyle, noBorder) {
+    const sObj = this.hass.states[w.entity];
+    const val  = sObj ? parseFloat(sObj.state) : 0;
+    const min  = w.min !== undefined ? w.min : 0;
+    const max  = w.max !== undefined ? w.max : 100;
+    const name = w.name || (sObj ? sObj.attributes.friendly_name : 'Progress');
+    const unit = w.unit || (sObj ? sObj.attributes.unit_of_measurement : '');
+    const col  = w.color || 'var(--re-green)';
+    const trackH = w.trackHeightPx || 8;
+
+    const pct = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}">
+        <div class="dw-progress-wrap">
+          <div class="dw-progress-header">
+            <div class="dw-progress-name" style="color:var(--re-text-gray); font-size:10px;">${name.toUpperCase()}</div>
+            <div class="dw-progress-valstr" style="color:#fff; font-size:13px;">${sObj ? val : '--'} <span style="font-size:9px; opacity:0.5;">${unit}</span></div>
+          </div>
+          <div class="dw-progress-track" style="height:${trackH}px;">
+            <div class="dw-progress-fill" style="width:${pct}%; background:${col};"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  _renderSpaTempWidget(w, sizeStyle, noBorder, bgStyle, bgBlur) {
+    const currentTempState = this.hass.states[w.entity];
+    const targetClimateState = this.hass.states[w.targetEntity];
+
+    const currentTemp = currentTempState ? parseFloat(currentTempState.state) : null;
+    let targetTemp = null;
+    let hvacAction = 'idle';
+
+    if (targetClimateState) {
+      targetTemp = parseFloat(targetClimateState.attributes.temperature || targetClimateState.state);
+      hvacAction = targetClimateState.attributes.hvac_action || 'idle';
+    }
+
+    const extTemp = w.extTempEntity && this.hass.states[w.extTempEntity] ? parseFloat(this.hass.states[w.extTempEntity].state).toFixed(1) : '--';
+    const extHum  = w.extHumEntity && this.hass.states[w.extHumEntity] ? parseFloat(this.hass.states[w.extHumEntity].state).toFixed(0) : '--';
+    const airTemp = w.airTempEntity && this.hass.states[w.airTempEntity] ? parseFloat(this.hass.states[w.airTempEntity].state).toFixed(1) : '--';
+    const airHum  = w.airHumEntity && this.hass.states[w.airHumEntity] ? parseFloat(this.hass.states[w.airHumEntity].state).toFixed(0) : '--';
+
+    const power = w.powerEntity && this.hass.states[w.powerEntity] ? parseFloat(this.hass.states[w.powerEntity].state).toFixed(0) : '--';
+    const energy = w.energyEntity && this.hass.states[w.energyEntity] ? parseFloat(this.hass.states[w.energyEntity].state).toFixed(1) : '--';
+
+    const filterAge = w.filterEntity && this.hass.states[w.filterEntity] ? parseFloat(this.hass.states[w.filterEntity].state) : 0;
+    const filterMax = w.filterMax || 3;
+    const filterPct = Math.max(0, Math.min(100, 100 - (filterAge / filterMax) * 100));
+
+    const chlorineAge = w.chlorineEntity && this.hass.states[w.chlorineEntity] ? parseFloat(this.hass.states[w.chlorineEntity].state) : 0;
+    const chlorineMax = w.chlorineMax || 13;
+    const chlorinePct = Math.max(0, Math.min(100, 100 - (chlorineAge / chlorineMax) * 100));
+
+    const phVal  = w.phEntity && this.hass.states[w.phEntity] ? parseFloat(this.hass.states[w.phEntity].state).toFixed(1) : '--';
+    const orpVal = w.orpEntity && this.hass.states[w.orpEntity] ? parseFloat(this.hass.states[w.orpEntity].state).toFixed(0) : '--';
+    const tdsVal = w.tdsEntity && this.hass.states[w.tdsEntity] ? parseFloat(this.hass.states[w.tdsEntity].state).toFixed(0) : '--';
+
+    const leakObj = w.leakEntity ? this.hass.states[w.leakEntity] : null;
+    const leakActive = leakObj && (leakObj.state === 'on' || leakObj.state === 'true');
+
+    if (w.view === 'cam') {
+      return html`
+        <div class="dw-card ${noBorder ? 'no-border' : ''}" style="${sizeStyle}">
+          <div class="sensor-card type-camera-feed" style="width:100%; height:100%; border:none;">
+            <div class="camera-stream-container">
+              <img class="camera-img" src="/api/camera_proxy/camera.spa" />
+              <div class="camera-scanlines"></div>
+              <div class="camera-corners"></div>
+              <div class="camera-hud-overlay">
+                <div class="hud-top-row">
+                  <div class="hud-rec-indicator"><span style="display:inline-block; width:6px; height:6px; background:red; border-radius:50%;"></span>LIVE</div>
+                  <div class="hud-cam-name">CAMÉRA SPA</div>
+                </div>
+                <div class="hud-bottom-row">
+                  <div class="hud-timestamp">${this._lastCardUpdate}</div>
+                  <div class="hud-status-ok">SYS.OK</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="dw-card ${noBorder ? 'no-border' : ''}" style="${sizeStyle}">
+        <div style="position: absolute; top:0; left:0; width:100%; height:100%; ${bgStyle} ${bgBlur} opacity: 0.15; z-index:0; pointer-events:none;"></div>
+        
+        <div class="dw-spa-wrap" style="z-index:1; height:100%;">
+          <div class="spa-hud-container">
+            
+            <div class="spa-top-bar">
+              <div style="font-size:12px; font-weight:bold; color:#fff; letter-spacing:1px;">H2O CRITICAL MONITOR</div>
+              <div class="spa-badge-heater ${hvacAction === 'heating' ? 'heating' : ''}">
+                <span class="spa-dot"></span>
+                <span>${hvacAction === 'heating' ? 'CHAUFFAGE ACTIF' : 'STABLE / VEILLE'}</span>
+              </div>
+            </div>
+
+            <div class="spa-trident-layout">
+              <div class="spa-side-metric left">
+                <div class="spa-huge-val">${airTemp}°C</div>
+                <div class="spa-metric-lbl">AIR INTÉRIEUR</div>
+                <div class="spa-sub-badge">${airHum}% RH</div>
+              </div>
+
+              <div class="spa-center-dial">
+                <div class="spa-circular-monitor">
+                  <div class="spa-dial-lbl">ACTUEL</div>
+                  <div class="spa-dial-temp">${currentTemp !== null ? currentTemp.toFixed(1) : '--'}°C</div>
+                  ${targetTemp !== null ? html`<div class="spa-dial-target">CIBLE: ${targetTemp.toFixed(1)}°</div>` : ''}
+                </div>
+                <div style="display:flex; gap:15px; margin-top:5px; z-index:10;">
+                  <button class="spa-dial-arrow" @click="${() => this._callSpaTargetTemp(w.targetEntity, -0.5)}">▼ DOWN</button>
+                  <button class="spa-dial-arrow" @click="${() => this._callSpaTargetTemp(w.targetEntity, 0.5)}">▲ UP</button>
+                </div>
+              </div>
+
+              <div class="spa-side-metric right">
+                <div class="spa-huge-val">${extTemp}°C</div>
+                <div class="spa-metric-lbl">EXTÉRIEUR CABANE</div>
+                <div class="spa-sub-badge">${extHum}% RH</div>
+              </div>
+            </div>
+
+            <div class="spa-energy-row">
+              <div class="spa-chip">PUISSANCE: <span style="color:#ff9900;font-weight:bold;">${power} W</span></div>
+              <div class="spa-chip">CONSO: <span style="color:#00ffff;font-weight:bold;">${energy} kWh</span></div>
+              <div class="spa-chip ${leakActive ? 'text-red error' : ''}">FUITE: <span style="font-weight:bold;">${leakActive ? 'ALERTE' : 'SÉCURISÉ'}</span></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; background:#080808; border:1px solid #151515; padding:6px; text-align:center;">
+              <div><div style="font-size:8px; color:#555;">POTENTIEL HYDROGÈNE</div><div style="font-size:14px; font-weight:bold; color:#00ff88;">pH ${phVal}</div></div>
+              <div><div style="font-size:8px; color:#555;">OXYDO-RÉDUCTION</div><div style="font-size:14px; font-weight:bold; color:#00ffff;">${orpVal} mV</div></div>
+              <div><div style="font-size:8px; color:#555;">SOLUTES TOTAUX (TDS)</div><div style="font-size:14px; font-weight:bold; color:#ff9900;">${tdsVal} ppm</div></div>
+            </div>
+
+            <div class="spa-maintenance-grid">
+              <div class="spa-maint-strip">
+                <div class="spa-strip-header"><span>MODULE DE FILTRATION</span><span>${filterPct.toFixed(0)}%</span></div>
+                <div class="spa-strip-track"><div class="spa-strip-fill" style="width:${filterPct}%; background:${filterPct < 20 ? 'red' : 'var(--re-green)'};"></div></div>
+                <div class="spa-strip-footer" style="cursor:pointer;" @click="${() => this._callButton(w.resetFilterEntity)}">➔ RÉINITIALISER CYCLES</div>
+              </div>
+              <div class="spa-maint-strip">
+                <div class="spa-strip-header"><span>AUTONOMIE CHLORE (GALET)</span><span>${chlorinePct.toFixed(0)}%</span></div>
+                <div class="spa-strip-track"><div class="spa-strip-fill" style="width:${chlorinePct}%; background:${chlorinePct < 20 ? 'red' : 'var(--re-green)'};"></div></div>
+                <div class="spa-strip-footer" style="cursor:pointer;" @click="${() => this._callButton(w.resetChlorineEntity)}">➔ ENREGISTRER RECHARGE</div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:4px; margin-top:2px;">
+              ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(idx => {
+                const swEntity = w[`switch_${idx}`];
+                const swName = w[`name_switch_10`] && idx === 10 ? 'Bulles' : w[`name_switch_${idx}`] || `SW ${idx}`;
+                if (!swEntity) return html``;
+                const swStateObj = this.hass.states[swEntity];
+                const isActive = swStateObj && (swStateObj.state === 'on' || swStateObj.state === 'true');
+                return html`
+                  <button @click="${() => this._handleAction(swEntity, true)}"
+                          style="background:${isActive ? '#181c24' : '#0a0a0a'}; border:1px solid ${isActive ? '#00ff88' : '#222'}; color:${isActive ? '#00ff88' : '#666'}; font-family:inherit; font-size:9px; padding:4px 2px; cursor:pointer; text-transform:uppercase; font-weight:bold;">
+                    ${swName}
+                  </button>
+                `;
+              })}
+            </div>
+
+          </div>
+          
+          <div class="spa-footer-status">
+            <div>SATELLITE SYNC: OK</div>
+            <div class="spa-status-ok">BIO-SÉCURITÉ CONFIRMÉE</div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   render() {
     if (!this.hass || !this.config) return html``;
 
-    const categories = this.config.categories || [];
-    const activeCat = categories[this._activeMainMenu];
-    const submenus = activeCat ? (activeCat.submenus || []) : [];
-    const activeSub = submenus[this._activeSubMenu];
+    const cat = this.config.categories[this._activeMenuIdx];
+    let sidebarItems = [];
+    let currentSubmenu = null;
+
+    if (cat && cat.submenus) {
+      sidebarItems = cat.submenus;
+      currentSubmenu = sidebarItems[this._activeSubmenuIdx];
+    }
+
+    let filters = [];
+    if (currentSubmenu && currentSubmenu.subsubmenus) {
+      filters = currentSubmenu.subsubmenus;
+    }
 
     return html`
       <ha-card>
         <div class="crt-overlay"></div>
         
         <div class="re-header">
-          <div style="display:flex; align-items:center; gap:10px;">
-            ${this._umbrellaLogoSvg(26, 'umbrella-spin')}
-            <span class="re-title">UMBRELLA CORP.</span>
-          </div>
+          <div class="re-title">☣ UMBRELLA CORP. INTERNET BROWSER</div>
           <div class="ecg-container">
-            <span class="status-text">${this._timeString}</span>
+            <span class="status-text">SYSTEM STATUS: ALTERNATIVE</span>
             <svg class="ecg-svg" viewBox="0 0 100 30">
-              <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,15 L50,15 L53,10 L56,20 L59,15 L100,15"/>
+              <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,15 L50,15 L53,10 L56,20 L60,15 L100,15"></path>
+            </svg>
+            <svg class="umbrella-spin" width="22" height="22" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="46" fill="none" stroke="#8b0000" stroke-width="4"/>
+              <path d="M50,50 L20,20 A42,42 0 0,1 80,20 Z" fill="#ff0000"/>
+              <path d="M50,50 L80,20 A42,42 0 0,1 80,80 Z" fill="#ffffff"/>
+              <path d="M50,50 L80,80 A42,42 0 0,1 20,80 Z" fill="#ff0000"/>
+              <path d="M50,50 L20,80 A42,42 0 0,1 20,20 Z" fill="#ffffff"/>
+              <circle cx="50" cy="50" r="8" fill="#050505"/>
             </svg>
           </div>
         </div>
 
         <div class="re-main-menu">
-          ${categories.map((cat, idx) => html`
-            <div class="main-nav-item ${this._activeMainMenu === idx ? 'active' : ''}"
-                 @click="${() => { this._activeMainMenu = idx; this._activeSubMenu = 0; this._activeFilter = "all"; }}">
-              ${cat.name}
+          ${this.config.categories.map((c, idx) => html`
+            <div class="main-nav-item ${this._activeMenuIdx === idx ? 'active' : ''}"
+                 @click="${() => { this._activeMenuIdx = idx; this._activeSubmenuIdx = 0; this._activeFilter = 'all'; }}">
+              ${c.name.toUpperCase()}
             </div>
           `)}
         </div>
 
         <div class="re-body">
-          ${submenus.length > 0 ? html`
+          
+          ${sidebarItems.length > 0 ? html`
             <div class="re-sidebar">
-              ${submenus.map((sub, idx) => html`
-                <button class="submenu-btn ${this._activeSubMenu === idx ? 'active' : ''}"
-                        @click="${() => { this._activeSubMenu = idx; this._activeFilter = "all"; }}">
-                  <ha-icon icon="${sub.icon || 'mdi:view-dashboard'}"></ha-icon>
-                  <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${sub.name}</span>
+              ${sidebarItems.map((sub, idx) => html`
+                <button class="submenu-btn ${this._activeSubmenuIdx === idx ? 'active' : ''}"
+                        @click="${() => { this._activeSubmenuIdx = idx; this._activeFilter = 'all'; }}">
+                  <ha-icon icon="${sub.icon || 'mdi:folder-outline'}"></ha-icon>
+                  <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${sub.name.toUpperCase()}</span>
                 </button>
               `)}
             </div>
-          ` : html``}
+          ` : ''}
 
           <div class="re-content-container">
-            ${activeSub && activeSub.mode === "design" ? html`
-              <div class="re-content-scroll">
-                <div class="design-grid">
-                  ${(activeSub.widgets || []).map(w => this._renderDesignWidget(w))}
-                </div>
+            
+            ${filters.length > 1 ? html`
+              <div class="re-filter-bar">
+                ${filters.map(f => html`
+                  <button class="filter-item ${this._activeFilter === f.id ? 'active' : ''}"
+                          @click="${() => this._activeFilter = f.id}">
+                    // ${f.name.toUpperCase()}
+                  </button>
+                `)}
               </div>
-            ` : this._renderStandardContent(activeSub)}
+            ` : ''}
+
+            <div class="re-content-scroll">
+              <div style="position:absolute; top:45%; left:30%; width:300px; height:300px; opacity:0.04; pointer-events:none; z-index:0;" class="umbrella-pulse">
+                <svg width="100%" height="100%" viewBox="0 0 100 100">
+                  <path d="M50,50 L20,20 A42,42 0 0,1 80,20 Z" fill="#ffffff"/>
+                  <path d="M50,50 L80,20 A42,42 0 0,1 80,80 Z" fill="#ffffff"/>
+                  <path d="M50,50 L80,80 A42,42 0 0,1 20,80 Z" fill="#ffffff"/>
+                  <path d="M50,50 L20,80 A42,42 0 0,1 20,20 Z" fill="#ffffff"/>
+                </svg>
+              </div>
+
+              <div style="z-index:1; display:contents;">
+                ${currentSubmenu && currentSubmenu.mode === 'iframe' ? html`
+                  <div class="re-iframe-wrapper">
+                    <iframe class="re-iframe" src="${currentSubmenu.iframe_url}"></iframe>
+                  </div>
+                ` : ''}
+
+                ${currentSubmenu && currentSubmenu.mode === 'design' && currentSubmenu.widgets ? html`
+                  <div class="design-grid">
+                    ${currentSubmenu.widgets.map(w => this._renderDesignWidget(w))}
+                  </div>
+                ` : ''}
+
+                ${currentSubmenu && (!currentSubmenu.mode || currentSubmenu.mode === 'grid') ? html`
+                  <div class="sensors-grid">
+                    ${(() => {
+                      let sensorsToRender = currentSubmenu.sensors || [];
+                      if (this._activeFilter !== 'all') {
+                        sensorsToRender = sensorsToRender.filter(s => s.subcat === this._activeFilter);
+                      }
+                      
+                      if (sensorsToRender.length === 0) {
+                        return html`<div class="empty-tab">AUCUNE DONNÉE ENREGISTRÉE POUR CE SECTEUR</div>`;
+                      }
+
+                      return sensorsToRender.map(s => {
+                        const stateObj = this.hass.states[s.entity];
+                        if (!stateObj) {
+                          return html`
+                            <div class="sensor-card error">
+                              <div class="sensor-card-header">
+                                <div class="sensor-name">${s.name || s.entity}</div>
+                                <ha-icon icon="mdi:alert-circle" class="sensor-icon"></ha-icon>
+                              </div>
+                              <div class="sensor-value" style="font-size:11px;">ABSENT / HORS LIGNE</div>
+                            </div>
+                          `;
+                        }
+
+                        const valStr = stateObj.state;
+                        const unit = s.unit !== undefined ? s.unit : (stateObj.attributes.unit_of_measurement || '');
+                        const icon = s.icon || this._getGridIcon(s.entity);
+                        const isSwitch = s.entity.split('_')[0] === 'switch' || s.entity.split('.')[0] === 'light' || s.is_switch;
+                        
+                        let effectClass = 'effect-neutral';
+                        let stateActive = false;
+
+                        if (s.entity.split('.')[0] === 'light') {
+                          effectClass = 'effect-light';
+                          stateActive = (valStr === 'on');
+                        } else if (isSwitch) {
+                          effectClass = 'effect-switch';
+                          stateActive = (valStr === 'on' || valStr === 'true');
+                        } else if (s.entity.split('.')[0] === 'binary_sensor') {
+                          effectClass = 'effect-binary';
+                          stateActive = (valStr === 'on' || valStr === 'true');
+                        }
+
+                        let battVal = null;
+                        if (s.battery_entity && this.hass.states[s.battery_entity]) {
+                          battVal = parseInt(this.hass.states[s.battery_entity].state);
+                        } else if (stateObj.attributes.battery_level) {
+                          battVal = parseInt(stateObj.attributes.battery_level);
+                        }
+
+                        let typeClass = s.type === 'server' ? 'type-server' : '';
+
+                        return html`
+                          <div class="sensor-card ${effectClass} ${stateActive ? 'state-active' : ''} ${typeClass}"
+                               @click="${() => this._handleAction(s.entity, isSwitch, stateActive)}">
+                            <div class="sensor-card-header">
+                              <div class="sensor-name">${(s.name || stateObj.attributes.friendly_name || s.entity).toUpperCase()}</div>
+                              <ha-icon icon="${icon}" class="sensor-icon"></ha-icon>
+                            </div>
+                            <div class="sensor-value">
+                              ${s.type === 'server' ? (valStr === 'on' || valStr === 'up' ? 'RUNNING' : 'STOPPED') : valStr}
+                              ${unit ? html`<span class="unit">${unit}</span>` : ''}
+                            </div>
+                            ${s.type === 'server' && s.label ? html`<div class="server-label">${s.label}</div>` : ''}
+                            ${battVal !== null ? html`
+                              <div class="card-battery-indicator">
+                                <ha-icon icon="mdi:battery"></ha-icon>
+                                <span class="${battVal > 50 ? 'batt-high' : (battVal > 20 ? 'batt-medium' : 'batt-low')}">${battVal}%</span>
+                              </div>
+                            ` : ''}
+                          </div>
+                        `;
+                      });
+                    })()}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
           </div>
         </div>
       </ha-card>
     `;
   }
-
-  _renderStandardContent(activeSub) {
-    if (!activeSub) return html`<div class="re-content-scroll"><div class="empty-tab">AUCUNE DONNÉE</div></div>`;
-    
-    if (activeSub.mode === "iframe" && activeSub.iframe_url) {
-      return html`
-        <div class="re-iframe-wrapper">
-          <iframe class="re-iframe" src="${activeSub.iframe_url}"></iframe>
-        </div>
-      `;
-    }
-
-    const sensors = activeSub.sensors || [];
-    const activeFilters = new Set();
-    sensors.forEach(s => {
-      const parts = (s.entity || "").split(".");
-      if (parts[0] === "light") activeFilters.add("light");
-      if (parts[0] === "switch") activeFilters.add("switch");
-      if (parts[0] === "binary_sensor") activeFilters.add("binary_sensor");
-    });
-
-    const showFilterBar = activeFilters.size > 1;
-    const filteredSensors = sensors.filter(s => {
-      if (this._activeFilter === "all") return true;
-      return (s.entity || "").startsWith(this._activeFilter + ".");
-    });
-
-    return html`
-      ${showFilterBar ? html`
-        <div class="re-filter-bar">
-          <button class="filter-item ${this._activeFilter === 'all' ? 'active' : ''}" @click="${() => this._activeFilter = "all"}">TOUT</button>
-          ${Array.from(activeFilters).map(f => html`
-            <button class="filter-item ${this._activeFilter === f ? 'active' : ''}" @click="${() => this._activeFilter = f}">
-              ${f === 'light' ? 'LUMIÈRES' : f === 'switch' ? 'INTERRUPTEURS' : 'ALERTES'}
-            </button>
-          `)}
-        </div>
-      ` : html``}
-      <div class="re-content-scroll">
-        <div class="sensors-grid">
-          ${filteredSensors.map(s => this._renderSensor(s))}
-        </div>
-      </div>
-    `;
-  }
-
-  _renderSensor(s) {
-    const entityId = s.entity;
-    const stateObj = this.hass.states[entityId];
-    if (!stateObj) return html`<div class="sensor-card error"><div class="sensor-name">${s.name || entityId}</div><div class="sensor-value">NOT FOUND</div></div>`;
-
-    const domain = entityId.split(".")[0];
-    const value = stateObj.state;
-    const friendlyName = s.name || stateObj.attributes.friendly_name || entityId;
-    const icon = s.icon || stateObj.attributes.icon || "mdi:eye-outline";
-    const unit = stateObj.attributes.unit_of_measurement || "";
-
-    let effectClass = "";
-    let stateLabel = value + (unit ? ` ${unit}` : "");
-    let isActive = false;
-
-    if (domain === "light") {
-      effectClass = "effect-light";
-      isActive = value === "on";
-      stateLabel = isActive ? (stateObj.attributes.brightness ? `${Math.round(stateObj.attributes.brightness / 2.55)}%` : "ALLUMÉ") : "ÉTEINT";
-    } else if (domain === "switch") {
-      effectClass = "effect-switch";
-      isActive = value === "on";
-      stateLabel = isActive ? "ACTIF" : "INACTIF";
-    } else if (domain === "binary_sensor") {
-      effectClass = "effect-binary";
-      isActive = value === "on";
-      stateLabel = isActive ? "ALERTE" : "SÉCURISÉ";
-    }
-
-    const battery = stateObj.attributes.battery_level || stateObj.attributes.battery;
-    let batteryHtml = html``;
-    if (battery !== undefined) {
-      let bClass = "batt-high";
-      let bIcon = "mdi:battery";
-      if (battery < 20) { bClass = "batt-low"; bIcon = "mdi:battery-alert"; }
-      else if (battery < 50) { bClass = "batt-medium"; bIcon = "mdi:battery-medium"; }
-      batteryHtml = html`<div class="card-battery-indicator ${bClass}"><ha-icon icon="${bIcon}"></ha-icon><span>${battery}%</span></div>`;
-    }
-
-    return html`
-      <div class="sensor-card ${effectClass} ${isActive ? 'state-active' : ''}" @click="${() => this._handleEntityClick(entityId)}">
-        <div class="sensor-card-header">
-          <div class="sensor-name">${friendlyName}</div>
-          <ha-icon class="sensor-icon" icon="${icon}"></ha-icon>
-        </div>
-        <div class="sensor-value">${stateLabel}</div>
-        ${batteryHtml}
-      </div>
-    `;
-  }
-
-  _renderDesignWidget(w) {
-    const wWidth = w.widthPct || 100;
-    const wHeight = w.heightPx || 80;
-    const wNoBorder = w.noBorder === true;
-    
-    let inlineStyle = `width: calc(${wWidth}% - 0px); height: ${wHeight}px;`;
-    if (w.bgImage) {
-      inlineStyle += ` background-image: url('${w.bgImage}'); background-size: cover; background-position: center;`;
-    }
-
-    return html`
-      <div class="dw-card ${wNoBorder ? 'no-border' : ''}" style="${inlineStyle}">
-        ${w.bgBlur ? html`<div style="position:absolute; top:0; left:0; width:100%; height:100%; backdrop-filter: blur(${w.bgBlur}px); pointer-events:none; z-index:1;"></div>` : html``}
-        <div style="position:relative; width:100%; height:100%; z-index:2;">
-          ${this._dispatchDesignWidget(w)}
-        </div>
-      </div>
-    `;
-  }
-
-  _dispatchDesignWidget(w) {
-    switch (w.type) {
-      case "shape": return this._renderWidgetShape(w);
-      case "gauge": return this._renderWidgetGauge(w);
-      case "sparkline": return this._renderWidgetSparkline(w);
-      case "badge": return this._renderWidgetBadge(w);
-      case "progress": return this._renderWidgetProgress(w);
-      case "spa_temp": return this._renderWidgetSpa(w);
-      default: return html`<div style="padding:10px; color:#ff3333; font-size:10px;">WIDGET INCONNU : ${w.type}</div>`;
-    }
-  }
-
-  _renderWidgetShape(w) {
-    const mode = w.shape || "rect";
-    const color = w.color || "#333333";
-    const label = w.name || "";
-    let shapeClass = "dw-rect";
-    let sizeStyle = "width:40px; height:40px;";
-
-    if (mode === "circle") shapeClass = "dw-circle";
-    else if (mode === "square") shapeClass = "dw-square";
-    else if (mode === "line-h") { shapeClass = "dw-line-h"; sizeStyle = "width:100%;"; }
-    else if (mode === "line-v") { shapeClass = "dw-line-v"; sizeStyle = "height:100%;"; }
-
-    return html`
-      <div class="dw-shape-wrap">
-        <div class="${shapeClass}" style="${sizeStyle} background-color:${color}; box-shadow: 0 0 8px ${color}88;"></div>
-        ${label && mode !== "line-h" && mode !== "line-v" ? html`<div class="dw-shape-label" style="color:${color}">${label}</div>` : html``}
-      </div>
-    `;
-  }
-
-  _renderWidgetGauge(w) {
-    const entityId = w.entity;
-    const stateObj = entityId ? this.hass.states[entityId] : null;
-    const val = stateObj ? parseFloat(stateObj.state) : (w.fallbackVal || 0);
-    const min = w.min !== undefined ? w.min : 0;
-    const max = w.max !== undefined ? w.max : 100;
-    const color = w.color || "var(--re-green)";
-    const label = w.name || (stateObj ? stateObj.attributes.friendly_name : "Gauge");
-
-    const pct = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
-    const r = 24;
-    const circ = 2 * Math.PI * r;
-    const strokeDashoffset = circ - (pct / 100) * circ;
-
-    return html`
-      <div class="dw-gauge-wrap" @click="${() => entityId && this._handleEntityClick(entityId)}">
-        <svg class="dw-gauge-svg" width="56" height="56" viewBox="0 0 58 58">
-          <circle class="dw-gauge-track" cx="29" cy="29" r="${r}" stroke-width="3"/>
-          <circle class="dw-gauge-fill" cx="29" cy="29" r="${r}" stroke-width="4" stroke="${color}"
-                  stroke-dasharray="${circ}" stroke-dashoffset="${strokeDashoffset}" transform="rotate(-90 29 29)" style="filter: drop-shadow(0 0 3px ${color});"/>
-          <text class="dw-gauge-center" cx="29" cy="33" font-size="11" fill="#ffffff" text-anchor="middle">${Math.round(w.showFloat ? val : val)}</text>
-        </svg>
-        <div class="dw-gauge-label" style="color:${color}; font-size:9px;">${label}</div>
-      </div>
-    `;
-  }
-
-  _renderWidgetSparkline(w) {
-    const entityId = w.entity;
-    const stateObj = entityId ? this.hass.states[entityId] : null;
-    const val = stateObj ? parseFloat(stateObj.state) : (w.fallbackVal || 0);
-    const color = w.color || "var(--re-green)";
-    const label = w.name || (stateObj ? stateObj.attributes.friendly_name : "Sparkline");
-    const unit = stateObj ? stateObj.attributes.unit_of_measurement || "" : "";
-
-    if (entityId) {
-      if (!this._sparkHistory[entityId]) this._sparkHistory[entityId] = [];
-      const history = this._sparkHistory[entityId];
-      if (history.length === 0 || history[history.length - 1] !== val) {
-        history.push(val);
-        if (history.length > 20) history.shift();
-      }
-    }
-
-    const pts = this._sparkHistory[entityId] || [val, val];
-    const width = 140;
-    const height = 30;
-    const hMin = Math.min(...pts);
-    const hMax = Math.max(...pts);
-    const span = hMax - hMin === 0 ? 1 : hMax - hMin;
-
-    const coords = pts.map((p, idx) => {
-      const x = (idx / Math.max(1, pts.length - 1)) * width;
-      const y = height - ((p - hMin) / span) * height;
-      return `${x},${y}`;
-    });
-
-    const linePath = coords.length > 0 ? "M " + coords.join(" L ") : "";
-    const areaPath = coords.length > 0 ? `${linePath} L ${width},${height} L 0,${height} Z` : "";
-
-    return html`
-      <div class="dw-spark-wrap" @click="${() => entityId && this._handleEntityClick(entityId)}">
-        <div class="dw-spark-header">
-          <span class="dw-spark-name" style="color:${color}">${label}</span>
-          <span class="dw-spark-val" style="color:#ffffff">${val}<span class="dw-spark-unit">${unit}</span></span>
-        </div>
-        <svg class="dw-spark-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" height="30">
-          ${linePath ? html`
-            <path class="dw-spark-area" d="${areaPath}" fill="${color}"/>
-            <path class="dw-spark-line" d="${linePath}" stroke="${color}" style="filter:drop-shadow(0 0 2px ${color});"/>
-          ` : html``}
-        </svg>
-      </div>
-    `;
-  }
-
-  _renderWidgetBadge(w) {
-    const entityId = w.entity;
-    const stateObj = entityId ? this.hass.states[entityId] : null;
-    const val = stateObj ? stateObj.state : (w.fallbackVal || "N/A");
-    const label = w.name || (stateObj ? stateObj.attributes.friendly_name : "Badge");
-    const icon = w.icon || (stateObj ? stateObj.attributes.icon : "mdi:label");
-    const color = w.color || "#ffffff";
-    const mode = w.iconPosition || "left";
-    const unit = stateObj ? stateObj.attributes.unit_of_measurement || "" : "";
-
-    return html`
-      <div class="dw-badge-wrap icon-${mode}" @click="${() => entityId && this._handleEntityClick(entityId)}">
-        <ha-icon class="dw-badge-icon" icon="${icon}" style="color:${color}; --mdc-icon-size:26px; filter:drop-shadow(0 0 3px ${color}88);"></ha-icon>
-        <div class="dw-badge-texts">
-          <div class="dw-badge-label" style="color:var(--re-text-gray); font-size:9px; text-transform:uppercase;">${label}</div>
-          <div class="dw-badge-value" style="color:${color}">${val}<span class="dw-badge-unit">${unit}</span></div>
-        </div>
-      </div>
-    `;
-  }
-
-  _renderWidgetProgress(w) {
-    const entityId = w.entity;
-    const stateObj = entityId ? this.hass.states[entityId] : null;
-    const val = stateObj ? parseFloat(stateObj.state) : (w.fallbackVal || 0);
-    const min = w.min !== undefined ? w.min : 0;
-    const max = w.max !== undefined ? w.max : 100;
-    const color = w.color || "var(--re-green)";
-    const label = w.name || (stateObj ? stateObj.attributes.friendly_name : "Progress");
-    const unit = stateObj ? stateObj.attributes.unit_of_measurement || "" : "";
-
-    const pct = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
-
-    return html`
-      <div class="dw-progress-wrap" @click="${() => entityId && this._handleEntityClick(entityId)}">
-        <div class="dw-progress-header">
-          <span class="dw-progress-name" style="color:${color}">${label}</span>
-          <span class="dw-progress-valstr" style="color:#fff">${val} <span style="font-size:10px; opacity:0.6;">${unit}</span></span>
-        </div>
-        <div class="dw-progress-track" style="height:10px;">
-          <div class="dw-progress-fill" style="width:${pct}%; background-color:${color}; box-shadow:0 0 6px ${color};"></div>
-        </div>
-      </div>
-    `;
-  }
-
-  _renderWidgetSpa(w) {
-    const entityId = w.entity;
-    const targetEntityId = w.targetEntity;
-    const view = w.view || "home";
-
-    const stateObj = entityId ? this.hass.states[entityId] : null;
-    const targetObj = targetEntityId ? this.hass.states[targetEntityId] : null;
-
-    const val = stateObj ? parseFloat(stateObj.state) : 34.5;
-    const targetVal = targetObj ? parseFloat(targetObj.attributes.temperature) : 35.0;
-    const isHeating = targetObj ? (targetObj.attributes.hvac_action === "heating" || targetObj.state === "heat") : false;
-
-    if (view === "home") {
-      return html`
-        <div class="dw-spa-wrap">
-          <div class="dw-spa-label" style="color:var(--re-text-gray); font-size:9px;">TEMPÉRATURE DU SPA</div>
-          <div class="dw-spa-row">
-            <button class="dw-spa-adj-btn" @click="${(e) => { e.stopPropagation(); this._adjustSpaTemp(targetEntityId, -0.5); }}">-</button>
-            <div class="dw-spa-center">
-              <div class="dw-spa-temp" style="color:${w.color || 'var(--re-green-bright)'}; text-shadow:0 0 10px rgba(0,255,0,0.3);">${val.toFixed(1)}<span class="dw-spa-unit">°C</span></div>
-              <div class="dw-spa-target" style="color:#ffaa00;">CIBLE: ${targetVal.toFixed(1)}°C</div>
-            </div>
-            <button class="dw-spa-adj-btn" @click="${(e) => { e.stopPropagation(); this._adjustSpaTemp(targetEntityId, 0.5); }}">+</button>
-          </div>
-          <div class="dw-spa-heating" style="color:${isHeating ? '#ff3333' : '#444'}; border-color:${isHeating ? '#ff3333' : '#222'}; background:${isHeating ? 'rgba(255,0,0,0.05)' : 'none'};">
-            ${isHeating ? '☣ CHAUFFAGE ACTIF' : 'STANDBY'}
-          </div>
-        </div>
-      `;
-    }
-
-    if (view === "cam") {
-      return html`
-        <div class="sensor-card type-camera-feed" style="width:100%; height:100%; border:none;">
-          <div class="camera-scanlines"></div>
-          <div class="camera-corners"></div>
-          <div class="camera-stream-container">
-            ${w.bgImage ? html`<img class="camera-img" src="${w.bgImage}"/>` : html`<div style="color:#444; font-size:12px; font-weight:bold;">CAMÉRA INDISPONIBLE</div>`}
-            <div class="camera-hud-overlay">
-              <div class="hud-top-row">
-                <span class="hud-rec-indicator"><span class="spa-dot" style="background:#ff0000; box-shadow:0 0 4px #ff0000;"></span>REC</span>
-                <span class="hud-cam-name">ZONE SPA - ZONE_01</span>
-              </div>
-              <div class="hud-bottom-row">
-                <span class="hud-timestamp">${this._timeString.split(" ")[1] || ""}</span>
-                <span class="hud-status-ok" style="color:${val > 38 ? '#ff3333' : '#00ff00'}; border-color:${val > 38 ? '#ff3333' : '#00ff00'};">${val > 38 ? 'CRITICAL TEMP' : 'SYS_OK'}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    if (view === "maintenance") {
-      const ph = w.phEntity ? parseFloat(this.hass.states[w.phEntity]?.state || 7.2) : 7.2;
-      const orp = w.orpEntity ? parseFloat(this.hass.states[w.orpEntity]?.state || 650) : 650;
-      return html`
-        <div class="spa-hud-container" style="padding:14px; box-sizing:border-box; height:100%; justify-content:center;">
-          <div class="spa-maintenance-grid" style="margin:0; gap:10px;">
-            <div class="spa-maint-strip">
-              <div class="spa-strip-header"><span>POTENTIEL HYDROGÈNE</span><span style="color:#00ff00;">${ph.toFixed(1)} pH</span></div>
-              <div class="spa-strip-track"><div class="spa-strip-fill" style="width:${(ph/14)*100}%; background:#00ff00;"></div></div>
-            </div>
-            <div class="spa-maint-strip">
-              <div class="spa-strip-header"><span>RÉDOX (DÉSINFECTION)</span><span style="color:#00ffff;">${orp} mV</span></div>
-              <div class="spa-strip-track"><div class="spa-strip-fill" style="width:${(orp/1000)*100}%; background:#00ffff;"></div></div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    return html``;
-  }
-
-  _adjustSpaTemp(entityId, amount) {
-    if (!entityId || !this.hass.states[entityId]) return;
-    const stateObj = this.hass.states[entityId];
-    const currentTarget = parseFloat(stateObj.attributes.temperature) || 35.0;
-    const newTemp = currentTarget + amount;
-    
-    this.hass.callService("climate", "set_temperature", {
-      entity_id: entityId,
-      temperature: newTemp
-    });
-  }
-
-  _handleEntityClick(entityId) {
-    const event = new CustomEvent("hass-more-info", {
-      detail: { entityId: entityId },
-      bubbles: true,
-      composed: true
-    });
-    this.dispatchEvent(event);
-  }
 }
 
-// Enregistrement de la classe principale
-if (!customElements.get("resident-evil-card")) {
-  customElements.define("resident-evil-card", ResidentEvilCard);
-}
-
-
-// ==========================================
-// 2. ÉDITEUR VISUEL AMÉLIORÉ AVEC ÉDITEUR YAML INTÉGRÉ
-// ==========================================
-class ResidentEvilCardEditor extends LitElement {
-  static get properties() {
-    return {
-      hass: {},
-      _config: {},
-      _activeTab: { type: Number }
-    };
-  }
-
-  constructor() {
-    super();
-    this._activeTab = 0;
-  }
-
-  setConfig(config) {
-    this._config = config;
-  }
-
-  render() {
-    if (!this.hass || !this._config) return html``;
-
-    const tabs = ["GÉNÉRAL", "ÉDITEUR CONFIG (YAML)"];
-    
-    const tabStyle = (idx) => `
-      padding: 8px 16px;
-      font-size: 11px;
-      font-weight: bold;
-      font-family: inherit;
-      background: ${this._activeTab === idx ? '#8b0000' : '#111827'};
-      color: ${this._activeTab === idx ? '#ffffff' : '#9ca3af'};
-      border: 1px solid ${this._activeTab === idx ? '#8b0000' : '#1f2937'};
-      cursor: pointer;
-      flex: 1;
-      text-align: center;
-      letter-spacing: 1px;
-    `;
-
-    return html`
-      <div style="font-family:'Courier New',monospace; background:#080d14; border-radius:4px; overflow:hidden; border:1px solid #2a2a2a;">
-        <div style="background:#000000; border-bottom:2px solid #8b0000; padding:12px;">
-          <div style="font-size:13px; font-weight:800; color:#fff; letter-spacing:2px; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-            <span>☣ UMBRELLA CENTRAL TERMINAL — CONFIGURATION</span>
-          </div>
-          <div style="display:flex; gap:4px;">
-            ${tabs.map((t, i) => html`
-              <button style="${tabStyle(i)}" @click="${() => { this._activeTab = i; this.requestUpdate(); }}">${t}</button>
-            `)}
-          </div>
-        </div>
-        
-        <div style="padding:16px; background:#050505;">
-          ${this._activeTab === 0 ? html`
-            <div>
-              <div style="margin-bottom:15px; display:flex; flex-direction:column; gap:6px;">
-                <label style="font-size:10px; color:#8a8a8a; font-weight:bold; letter-spacing:1px;">TITRE DU TERMINAL PRINCIPAL</label>
-                <input style="background:#0d0d0d; border:1px solid #222; color:#fff; padding:8px; font-family:inherit; font-size:12px;"
-                       type="text" .value="${this._config.title || ''}" @change="${(e) => this._updateConfigPath('title', e.target.value)}"/>
-              </div>
-              <div style="font-size:11px; color:#555; line-height:1.4; border-left:2px solid #333; padding-left:10px; margin-top:20px;">
-                Pour modifier, ajouter ou réorganiser la liste complète de vos catégories, capteurs, caméras et widgets tactiques, utilisez le deuxième onglet <strong>"ÉDITEUR CONFIG (YAML)"</strong> ci-dessus.
-              </div>
-            </div>
-          ` : html`
-            <div>
-              <div style="font-size:11px; color:#ff9900; margin-bottom:10px; font-weight:bold;">
-                🗲 ACCÈS DIRECT À TOUS VOS CAPTEURS ET VOS DESIGN-WIDGETS :
-              </div>
-              <ha-yaml-editor
-                .hass="${this.hass}"
-                .value="${this._config}"
-                @value-changed="${this._onYamlChange}"
-              ></ha-yaml-editor>
-            </div>
-          `}
-        </div>
-        <div style="padding:8px 12px; background:#000; border-top:1px solid #111; text-align:right; font-size:9px; color:#444; letter-spacing:1px;">
-          SYSTEM STATUS: ONLINE
-        </div>
-      </div>
-    `;
-  }
-
-  _updateConfigPath(field, value) {
-    const config = JSON.parse(JSON.stringify(this._config));
-    config[field] = value;
-    this._fireConfigChanged(config);
-  }
-
-  _onYamlChange(ev) {
-    ev.stopPropagation();
-    if (ev.detail && ev.detail.value) {
-      this._fireConfigChanged(ev.detail.value);
-    }
-  }
-
-  _fireConfigChanged(config) {
-    this._config = config;
-    const event = new CustomEvent("config-changed", {
-      detail: { config: config },
-      bubbles: true,
-      composed: true
-    });
-    this.dispatchEvent(event);
-  }
-}
-
-// Enregistrement de l'éditeur visuel de carte
-if (!customElements.get("resident-evil-card-editor")) {
-  customElements.define("resident-evil-card-editor", ResidentEvilCardEditor);
-}
-
-// Déclaration pour l'interface de sélection Lovelace
-window.customCards = window.customCards || [];
-const isAlreadyDeclared = window.customCards.some(c => c.type === "resident-evil-card");
-if (!isAlreadyDeclared) {
-  window.customCards.push({
-    type: "resident-evil-card",
-    name: "Resident Evil Terminal Card",
-    description: "Un terminal rétro style Umbrella Corporation complet avec ECG et onglets tactiques.",
-    preview: true
-  });
-}
+customElements.define('resident-evil-card', ResidentEvilCard);
