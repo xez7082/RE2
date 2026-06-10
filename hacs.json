@@ -1,1 +1,5 @@
-
+{
+  "name": "Resident Evil Card",
+  "filename": "resident-evil-card.js",
+  "render_readme": true
+}
