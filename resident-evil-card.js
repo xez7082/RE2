@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'https://unpkg.com/lit@3/index.js?module';
 
 // ==========================================
-// 1. STYLE UNIQUE RETRO-TERMINAL (HUD)
+// 1. DESIGN RETRO-TERMINAL AVEC ANIMATIONS
 // ==========================================
 const cardStyles = css`
   :host {
@@ -125,7 +125,7 @@ const cardStyles = css`
 `;
 
 // ==========================================
-// 2. COMPOSANT VISUEL PRINCIPAL
+// 2. COMPOSANT PRINCIPAL DE RENDU HUD
 // ==========================================
 class ResidentEvilCard extends LitElement {
   static styles = cardStyles;
@@ -181,12 +181,15 @@ class ResidentEvilCard extends LitElement {
     const submenus = currentCategory ? (currentCategory.submenus || []) : [];
     const currentSubmenu = submenus[this._activeSubmenuIndex] || null;
 
-    // Détermination automatique des sous-sous-menus (subcat uniques des capteurs)
+    // Détermination dynamique et ordonnée des sous-sous-menus (Filtres horizontaux)
     let availableFilters = ['all'];
     if (currentSubmenu && currentSubmenu.sensors) {
       currentSubmenu.sensors.forEach(s => {
-        if (s.subcat && !availableFilters.includes(s.subcat)) {
-          availableFilters.push(s.subcat);
+        if (s.subcat && s.subcat.trim() !== '') {
+          const formattedSubcat = s.subcat.trim();
+          if (!availableFilters.includes(formattedSubcat)) {
+            availableFilters.push(formattedSubcat);
+          }
         }
       });
     }
@@ -215,7 +218,6 @@ class ResidentEvilCard extends LitElement {
         </div>
 
         <div class="re-body">
-          
           ${submenus.length > 0 ? html`
             <div class="re-sidebar">
               ${submenus.map((sub, idx) => html`
@@ -246,10 +248,9 @@ class ResidentEvilCard extends LitElement {
 
               ${(() => {
                 if (!currentSubmenu) {
-                  return html`<div class="empty-tab">SÉLECTIONNEZ UN SOUS-MODULE DANS LA SIDEBAR</div>`;
+                  return html`<div class="empty-tab">SÉLECTIONNEZ UN MODULE COMPLET</div>`;
                 }
 
-                // RENDU PRIORITAIRE SI LE MODE EST IFRAME OU LIEN EXISTANT (Météo...)
                 if (currentSubmenu.mode === 'iframe' || currentSubmenu.iframe_url) {
                   return html`
                     <div class="re-iframe-wrapper">
@@ -258,28 +259,13 @@ class ResidentEvilCard extends LitElement {
                   `;
                 }
 
-                // RENDU SI LE MODE EST DESIGN (Composants personnalisés)
-                if (currentSubmenu.mode === 'design') {
-                  return html`
-                    <div class="design-grid">
-                      ${currentSubmenu.widgets ? currentSubmenu.widgets.map(w => html`
-                        <div style="border: 1px dashed var(--re-border-color); padding: 12px; margin-bottom: 6px; background: #080808; box-sizing: border-box;">
-                          <span style="color: var(--re-green); font-size: 11px;">[WIDGET INTERNE: ${String(w.type).toUpperCase()}]</span>
-                          <div style="color: #fff; font-size: 12px; margin-top:4px;">Entité cible : ${w.entity || 'Aucune'}</div>
-                        </div>
-                      `) : html`<div style="color:var(--re-text-gray); font-size:11px;">Aucun widget configuré dans ce module.</div>`}
-                    </div>
-                  `;
-                }
-
-                // RENDU PAR DÉFAUT : GRILLE DE CAPTEURS CLASSIQUE (GRID)
                 let sensorsToRender = currentSubmenu.sensors || [];
                 if (this._activeFilter !== 'all') {
                   sensorsToRender = sensorsToRender.filter(s => s.subcat === this._activeFilter);
                 }
                 
                 if (sensorsToRender.length === 0) {
-                  return html`<div class="empty-tab">AUCUNE ENTITÉ DISPONIBLE SUR CE FILTRE</div>`;
+                  return html`<div class="empty-tab">AUCUNE ENTITÉ ASSOCIÉE À CE FILTRE ACTIVE</div>`;
                 }
 
                 return html`
@@ -292,7 +278,7 @@ class ResidentEvilCard extends LitElement {
                             <div class="sensor-card-header">
                               <div class="sensor-name" style="color: var(--re-red);">${s.name || s.entity}</div>
                             </div>
-                            <div class="sensor-value" style="font-size:11px; color:#ff3333;">ABSENT / OFFLINE</div>
+                            <div class="sensor-value" style="font-size:11px; color:#ff3333;">OFFLINE</div>
                           </div>
                         `;
                       }
@@ -313,7 +299,6 @@ class ResidentEvilCard extends LitElement {
                 `;
               })()}
             </div>
-
           </div>
         </div>
       </ha-card>
@@ -324,7 +309,7 @@ customElements.define('resident-evil-card', ResidentEvilCard);
 
 
 // ==========================================
-// 3. ÉDITEUR VISUEL DE STRUCTURE DYNAMIQUE
+// 3. ÉDITEUR VISUEL DYNAMIQUE (AVEC FILTRES)
 // ==========================================
 class ResidentEvilCardEditor extends LitElement {
   static get properties() {
@@ -380,79 +365,81 @@ class ResidentEvilCardEditor extends LitElement {
 
     return html`
       <div style="font-family: monospace; background: #0c0c0c; color: #fff; padding: 14px; border: 1px solid #333;">
-        <h3 style="color: #ff3333; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 6px; letter-spacing: 1px;">☣️ CONSOLE CONFIGURATEUR UMBRELLA</h3>
+        <h3 style="color: #ff3333; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 6px; letter-spacing: 1px;">☣️ DESIGNER DES SECTEURS UMBRELLA</h3>
         
         <div style="margin-bottom: 14px;">
-          <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 4px;">1. SÉLECTIONNER UN MENU (CATÉGORIE)</label>
+          <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 4px;">1. MENU PRINCIPAL (CATÉGORIE)</label>
           <select style="width:100%; background:#1a1a1a; color:#fff; border:1px solid #444; padding:6px;"
                   @change="${e => { this._selectedCategoryIdx = parseInt(e.target.value); this._selectedSubmenuIdx = 0; }}">
-            ${categories.map((c, i) => html`<option value="${i}" ?selected="${this._selectedCategoryIdx === i}">${(c.name || `Cat ${i}`).toUpperCase()}</option>`)}
+            ${categories.map((c, i) => html`<option value="${i}" ?selected="${this._selectedCategoryIdx === i}">${(c.name || `Secteur ${i}`).toUpperCase()}</option>`)}
           </select>
           <input type="text" style="width:100%; margin-top:5px; background:#111; color:#00ff00; border:1px solid #333; padding:5px; font-size:11px;"
-                 .value="${currentCat ? currentCat.name : ''}" placeholder="Modifier le nom du menu"
+                 .value="${currentCat ? currentCat.name : ''}" placeholder="Renommer la catégorie"
                  @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.name`, e.target.value)}" />
         </div>
 
         ${currentCat ? html`
           <div style="margin-bottom: 14px; border-top: 1px dashed #222; padding-top: 10px;">
-            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 4px;">2. SÉLECTIONNER UN SOUS-MENU (SIDEBAR)</label>
+            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 4px;">2. SOUS-MENU (BARRE LATÉRALE)</label>
             ${submenus.length > 0 ? html`
               <select style="width:100%; background:#1a1a1a; color:#fff; border:1px solid #444; padding:6px;"
                       @change="${e => this._selectedSubmenuIdx = parseInt(e.target.value)}">
-                ${submenus.map((s, i) => html`<option value="${i}" ?selected="${this._selectedSubmenuIdx === i}">${(s.name || `Sub ${i}`).toUpperCase()}</option>`)}
+                ${submenus.map((s, i) => html`<option value="${i}" ?selected="${this._selectedSubmenuIdx === i}">${(s.name || `Zone ${i}`).toUpperCase()}</option>`)}
               </select>
               <div style="display: flex; gap: 4px; margin-top: 5px;">
                 <input type="text" style="flex:1; background:#111; color:#fff; border:1px solid #333; padding:5px; font-size:11px;"
                        .value="${currentSub ? currentSub.name : ''}" placeholder="Nom du sous-menu"
                        @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.name`, e.target.value)}" />
                 <input type="text" style="width:100px; background:#111; color:#fff; border:1px solid #333; padding:5px; font-size:11px;"
-                       .value="${currentSub ? currentSub.icon : ''}" placeholder="icon (mdi:...)"
+                       .value="${currentSub ? currentSub.icon : ''}" placeholder="Icône (mdi:...)"
                        @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.icon`, e.target.value)}" />
               </div>
               <div style="margin-top:5px;">
-                <label style="font-size:10px; color:#8a8a8a;">Lien URL iFrame (Optionnel pour Météo / Liens extérieurs) :</label>
                 <input type="text" style="width:100%; background:#111; color:#ff9900; border:1px solid #333; padding:5px; font-size:11px;"
-                       .value="${currentSub && currentSub.iframe_url ? currentSub.iframe_url : ''}" placeholder="https://..."
+                       .value="${currentSub && currentSub.iframe_url ? currentSub.iframe_url : ''}" placeholder="URL de l'iFrame (Météo, Caméra...)"
                        @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.iframe_url`, e.target.value)}" />
               </div>
-            ` : html`<div style="font-size:11px; color:#c00;">Aucun sous-menu configuré pour cette catégorie.</div>`}
+            ` : html`<div style="font-size:11px; color:#ef4444; margin-top:5px;">Aucun sous-menu trouvé. Créez-en un dans votre code ou ajoutez un capteur.</div>`}
           </div>
         ` : html``}
 
         ${currentSub ? html`
           <div style="margin-bottom: 10px; border-top: 1px solid #333; padding-top: 10px;">
-            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. LISTE DES SENSORS ET SOUS-SOUS-MENUS (FILTRES)</label>
-            <div style="max-height: 180px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
+            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. COMPOSANTS (SENSORS) & SOUS-SOUS-MENUS</label>
+            <div style="max-height: 220px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
               ${sensors.map((s, idx) => html`
-                <div style="border-bottom: 1px solid #222; padding-bottom: 6px; margin-bottom: 6px; font-size:11px;">
-                  <div style="color: #00ff00; font-weight: bold; margin-bottom: 2px;">Composant #${idx + 1}</div>
-                  <input type="text" style="width:100%; background:#222; color:#fff; border:1px solid #444; padding:3px; margin-bottom:2px;"
-                         .value="${s.entity || ''}" placeholder="entity_id (sensor.xxxx)"
+                <div style="border-bottom: 1px solid #292929; padding-bottom: 8px; margin-bottom: 8px; font-size:11px;">
+                  <div style="display:flex; justify-content:space-between; color: #00ff00; font-weight: bold; margin-bottom: 4px;">
+                    <span>SENSORS #${idx + 1}</span>
+                    <span style="color:#ff3333; cursor:pointer;" @click="${() => {
+                      const tmp = [...sensors];
+                      tmp.splice(idx, 1);
+                      this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors`, tmp);
+                    }}">[SUPPRIMER]</span>
+                  </div>
+                  <input type="text" style="width:100%; background:#1e1e1e; color:#fff; border:1px solid #444; padding:4px; margin-bottom:4px; box-sizing:border-box;"
+                         .value="${s.entity || ''}" placeholder="sensor.nom_de_l_entite"
                          @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.entity`, e.target.value)}" />
-                  <div style="display:flex; gap:2px;">
-                    <input type="text" style="flex:1; background:#222; color:#aaa; border:1px solid #444; padding:3px;"
-                           .value="${s.name || ''}" placeholder="Nom personnalisé"
+                  <div style="display:flex; gap:4px;">
+                    <input type="text" style="flex:1; background:#1e1e1e; color:#aaa; border:1px solid #444; padding:4px; box-sizing:border-box;"
+                           .value="${s.name || ''}" placeholder="Label d'affichage"
                            @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.name`, e.target.value)}" />
-                    <input type="text" style="width:90px; background:#222; color:#ff9900; border:1px solid #444; padding:3px;"
-                           .value="${s.subcat || ''}" placeholder="Sous-Sous-Menu (Filtre)"
+                    <input type="text" style="width:110px; background:#1e1e1e; color:#ff3333; font-weight:bold; border:1px solid #444; padding:4px; box-sizing:border-box;"
+                           .value="${s.subcat || ''}" placeholder="Filtre (ex: Ouvertures)"
                            @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.subcat`, e.target.value)}" />
                   </div>
                 </div>
               `)}
             </div>
-            <button style="width:100%; margin-top:8px; background:#222; color:#fff; border:1px solid #444; padding:6px; cursor:pointer;"
+            <button style="width:100%; margin-top:8px; background:#1c0202; color:#fff; border:1px solid #8b0000; padding:8px; cursor:pointer; font-weight:bold;"
                     @click="${() => {
-                      const newSensors = [...sensors, { entity: '', name: '', subcat: 'Général', icon: 'mdi:eye' }];
+                      const newSensors = [...sensors, { entity: '', name: '', subcat: 'Ouvertures', icon: 'mdi:eye' }];
                       this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors`, newSensors);
                     }}">
-              + Ajouter un capteur / Filtre horizontal
+              + AJOUTER UN CAPTEUR & FILTRE HORIZONTAL
             </button>
           </div>
         ` : html``}
-        
-        <div style="font-size: 9px; color: #555; text-align: right; margin-top: 15px; border-top: 1px solid #222; padding-top: 4px;">
-          CONSTRUCTEUR COMPOSANTS CORE v4.4 // STABLE
-        </div>
       </div>
     `;
   }
