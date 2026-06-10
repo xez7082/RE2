@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'https://unpkg.com/lit@3/index.js?module';
 
 // ==========================================
-// 1. DESIGN RETRO-TERMINAL AVEC ANIMATIONS
+// 1. STYLE GLOBAL UNIFIÉ (CHARTE UMBRELLA)
 // ==========================================
 const cardStyles = css`
   :host {
@@ -84,11 +84,8 @@ const cardStyles = css`
 
   .re-content-scroll { flex: 1; padding: 20px; overflow-y: auto; background: #030303; border-left: 1px solid #1c1c1c; display: flex; flex-direction: column; box-sizing: border-box; position: relative; }
 
+  /* COMPOSANTS COMPTEURS / CAPTEURS GRILLE */
   .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; width: 100%; z-index: 2; }
-  
-  .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; display: flex; margin: 0; padding: 0; overflow: hidden; min-height: 0; z-index: 2; }
-  .re-iframe { width: 100%; height: 100%; border: none; background: transparent; display: block; min-height: 0; }
-
   .sensor-card { 
     background: #0d0d0d; 
     border: 1px solid #222; 
@@ -99,39 +96,53 @@ const cardStyles = css`
     flex-direction: column;
     justify-content: space-between;
     min-height: 80px;
+    border-radius: 0px;
   }
   .sensor-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: #333; }
   .sensor-card:hover { border-color: var(--re-green); background: #111; }
   .sensor-card:hover::before { background: var(--re-green); }
-  
   .sensor-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; width: 100%; }
   .sensor-name { font-size: 10px; color: var(--re-text-gray); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
   .sensor-icon { --mdc-icon-size: 20px; color: var(--re-text-gray); }
   .sensor-value { font-size: 18px; color: #aaaaaa; font-weight: bold; margin-top: 8px; }
   .sensor-value .unit { font-size: 11px; color: #666; }
 
-  .umbrella-bg-watermark {
-    position: absolute;
-    bottom: 15px;
-    right: 15px;
-    width: 140px;
-    height: 140px;
-    object-fit: contain;
-    opacity: 0.05;
-    pointer-events: none;
-    z-index: 1;
-  }
-  .empty-tab { text-align: center; color: #555; padding-top: 40px; font-size: 12px; }
+  /* DESIGN HARMONISÉ POUR MODULE BIOMÉTRIQUE / HEALTH */
+  .health-wrapper { background: #0d0d0d; border: 1px solid #222; padding: 15px; margin-bottom: 20px; width: 100%; box-sizing: border-box; z-index: 2; }
+  .health-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--re-red); padding-bottom: 8px; margin-bottom: 12px; }
+  .health-title { font-size: 12px; font-weight: bold; color: #ffffff; letter-spacing: 1px; }
+  .health-metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .health-metric-box { background: #050505; border: 1px solid #222; padding: 10px; position: relative; }
+  .health-metric-box .label { font-size: 9px; color: var(--re-text-gray); text-transform: uppercase; }
+  .health-metric-box .value { font-size: 16px; color: var(--re-green); font-weight: bold; margin-top: 4px; }
 
+  /* DESIGN HARMONISÉ POUR LES PLANTES / PHYTOLOGIE */
+  .plants-section-title { font-size: 12px; font-weight: bold; color: #ff9900; margin: 15px 0 10px 0; border-bottom: 1px dashed #333; padding-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; z-index: 2; }
+  .plants-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; width: 100%; z-index: 2; }
+  .plant-custom-card { background: #0d0d0d; border: 1px solid #222; padding: 12px; display: flex; gap: 12px; border-radius: 0px; position: relative; }
+  .plant-img-container { width: 70px; height: 90px; border: 1px solid #222; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .plant-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+  .plant-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .plant-name-main { font-size: 11px; font-weight: bold; color: #ffffff; text-transform: uppercase; }
+  .plant-name-latin { font-size: 9px; color: #555; font-style: italic; margin-bottom: 4px; }
+  .plant-attr-row { display: flex; justify-content: space-between; font-size: 10px; background: #050505; padding: 3px 6px; border: 1px solid #151515; }
+  .plant-attr-label { color: var(--re-text-gray); }
+  .plant-attr-value { font-weight: bold; }
+
+  /* FILMS CAMÉRAS LIVE & IFRAME */
   .camera-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; width: 100%; z-index: 2; }
-  .camera-card { border: 1px solid var(--re-border-color); background: #000; overflow: hidden; position: relative; cursor: pointer; display: block; }
-  .camera-card:hover { border-color: var(--re-green); }
+  .camera-card { border: 1px solid var(--re-border-color); background: #000; overflow: hidden; position: relative; cursor: pointer; }
   .camera-title { background: rgba(0,0,0,0.8); color: var(--re-green); padding: 6px; font-size: 10px; position: absolute; top: 0; left: 0; width: 100%; z-index: 3; border-bottom: 1px solid #111; font-weight: bold; }
   .camera-view { width: 100%; height: auto; display: block; }
+  .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; display: flex; overflow: hidden; }
+  .re-iframe { width: 100%; height: 100%; border: none; background: transparent; }
+
+  .umbrella-bg-watermark { position: absolute; bottom: 15px; right: 15px; width: 140px; height: 140px; object-fit: contain; opacity: 0.04; pointer-events: none; z-index: 1; }
+  .empty-tab { text-align: center; color: #555; padding-top: 40px; font-size: 12px; }
 `;
 
 // ==========================================
-// 2. COMPOSANT PRINCIPAL DE RENDU HUD
+// 2. COMPOSANT DE RENDU HUD CENTRALISÉ
 // ==========================================
 class ResidentEvilCard extends LitElement {
   static styles = cardStyles;
@@ -159,7 +170,7 @@ class ResidentEvilCard extends LitElement {
 
   setConfig(config) {
     if (!config.categories || !Array.isArray(config.categories)) {
-      throw new Error("Veuillez configurer une liste de 'categories' valide.");
+      throw new Error("Veuillez entrer une configuration de catégories valide.");
     }
     this.config = config;
   }
@@ -182,15 +193,13 @@ class ResidentEvilCard extends LitElement {
     const submenus = currentCategory ? (currentCategory.submenus || []) : [];
     const currentSubmenu = submenus[this._activeSubmenuIndex] || null;
 
-    // Détermination dynamique des filtres horizontaux
+    // Récupération des filtres horizontaux
     let availableFilters = ['all'];
     if (currentSubmenu && currentSubmenu.sensors) {
       currentSubmenu.sensors.forEach(s => {
         if (s.subcat && s.subcat.trim() !== '') {
-          const formattedSubcat = s.subcat.trim();
-          if (!availableFilters.includes(formattedSubcat)) {
-            availableFilters.push(formattedSubcat);
-          }
+          const f = s.subcat.trim();
+          if (!availableFilters.includes(f)) availableFilters.push(f);
         }
       });
     }
@@ -252,7 +261,84 @@ class ResidentEvilCard extends LitElement {
                   return html`<div class="empty-tab">SÉLECTIONNEZ UN SOUS-MODULE</div>`;
                 }
 
-                // MODE 1 : IFRAME
+                // MODE 1 : DESIGN DE BIOMÉTRIE DIRECT (SANTÉ & PLANTES ALIGNÉES)
+                if (currentSubmenu.name === 'SANTÉ DU PERSONNEL' || currentSubmenu.mode === 'health_custom') {
+                  return html`
+                    <div class="health-wrapper">
+                      <div class="health-header">
+                        <div class="health-title">☣️ PARAMÈTRES BIOMÉTRIQUES : PERSONNEL_01 (PATRICK)</div>
+                        <ha-icon icon="mdi:heart-pulse" style="color:var(--re-red-bright);"></ha-icon>
+                      </div>
+                      <div class="health-metrics-grid">
+                        <div class="health-metric-box" @click="${() => this._handleAction('sensor.withings_poids_patrick')}">
+                          <div class="label">Masse Corporelle</div>
+                          <div class="value">${this.hass.states['sensor.withings_poids_patrick']?.state || '--'} kg</div>
+                        </div>
+                        <div class="health-metric-box" @click="${() => this._handleAction('sensor.withings_steps_today')}">
+                          <div class="label">Analyse Pas Daily</div>
+                          <div class="value">${this.hass.states['sensor.withings_steps_today']?.state || '--'} pas</div>
+                        </div>
+                        <div class="health-metric-box" @click="${() => this._handleAction('sensor.withings_distance_travelled_today')}">
+                          <div class="label">Distance Couverte</div>
+                          <div class="value">${this.hass.states['sensor.withings_distance_travelled_today']?.state || '--'} km</div>
+                        </div>
+                        <div class="health-metric-box" @click="${() => this._handleAction('sensor.withings_total_calories_burnt_today')}">
+                          <div class="label">Énergie Dépensée</div>
+                          <div class="value">${this.hass.states['sensor.withings_total_calories_burnt_today']?.state || '--'} kcal</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="plants-section-title">🔬 ANALYSE PHYTOLOGIQUE — SERRE ET VÉGÉTATION</div>
+                    <div class="plants-grid">
+                      <div class="plant-custom-card">
+                        <div class="plant-img-container">
+                          <img src="/local/fleurdelune.png" class="plant-img"/>
+                        </div>
+                        <div class="plant-info">
+                          <div class="plant-name-main">Fleurs de lune</div>
+                          <div class="plant-name-latin">Spathiphyllum Wallisii</div>
+                          <div class="plant-attr-row">
+                            <span class="plant-attr-label">Humidité</span>
+                            <span class="plant-attr-value" style="color:#38bdf8;">${this.hass.states['sensor.plant_sensor_5f6d_humidite']?.state || '--'}%</span>
+                          </div>
+                          <div class="plant-attr-row">
+                            <span class="plant-attr-label">Lumière</span>
+                            <span class="plant-attr-value" style="color:#fbbf24;">${this.hass.states['sensor.plant_sensor_5f6d_eclairement']?.state || '--'} lx</span>
+                          </div>
+                          <div class="plant-attr-row">
+                            <span class="plant-attr-label">Temp.</span>
+                            <span class="plant-attr-value" style="color:#f97316;">${this.hass.states['sensor.plant_sensor_5f6d_temperature']?.state || '--'}°C</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="plant-custom-card">
+                        <div class="plant-img-container">
+                          <img src="/local/yucca.png" class="plant-img"/>
+                        </div>
+                        <div class="plant-info">
+                          <div class="plant-name-main">Yucca</div>
+                          <div class="plant-name-latin">Yucca Elephantipes</div>
+                          <div class="plant-attr-row">
+                            <span class="plant-attr-label">Humidité</span>
+                            <span class="plant-attr-value" style="color:#38bdf8;">${this.hass.states['sensor.plant_sensor_yucca_humidite']?.state || '--'}%</span>
+                          </div>
+                          <div class="plant-attr-row">
+                            <span class="plant-attr-label">Lumière</span>
+                            <span class="plant-attr-value" style="color:#fbbf24;">${this.hass.states['sensor.plant_sensor_yucca_eclairement']?.state || '--'} lx</span>
+                          </div>
+                          <div class="plant-attr-row">
+                            <span class="plant-attr-label">Temp.</span>
+                            <span class="plant-attr-value" style="color:#f97316;">${this.hass.states['sensor.plant_sensor_yucca_temperature']?.state || '--'}°C</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }
+
+                // MODE 2 : IFRAME
                 if (currentSubmenu.mode === 'iframe' || currentSubmenu.iframe_url) {
                   return html`
                     <div class="re-iframe-wrapper">
@@ -261,11 +347,10 @@ class ResidentEvilCard extends LitElement {
                   `;
                 }
 
-                // MODE 2 : DESIGN / CAMÉRAS (UTILISATION DE HUI-IMAGE SÉCURISÉ)
+                // MODE 3 : CAMÉRAS DE SÉCURITÉ (HUI-IMAGE SÉCURISÉ)
                 if (currentSubmenu.mode === 'design' || currentSubmenu.cameras) {
                   const cams = currentSubmenu.cameras || [];
-                  if (cams.length === 0) return html`<div class="empty-tab">AUCUNE CAMÉRA DE SÉCURITÉ ENREGISTRÉE</div>`;
-                  
+                  if (cams.length === 0) return html`<div class="empty-tab">AUCUN FLUX ENREGISTRÉ</div>`;
                   return html`
                     <div class="camera-container">
                       ${cams.map(c => {
@@ -274,12 +359,7 @@ class ResidentEvilCard extends LitElement {
                         return html`
                           <div class="camera-card" @click="${() => this._handleAction(entity)}">
                             <div class="camera-title">[CAM.LIVE] ${(c.name || entity).toUpperCase()}</div>
-                            <hui-image 
-                              class="camera-view"
-                              .hass="${this.hass}" 
-                              .cameraImage="${entity}" 
-                              .cameraView="live">
-                            </hui-image>
+                            <hui-image class="camera-view" .hass="${this.hass}" .cameraImage="${entity}" .cameraView="live"></hui-image>
                           </div>
                         `;
                       })}
@@ -287,15 +367,12 @@ class ResidentEvilCard extends LitElement {
                   `;
                 }
 
-                // MODE 3 : GRILLE CAPTEURS STANDARD
+                // MODE 4 : GRILLE CAPTEURS STANDARD (ZONES, SPA, ÉNERGIE...)
                 let sensorsToRender = currentSubmenu.sensors || [];
                 if (this._activeFilter !== 'all') {
                   sensorsToRender = sensorsToRender.filter(s => s.subcat === this._activeFilter);
                 }
-                
-                if (sensorsToRender.length === 0) {
-                  return html`<div class="empty-tab">AUCUN COMPOSANT APPARTENANT À CE FILTRE</div>`;
-                }
+                if (sensorsToRender.length === 0) return html`<div class="empty-tab">AUCUN COMPOSANT APPARTENANT À CE FILTRE</div>`;
 
                 return html`
                   <div class="sensors-grid">
@@ -304,14 +381,11 @@ class ResidentEvilCard extends LitElement {
                       if (!stateObj) {
                         return html`
                           <div class="sensor-card" style="border-color: var(--re-red);">
-                            <div class="sensor-card-header">
-                              <div class="sensor-name" style="color: var(--re-red);">${s.name || s.entity}</div>
-                            </div>
+                            <div class="sensor-card-header"><div class="sensor-name" style="color:var(--re-red);">${s.name || s.entity}</div></div>
                             <div class="sensor-value" style="font-size:11px; color:#ff3333;">OFFLINE</div>
                           </div>
                         `;
                       }
-
                       return html`
                         <div class="sensor-card" @click="${() => this._handleAction(s.entity)}">
                           <div class="sensor-card-header">
@@ -338,7 +412,7 @@ customElements.define('resident-evil-card', ResidentEvilCard);
 
 
 // ==========================================
-// 3. ÉDITEUR VISUEL ALIGNÉ ET ROBUSTE
+// 3. ÉDITEUR VISUEL SÉCURISÉ
 // ==========================================
 class ResidentEvilCardEditor extends LitElement {
   static get properties() {
@@ -356,17 +430,11 @@ class ResidentEvilCardEditor extends LitElement {
     this._selectedSubmenuIdx = 0;
   }
 
-  setConfig(config) {
-    this._config = config;
-  }
+  setConfig(config) { this._config = config; }
 
   _updateConfig(newConfig) {
     this._config = newConfig;
-    const event = new CustomEvent("config-changed", {
-      detail: { config: this._config },
-      bubbles: true,
-      composed: true
-    });
+    const event = new CustomEvent("config-changed", { detail: { config: this._config }, bubbles: true, composed: true });
     this.dispatchEvent(event);
     this.requestUpdate();
   }
@@ -392,7 +460,6 @@ class ResidentEvilCardEditor extends LitElement {
     const currentSub = submenus[this._selectedSubmenuIdx] || null;
     const sensors = currentSub ? (currentSub.sensors || []) : [];
     const cameras = currentSub ? (currentSub.cameras || []) : [];
-
     const currentMode = currentSub ? (currentSub.mode || 'grid') : 'grid';
 
     return html`
@@ -400,7 +467,7 @@ class ResidentEvilCardEditor extends LitElement {
         <h3 style="color: #ff3333; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 6px; letter-spacing: 1px;">☣️ DESIGNER DES SECTEURS UMBRELLA</h3>
         
         <div style="margin-bottom: 14px;">
-          <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 4px;">1. MENU PRINCIPAL (CATÉGORIE)</label>
+          <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 4px;">1. MENU PRINCIPAL</label>
           <select style="width:100%; background:#1a1a1a; color:#fff; border:1px solid #444; padding:6px; box-sizing:border-box;"
                   @change="${e => { this._selectedCategoryIdx = parseInt(e.target.value); this._selectedSubmenuIdx = 0; }}">
             ${categories.map((c, i) => html`<option value="${i}" ?selected="${this._selectedCategoryIdx === i}">${(c.name || `Secteur ${i}`).toUpperCase()}</option>`)}
@@ -423,79 +490,20 @@ class ResidentEvilCardEditor extends LitElement {
                        .value="${currentSub ? currentSub.name : ''}" placeholder="Nom du sous-menu"
                        @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.name`, e.target.value)}" />
                 <input type="text" style="width:100px; background:#111; color:#fff; border:1px solid #333; padding:5px; font-size:11px; box-sizing:border-box;"
-                       .value="${currentSub ? currentSub.icon : ''}" placeholder="Icône (mdi:...)"
+                       .value="${currentSub ? currentSub.icon : ''}" placeholder="Icône"
                        @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.icon`, e.target.value)}" />
               </div>
               <div style="margin-top: 5px;">
-                <label style="color: #8a8a8a; font-size: 10px;">Mode du sous-menu :</label>
+                <label style="color: #8a8a8a; font-size: 10px;">Mode d'affichage :</label>
                 <select style="width:100%; background:#111; color:#fff; border:1px solid #333; padding:4px; box-sizing:border-box;"
                         @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.mode`, e.target.value)}">
-                  <option value="grid" ?selected="${currentMode === 'grid'}">Grille de Capteurs / Sous-sous-menus</option>
-                  <option value="iframe" ?selected="${currentMode === 'iframe'}">Lien Web / iFrame (Météo...)</option>
-                  <option value="design" ?selected="${currentMode === 'design'}">Mode Caméras / Vidéoprotection</option>
+                  <option value="grid" ?selected="${currentMode === 'grid'}">Grille de Capteurs</option>
+                  <option value="health_custom" ?selected="${currentMode === 'health_custom'}">Biométrie & Phytologie (Santé/Plantes)</option>
+                  <option value="iframe" ?selected="${currentMode === 'iframe'}">iFrame Web</option>
+                  <option value="design" ?selected="${currentMode === 'design'}">Caméras Live</option>
                 </select>
               </div>
-              <div style="margin-top:5px;">
-                <input type="text" style="width:100%; background:#111; color:#ff9900; border:1px solid #333; padding:5px; font-size:11px; box-sizing:border-box;"
-                       .value="${currentSub && currentSub.iframe_url ? currentSub.iframe_url : ''}" placeholder="URL de l'iFrame (Si mode iFrame actif)"
-                       @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.iframe_url`, e.target.value)}" />
-              </div>
-            ` : html`<div style="font-size:11px; color:#ef4444; margin-top:5px;">Aucun sous-menu trouvé.</div>`}
-          </div>
-        ` : html``}
-
-        ${currentSub && currentMode === 'design' ? html`
-          <div style="margin-bottom: 10px; border-top: 1px solid #333; padding-top: 10px;">
-            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. ENREGISTREMENT DES CAMÉRAS DE SÉCURITÉ</label>
-            <div style="max-height: 200px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
-              ${cameras.map((c, idx) => html`
-                <div style="border-bottom: 1px solid #292929; padding-bottom: 6px; margin-bottom: 6px; font-size:11px;">
-                  <input type="text" style="width:100%; background:#1e1e1e; color:#fff; border:1px solid #444; padding:4px; box-sizing:border-box;"
-                         .value="${c.entity || ''}" placeholder="camera.nom_de_la_camera"
-                         @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.cameras.${idx}.entity`, e.target.value)}" />
-                  <input type="text" style="width:100%; background:#1e1e1e; color:#aaa; border:1px solid #444; padding:4px; margin-top:2px; box-sizing:border-box;"
-                         .value="${c.name || ''}" placeholder="Label de la Caméra"
-                         @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.cameras.${idx}.name`, e.target.value)}" />
-                </div>
-              `)}
-            </div>
-            <button style="width:100%; margin-top:8px; background:#1c0202; color:#fff; border:1px solid #8b0000; padding:8px; cursor:pointer;"
-                    @click="${() => {
-                      const newCams = [...cameras, { entity: '', name: '' }];
-                      this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.cameras`, newCams);
-                    }}">
-              + AJOUTER UN FLUX CAMÉRA LIVE
-            </button>
-          </div>
-        ` : html``}
-
-        ${currentSub && currentMode === 'grid' ? html`
-          <div style="margin-bottom: 10px; border-top: 1px solid #333; padding-top: 10px;">
-            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. COMPOSANTS (SENSORS) & SOUS-SOUS-MENUS</label>
-            <div style="max-height: 200px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
-              ${sensors.map((s, idx) => html`
-                <div style="border-bottom: 1px solid #292929; padding-bottom: 8px; margin-bottom: 8px; font-size:11px;">
-                  <input type="text" style="width:100%; background:#1e1e1e; color:#fff; border:1px solid #444; padding:4px; box-sizing:border-box;"
-                         .value="${s.entity || ''}" placeholder="sensor.nom_de_l_entite"
-                         @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.entity`, e.target.value)}" />
-                  <div style="display:flex; gap:4px; margin-top:2px;">
-                    <input type="text" style="flex:1; background:#1e1e1e; color:#aaa; border:1px solid #444; padding:4px; box-sizing:border-box;"
-                           .value="${s.name || ''}" placeholder="Label d'affichage"
-                           @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.name`, e.target.value)}" />
-                    <input type="text" style="width:110px; background:#1e1e1e; color:#ff3333; font-weight:bold; border:1px solid #444; padding:4px; box-sizing:border-box;"
-                           .value="${s.subcat || ''}" placeholder="Filtre (ex: Ouvertures)"
-                           @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.subcat`, e.target.value)}" />
-                  </div>
-                </div>
-              `)}
-            </div>
-            <button style="width:100%; margin-top:8px; background:#111; color:#fff; border:1px solid #444; padding:8px; cursor:pointer;"
-                    @click="${() => {
-                      const newSensors = [...sensors, { entity: '', name: '', subcat: 'Ouvertures', icon: 'mdi:eye' }];
-                      this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors`, newSensors);
-                    }}">
-              + AJOUTER UN CAPTEUR / FILTRE HORIZONTAL
-            </button>
+            ` : html`<div style="font-size:11px; color:#ef4444;">Aucun sous-menu.</div>`}
           </div>
         ` : html``}
       </div>
