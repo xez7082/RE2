@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'https://unpkg.com/lit@3/index.js?module';
 
 // ==========================================
-// 1. DESIGN RETRO-TERMINAL AVEC ANIMATIONS
+// 1. STYLE UNIQUE RETRO-TERMINAL (HUD)
 // ==========================================
 const cardStyles = css`
   :host {
@@ -68,9 +68,9 @@ const cardStyles = css`
   .main-nav-item.active { color: #ffffff; background: var(--re-red); text-shadow: 0 0 5px #ffaaaa; }
   
   .re-body { display: flex; flex: 1; height: calc(100% - 95px); overflow: hidden; background: var(--re-bg); }
-  .re-sidebar { width: 180px; background: #090909; border-right: 1px dashed var(--re-border-color); display: flex; flex-direction: column; gap: 8px; padding: 15px 0px 15px 10px; overflow: hidden; }
+  .re-sidebar { width: 180px; background: #090909; border-right: 1px dashed var(--re-border-color); display: flex; flex-direction: column; gap: 8px; padding: 15px 0px 15px 10px; overflow-y: auto; }
   
-  .submenu-btn { background: #121212; border: 1px solid #222; border-right: none; color: var(--re-text-gray); padding: 12px 10px; text-align: left; display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: inherit; transition: all 0.2s ease; transform: translateX(0px); }
+  .submenu-btn { background: #121212; border: 1px solid #222; border-right: none; color: var(--re-text-gray); padding: 12px 10px; text-align: left; display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: inherit; transition: all 0.2s ease; }
   .submenu-btn:hover { color: var(--re-green); background: #151515; transform: translateX(5px); }
   .submenu-btn.active { background: #1a1a1a; color: var(--re-green); font-weight: bold; border: 1px solid var(--re-green); border-right: 3px solid var(--re-bg); transform: translateX(8px); box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.5); z-index: 2; }
   .submenu-btn ha-icon { --mdc-icon-size: 18px; min-width: 18px; }
@@ -83,8 +83,6 @@ const cardStyles = css`
   .filter-item.active { background: #1f1402; color: #ff9900; border-color: #ff9900; text-shadow: 0 0 4px rgba(255,153,0,0.4); }
 
   .re-content-scroll { flex: 1; padding: 20px; overflow-y: auto; background: #030303; border-left: 1px solid #1c1c1c; display: flex; flex-direction: column; box-sizing: border-box; position: relative; }
-  .re-content-scroll::-webkit-scrollbar { width: 6px; }
-  .re-content-scroll::-webkit-scrollbar-thumb { background: var(--re-red); }
 
   .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; width: 100%; z-index: 2; }
   
@@ -97,39 +95,20 @@ const cardStyles = css`
     padding: 12px; 
     cursor: pointer; 
     position: relative; 
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     min-height: 80px;
   }
-  .sensor-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: #333; transition: background 0.25s; }
+  .sensor-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: #333; }
   .sensor-card:hover { border-color: var(--re-green); background: #111; }
   .sensor-card:hover::before { background: var(--re-green); }
   
-  .card-battery-indicator {
-    position: absolute;
-    bottom: 6px;
-    right: 8px;
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    font-size: 9px;
-    font-weight: bold;
-    color: #8a8a8a;
-    z-index: 2;
-  }
-  .card-battery-indicator ha-icon { --mdc-icon-size: 12px; }
-  .batt-high { color: #00ff00; }
-  .batt-medium { color: #ff9900; }
-  .batt-low { color: #ff3333; animation: batt-flash 1s infinite alternate; }
-  @keyframes batt-flash { 0% { opacity: 0.2; } 100% { opacity: 1; } }
-
   .sensor-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; width: 100%; }
   .sensor-name { font-size: 10px; color: var(--re-text-gray); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-  .sensor-icon { --mdc-icon-size: 20px; color: var(--re-text-gray); transition: all 0.25s ease; }
+  .sensor-icon { --mdc-icon-size: 20px; color: var(--re-text-gray); }
   .sensor-value { font-size: 18px; color: #aaaaaa; font-weight: bold; margin-top: 8px; }
-  .sensor-value .unit { font-size: 11px; color: #666; font-weight: normal; }
+  .sensor-value .unit { font-size: 11px; color: #666; }
 
   .umbrella-bg-watermark {
     position: absolute;
@@ -142,10 +121,18 @@ const cardStyles = css`
     pointer-events: none;
     z-index: 1;
   }
+  .empty-tab { text-align: center; color: #555; padding-top: 40px; font-size: 12px; }
 `;
 
+// ==========================================
+// 2. COMPOSANT VISUEL PRINCIPAL
+// ==========================================
 class ResidentEvilCard extends LitElement {
   static styles = cardStyles;
+
+  static getConfigElement() {
+    return document.createElement("resident-evil-card-editor");
+  }
 
   static get properties() {
     return {
@@ -171,14 +158,9 @@ class ResidentEvilCard extends LitElement {
     this.config = config;
   }
 
-  getCardSize() {
-    return 6;
-  }
-
-  _handleAction(entityId, isLong) {
+  _handleAction(entityId) {
     if (!entityId) return;
     const domain = entityId.split('.')[0];
-    
     if (domain === 'light' || domain === 'switch' || domain === 'input_boolean') {
       this.hass.callService('homeassistant', 'toggle', { entity_id: entityId });
     } else {
@@ -199,7 +181,7 @@ class ResidentEvilCard extends LitElement {
     const submenus = currentCategory ? (currentCategory.submenus || []) : [];
     const currentSubmenu = submenus[this._activeSubmenuIndex] || null;
 
-    // Détermination automatique des filtres (subcat uniques)
+    // Détermination automatique des sous-sous-menus (subcat uniques des capteurs)
     let availableFilters = ['all'];
     if (currentSubmenu && currentSubmenu.sensors) {
       currentSubmenu.sensors.forEach(s => {
@@ -214,7 +196,7 @@ class ResidentEvilCard extends LitElement {
         <div class="crt-overlay"></div>
         
         <div class="re-header">
-          <div class="re-title">${(this.config.title || 'UMBRELLA SYSTEM').toUpperCase()}</div>
+          <div class="re-title">${(this.config.title || 'UMBRELLA SYSTEM CONTROL').toUpperCase()}</div>
           <div class="ecg-container">
             <span class="status-text">SYSTEM ONLINE</span>
             <svg class="ecg-svg" viewBox="0 0 100 30">
@@ -239,7 +221,7 @@ class ResidentEvilCard extends LitElement {
               ${submenus.map((sub, idx) => html`
                 <button class="submenu-btn ${this._activeSubmenuIndex === idx ? 'active' : ''}"
                         @click="${() => { this._activeSubmenuIndex = idx; this._activeFilter = 'all'; }}">
-                  <ha-icon icon="${sub.icon || 'mdi:shield-alert'}"></ha-icon>
+                  <ha-icon icon="${sub.icon || 'mdi:shield-darkness'}"></ha-icon>
                   <span>${(sub.name || 'SOUS-MODULE').toUpperCase()}</span>
                 </button>
               `)}
@@ -253,7 +235,7 @@ class ResidentEvilCard extends LitElement {
                 ${availableFilters.map(filter => html`
                   <button class="filter-item ${this._activeFilter === filter ? 'active' : ''}"
                           @click="${() => this._activeFilter = filter}">
-                    ${filter.toUpperCase()}
+                    // ${filter.toUpperCase()}
                   </button>
                 `)}
               </div>
@@ -264,10 +246,10 @@ class ResidentEvilCard extends LitElement {
 
               ${(() => {
                 if (!currentSubmenu) {
-                  return html`<div class="empty-tab">SÉLECTIONNEZ UN SOU-MODULE DANS LA SIDEBAR</div>`;
+                  return html`<div class="empty-tab">SÉLECTIONNEZ UN SOUS-MODULE DANS LA SIDEBAR</div>`;
                 }
 
-                // FORCE LE RENDU IFRAME EN PRIORITÉ SI URL PRÉSENTE OU MODE IFRAME ACTIVÉ
+                // RENDU PRIORITAIRE SI LE MODE EST IFRAME OU LIEN EXISTANT (Météo...)
                 if (currentSubmenu.mode === 'iframe' || currentSubmenu.iframe_url) {
                   return html`
                     <div class="re-iframe-wrapper">
@@ -276,28 +258,28 @@ class ResidentEvilCard extends LitElement {
                   `;
                 }
 
-                // RENDU DU MODE DESIGN PERSONNALISÉ (WIDGETS COMPOSITES)
+                // RENDU SI LE MODE EST DESIGN (Composants personnalisés)
                 if (currentSubmenu.mode === 'design') {
                   return html`
                     <div class="design-grid">
                       ${currentSubmenu.widgets ? currentSubmenu.widgets.map(w => html`
-                        <div style="border: 1px dashed var(--re-border-color); padding: 12px; margin-bottom: 5px; background: #080808; width: 100%; box-sizing: border-box;">
-                          <span style="color: var(--re-green); font-size: 11px;">[MODULE CONFIGURÉ: ${String(w.type).toUpperCase()}]</span>
-                          <div style="color: #fff; font-size: 12px; margin-top:4px;">Entité cible détectée : ${w.entity || 'Aucune'}</div>
+                        <div style="border: 1px dashed var(--re-border-color); padding: 12px; margin-bottom: 6px; background: #080808; box-sizing: border-box;">
+                          <span style="color: var(--re-green); font-size: 11px;">[WIDGET INTERNE: ${String(w.type).toUpperCase()}]</span>
+                          <div style="color: #fff; font-size: 12px; margin-top:4px;">Entité cible : ${w.entity || 'Aucune'}</div>
                         </div>
-                      `) : html`<div style="color:var(--re-text-gray); font-size:11px;">Aucun widget configuré dans ce design.</div>`}
+                      `) : html`<div style="color:var(--re-text-gray); font-size:11px;">Aucun widget configuré dans ce module.</div>`}
                     </div>
                   `;
                 }
 
-                // PAR DÉFAUT : RENDU EN MODE GRILLE DE CAPTEURS CLASSIQUE (GRID)
+                // RENDU PAR DÉFAUT : GRILLE DE CAPTEURS CLASSIQUE (GRID)
                 let sensorsToRender = currentSubmenu.sensors || [];
                 if (this._activeFilter !== 'all') {
                   sensorsToRender = sensorsToRender.filter(s => s.subcat === this._activeFilter);
                 }
                 
                 if (sensorsToRender.length === 0) {
-                  return html`<div class="empty-tab">AUCUNE DONNÉE ACCESSIBLE DANS CE SECTEUR</div>`;
+                  return html`<div class="empty-tab">AUCUNE ENTITÉ DISPONIBLE SUR CE FILTRE</div>`;
                 }
 
                 return html`
@@ -306,26 +288,17 @@ class ResidentEvilCard extends LitElement {
                       const stateObj = this.hass.states[s.entity];
                       if (!stateObj) {
                         return html`
-                          <div class="sensor-card error">
+                          <div class="sensor-card" style="border-color: var(--re-red);">
                             <div class="sensor-card-header">
-                              <div class="sensor-name">${s.name || s.entity}</div>
+                              <div class="sensor-name" style="color: var(--re-red);">${s.name || s.entity}</div>
                             </div>
-                            <div class="sensor-value" style="font-size:11px; color:#ff3333; margin-top:8px;">OFFLINE</div>
+                            <div class="sensor-value" style="font-size:11px; color:#ff3333;">ABSENT / OFFLINE</div>
                           </div>
                         `;
                       }
 
-                      // Classe dynamique selon le domaine pour appliquer les effets CSS retro
-                      const domain = s.entity.split('.')[0];
-                      let effectClass = 'type-generic';
-                      if (domain === 'light') effectClass = 'effect-light';
-                      if (domain === 'switch') effectClass = 'effect-switch';
-                      if (domain === 'binary_sensor') effectClass = 'effect-binary';
-                      
-                      const isActive = stateObj.state === 'on' || stateObj.state === 'home' || stateObj.state === 'open';
-
                       return html`
-                        <div class="sensor-card ${effectClass} ${isActive ? 'state-active' : ''}" @click="${() => this._handleAction(s.entity, false)}">
+                        <div class="sensor-card" @click="${() => this._handleAction(s.entity)}">
                           <div class="sensor-card-header">
                             <div class="sensor-name">${(s.name || stateObj.attributes.friendly_name || s.entity).toUpperCase()}</div>
                             <ha-icon icon="${s.icon || 'mdi:eye'}" class="sensor-icon"></ha-icon>
@@ -347,5 +320,141 @@ class ResidentEvilCard extends LitElement {
     `;
   }
 }
-
 customElements.define('resident-evil-card', ResidentEvilCard);
+
+
+// ==========================================
+// 3. ÉDITEUR VISUEL DE STRUCTURE DYNAMIQUE
+// ==========================================
+class ResidentEvilCardEditor extends LitElement {
+  static get properties() {
+    return {
+      hass: { type: Object },
+      _config: { type: Object },
+      _selectedCategoryIdx: { type: Number },
+      _selectedSubmenuIdx: { type: Number }
+    };
+  }
+
+  constructor() {
+    super();
+    this._selectedCategoryIdx = 0;
+    this._selectedSubmenuIdx = 0;
+  }
+
+  setConfig(config) {
+    this._config = config;
+  }
+
+  _updateConfig(newConfig) {
+    this._config = newConfig;
+    const event = new CustomEvent("config-changed", {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true
+    });
+    this.dispatchEvent(event);
+    this.requestUpdate();
+  }
+
+  _editValue(path, value) {
+    const newConfig = JSON.parse(JSON.stringify(this._config));
+    const parts = path.split('.');
+    let current = newConfig;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!current[parts[i]]) current[parts[i]] = {};
+      current = current[parts[i]];
+    }
+    current[parts[parts.length - 1]] = value;
+    this._updateConfig(newConfig);
+  }
+
+  render() {
+    if (!this.hass || !this._config) return html``;
+
+    const categories = this._config.categories || [];
+    const currentCat = categories[this._selectedCategoryIdx] || null;
+    const submenus = currentCat ? (currentCat.submenus || []) : [];
+    const currentSub = submenus[this._selectedSubmenuIdx] || null;
+    const sensors = currentSub ? (currentSub.sensors || []) : [];
+
+    return html`
+      <div style="font-family: monospace; background: #0c0c0c; color: #fff; padding: 14px; border: 1px solid #333;">
+        <h3 style="color: #ff3333; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 6px; letter-spacing: 1px;">☣️ CONSOLE CONFIGURATEUR UMBRELLA</h3>
+        
+        <div style="margin-bottom: 14px;">
+          <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 4px;">1. SÉLECTIONNER UN MENU (CATÉGORIE)</label>
+          <select style="width:100%; background:#1a1a1a; color:#fff; border:1px solid #444; padding:6px;"
+                  @change="${e => { this._selectedCategoryIdx = parseInt(e.target.value); this._selectedSubmenuIdx = 0; }}">
+            ${categories.map((c, i) => html`<option value="${i}" ?selected="${this._selectedCategoryIdx === i}">${(c.name || `Cat ${i}`).toUpperCase()}</option>`)}
+          </select>
+          <input type="text" style="width:100%; margin-top:5px; background:#111; color:#00ff00; border:1px solid #333; padding:5px; font-size:11px;"
+                 .value="${currentCat ? currentCat.name : ''}" placeholder="Modifier le nom du menu"
+                 @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.name`, e.target.value)}" />
+        </div>
+
+        ${currentCat ? html`
+          <div style="margin-bottom: 14px; border-top: 1px dashed #222; padding-top: 10px;">
+            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 4px;">2. SÉLECTIONNER UN SOUS-MENU (SIDEBAR)</label>
+            ${submenus.length > 0 ? html`
+              <select style="width:100%; background:#1a1a1a; color:#fff; border:1px solid #444; padding:6px;"
+                      @change="${e => this._selectedSubmenuIdx = parseInt(e.target.value)}">
+                ${submenus.map((s, i) => html`<option value="${i}" ?selected="${this._selectedSubmenuIdx === i}">${(s.name || `Sub ${i}`).toUpperCase()}</option>`)}
+              </select>
+              <div style="display: flex; gap: 4px; margin-top: 5px;">
+                <input type="text" style="flex:1; background:#111; color:#fff; border:1px solid #333; padding:5px; font-size:11px;"
+                       .value="${currentSub ? currentSub.name : ''}" placeholder="Nom du sous-menu"
+                       @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.name`, e.target.value)}" />
+                <input type="text" style="width:100px; background:#111; color:#fff; border:1px solid #333; padding:5px; font-size:11px;"
+                       .value="${currentSub ? currentSub.icon : ''}" placeholder="icon (mdi:...)"
+                       @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.icon`, e.target.value)}" />
+              </div>
+              <div style="margin-top:5px;">
+                <label style="font-size:10px; color:#8a8a8a;">Lien URL iFrame (Optionnel pour Météo / Liens extérieurs) :</label>
+                <input type="text" style="width:100%; background:#111; color:#ff9900; border:1px solid #333; padding:5px; font-size:11px;"
+                       .value="${currentSub && currentSub.iframe_url ? currentSub.iframe_url : ''}" placeholder="https://..."
+                       @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.iframe_url`, e.target.value)}" />
+              </div>
+            ` : html`<div style="font-size:11px; color:#c00;">Aucun sous-menu configuré pour cette catégorie.</div>`}
+          </div>
+        ` : html``}
+
+        ${currentSub ? html`
+          <div style="margin-bottom: 10px; border-top: 1px solid #333; padding-top: 10px;">
+            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. LISTE DES SENSORS ET SOUS-SOUS-MENUS (FILTRES)</label>
+            <div style="max-height: 180px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
+              ${sensors.map((s, idx) => html`
+                <div style="border-bottom: 1px solid #222; padding-bottom: 6px; margin-bottom: 6px; font-size:11px;">
+                  <div style="color: #00ff00; font-weight: bold; margin-bottom: 2px;">Composant #${idx + 1}</div>
+                  <input type="text" style="width:100%; background:#222; color:#fff; border:1px solid #444; padding:3px; margin-bottom:2px;"
+                         .value="${s.entity || ''}" placeholder="entity_id (sensor.xxxx)"
+                         @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.entity`, e.target.value)}" />
+                  <div style="display:flex; gap:2px;">
+                    <input type="text" style="flex:1; background:#222; color:#aaa; border:1px solid #444; padding:3px;"
+                           .value="${s.name || ''}" placeholder="Nom personnalisé"
+                           @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.name`, e.target.value)}" />
+                    <input type="text" style="width:90px; background:#222; color:#ff9900; border:1px solid #444; padding:3px;"
+                           .value="${s.subcat || ''}" placeholder="Sous-Sous-Menu (Filtre)"
+                           @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.subcat`, e.target.value)}" />
+                  </div>
+                </div>
+              `)}
+            </div>
+            <button style="width:100%; margin-top:8px; background:#222; color:#fff; border:1px solid #444; padding:6px; cursor:pointer;"
+                    @click="${() => {
+                      const newSensors = [...sensors, { entity: '', name: '', subcat: 'Général', icon: 'mdi:eye' }];
+                      this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors`, newSensors);
+                    }}">
+              + Ajouter un capteur / Filtre horizontal
+            </button>
+          </div>
+        ` : html``}
+        
+        <div style="font-size: 9px; color: #555; text-align: right; margin-top: 15px; border-top: 1px solid #222; padding-top: 4px;">
+          CONSTRUCTEUR COMPOSANTS CORE v4.4 // STABLE
+        </div>
+      </div>
+    `;
+  }
+}
+customElements.define('resident-evil-card-editor', ResidentEvilCardEditor);
