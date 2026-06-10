@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'https://unpkg.com/lit@3/index.js?module';
 
 // ==========================================
-// 1. STYLES DE LA CARTE PRINCIPALE
+// 1. DESIGN RETRO-TERMINAL AVEC ANIMATIONS
 // ==========================================
 const cardStyles = css`
   :host {
@@ -46,7 +46,7 @@ const cardStyles = css`
     align-items: center;
     padding: 0 20px;
     background: #000000;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid #1a2744;
   }
   .re-title { font-size: 14px; font-weight: bold; letter-spacing: 2px; color: #ffffff; }
   .ecg-container { display: flex; align-items: center; gap: 10px; }
@@ -61,14 +61,13 @@ const cardStyles = css`
     background: #111111; 
     border-bottom: 2px solid var(--re-red); 
     box-shadow: 0 4px 8px var(--re-red-glow);
-    overflow-hidden: hidden;
   }
   .main-nav-item { padding: 12px 20px; font-weight: bold; font-size: 12px; cursor: pointer; color: var(--re-text-gray); border-right: 1px solid #222; white-space: nowrap; transition: all 0.2s ease; }
   .main-nav-item:hover { color: #ffffff; background: #1c0202; }
   .main-nav-item.active { color: #ffffff; background: var(--re-red); text-shadow: 0 0 5px #ffaaaa; }
   
   .re-body { display: flex; flex: 1; height: calc(100% - 93px); overflow: hidden; background: var(--re-bg); }
-  .re-sidebar { width: 180px; background: #090909; border-right: 1px dashed var(--re-border-color); display: flex; flex-direction: column; gap: 8px; padding: 15px 0px 15px 10px; overflow: hidden; }
+  .re-sidebar { width: 180px; background: #090909; border-right: 1px dashed var(--re-border-color); display: flex; flex-direction: column; gap: 8px; padding: 15px 0px 15px 10px; overflow-y: auto; }
   
   .submenu-btn { background: #121212; border: 1px solid #222; border-right: none; color: var(--re-text-gray); padding: 12px 10px; text-align: left; display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: inherit; transition: all 0.2s ease; }
   .submenu-btn:hover { color: var(--re-green); background: #151515; transform: translateX(5px); }
@@ -84,7 +83,7 @@ const cardStyles = css`
 
   .re-content-scroll { flex: 1; padding: 20px; overflow-y: auto; background: #030303; border-left: 1px solid #1c1c1c; display: flex; flex-direction: column; box-sizing: border-box; position: relative; }
   
-  .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; min-height: 400px; display: block; border: none; margin: 0; padding: 0; }
+  .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; min-height: 400px; display: block; border: none; }
   .re-iframe { width: 100%; height: 100%; border: none; background: #000; }
 
   .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; width: 100%; z-index: 1; }
@@ -162,11 +161,10 @@ class ResidentEvilCard extends LitElement {
       <ha-card>
         <div class="crt-overlay"></div>
         
-        <!-- HEADER TERMINAL -->
         <div class="re-header">
-          <div class="re-title">☣ UMBRELLA CORP. INTERNET BROWSER</div>
+          <div class="re-title">☣ UMBRELLA CORP. MAINFRAME SYSTEMS</div>
           <div class="ecg-container">
-            <span class="status-text">SYSTEM STATUS: ALTERNATIVE</span>
+            <span class="status-text">SYSTEM STATUS: ONLINE</span>
             <svg class="ecg-svg" viewBox="0 0 100 30">
               <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,15 L50,15 L53,10 L56,20 L60,15 L100,15"></path>
             </svg>
@@ -174,7 +172,6 @@ class ResidentEvilCard extends LitElement {
           </div>
         </div>
 
-        <!-- MAIN NAVIGATION MAP -->
         <div class="re-main-menu">
           ${this.config.categories.map((c, idx) => html`
             <div class="main-nav-item ${this._activeMenuIdx === idx ? 'active' : ''}"
@@ -184,10 +181,8 @@ class ResidentEvilCard extends LitElement {
           `)}
         </div>
 
-        <!-- CONTENT BODY -->
         <div class="re-body">
           
-          <!-- SIDEBAR -->
           ${sidebarItems.length > 0 ? html`
             <div class="re-sidebar">
               ${sidebarItems.map((sub, idx) => html`
@@ -200,10 +195,8 @@ class ResidentEvilCard extends LitElement {
             </div>
           ` : ''}
 
-          <!-- MAIN CONTAINER -->
           <div class="re-content-container">
             
-            <!-- FILTRES HORIZONTAUX -->
             ${filters.length > 1 ? html`
               <div class="re-filter-bar">
                 ${filters.map(f => html`
@@ -215,18 +208,26 @@ class ResidentEvilCard extends LitElement {
               </div>
             ` : ''}
 
-            <!-- SCROLLABLE INNER CONTENT -->
             <div class="re-content-scroll">
               <img src="/local/Umbrella_Corporation_logo.svg.png" class="umbrella-bg-watermark" />
 
-              <!-- RENDER IFRAME MODE DIRECT -->
               ${currentSubmenu && currentSubmenu.mode === 'iframe' ? html`
                 <div class="re-iframe-wrapper">
-                  <iframe class="re-iframe" src="${currentSubmenu.iframe_url}"></iframe>
+                  <iframe class="re-iframe" src="${currentSubmenu.iframe_url || ''}"></iframe>
                 </div>
               ` : ''}
 
-              <!-- RENDER GRID SENSORS MODE -->
+              ${currentSubmenu && currentSubmenu.mode === 'design' ? html`
+                <div class="design-view">
+                  ${currentSubmenu.widgets ? currentSubmenu.widgets.map(w => html`
+                    <div style="border: 1px dashed var(--re-border-color); padding: 10px; margin-bottom: 10px; background: #080808;">
+                      <span style="color: var(--re-green); font-size: 11px;">[WIDGET MODULE: ${w.type.toUpperCase()}]</span>
+                      <div style="color: #fff; font-size: 12px; margin-top:5px;">Entité cible : ${w.entity || 'Aucune'}</div>
+                    </div>
+                  `) : html`<div style="color:var(--re-text-gray);">Aucun widget configuré pour ce module.</div>`}
+                </div>
+              ` : ''}
+
               ${currentSubmenu && (!currentSubmenu.mode || currentSubmenu.mode === 'grid') ? html`
                 <div class="sensors-grid">
                   ${(() => {
@@ -236,7 +237,7 @@ class ResidentEvilCard extends LitElement {
                     }
                     
                     if (sensorsToRender.length === 0) {
-                      return html`<div style="text-align:center; color:#555; padding-top:40px;">AUCUNE DONNÉE DANS CETTE ZONE</div>`;
+                      return html`<div style="text-align:center; color:#555; padding-top:40px;">AUCUNE DONNÉE ACCESSIBLE</div>`;
                     }
 
                     return sensorsToRender.map(s => {
@@ -245,7 +246,7 @@ class ResidentEvilCard extends LitElement {
                         return html`
                           <div class="sensor-card error">
                             <div class="sensor-card-header"><div class="sensor-name">${s.name || s.entity}</div></div>
-                            <div class="sensor-value" style="font-size:11px;">ERR: ABSENT</div>
+                            <div class="sensor-value" style="font-size:11px;">ABSENT / OFFLINE</div>
                           </div>
                         `;
                       }
@@ -277,33 +278,146 @@ customElements.define('resident-evil-card', ResidentEvilCard);
 
 
 // ==========================================
-// 3. CLASSE DE L'ÉDITEUR VISUEL (FORMULAIRE TABS)
+// 3. CODE DE L'ÉDITEUR VISUEL COMPLET
 // ==========================================
 class ResidentEvilCardEditor extends LitElement {
   static properties = {
     hass: { type: Object },
-    _config: { type: Object }
+    _config: { type: Object },
+    _activeTab: { type: Number, state: true }
   };
+
+  constructor() {
+    super();
+    this._activeTab = 0;
+  }
 
   setConfig(config) {
     this._config = config;
   }
 
-  // Petit formulaire de repli si le YAML est modifié manuellement
+  _inp(label, path, value) {
+    return html`
+      <div style="margin-bottom:10px;">
+        <label style="display:block;font-size:11px;color:#8a8a8a;margin-bottom:4px;text-transform:uppercase;">${label}</label>
+        <input type="text" .value="${value || ''}" @change="${e => this._updateConfig(path, e.target.value)}"
+               style="width:100%;background:#111;border:1px solid #2a2a2a;color:#fff;padding:6px;font-family:inherit;box-sizing:border-box;"/>
+      </div>
+    `;
+  }
+
+  _toggle(label, path, value) {
+    return html`
+      <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:#8a8a8a;margin-bottom:10px;cursor:pointer;text-transform:uppercase;">
+        <input type="checkbox" ?checked="${!!value}" @change="${e => this._updateConfig(path, e.target.checked)}" style="accent-color:#8b0000;"/>
+        ${label}
+      </label>
+    `;
+  }
+
+  _updateConfig(path, value) {
+    if (!this._config) return;
+    const newConfig = JSON.parse(JSON.stringify(this._config));
+    const parts = path.split('.');
+    let current = newConfig;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!current[parts[i]]) current[parts[i]] = {};
+      current = current[parts[i]];
+    }
+    current[parts[parts.length - 1]] = value;
+    this._config = newConfig;
+    
+    const event = new CustomEvent("config-changed", {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true
+    });
+    this.dispatchEvent(event);
+  }
+
   render() {
     if (!this.hass || !this._config) return html``;
+    const self = this;
+
+    const tabs = ["Général", "Météo", "Zones", "Vidéo", "Serveurs", "Spa", "Énergie", "Santé", "Tracker"];
+    const tabStyle = (idx) => `
+      padding:6px 10px;font-family:inherit;font-size:10px;font-weight:bold;cursor:pointer;
+      background:${self._activeTab === idx ? '#8b0000' : '#111'};
+      color:${self._activeTab === idx ? '#fff' : '#8a8a8a'};
+      border:1px solid #2a2a2a;border-bottom:none;text-transform:uppercase;margin-right:2px;
+    `;
+
+    // ─────────────────────────────────────────────────────────
+    // PANELS DE CONFIGURATION DE L'EDITEUR VISUEL
+    // ─────────────────────────────────────────────────────────
+    const renderGeneral = () => html`<div><h4>PARAMÈTRES GÉNÉRAUX</h4><p style="color:#666;font-size:11px;">Console Centrale de Supervision Générale.</p></div>`;
+    
+    const renderMeteo = () => {
+      const ci = self._config.categories?.findIndex(c => c.name.toLowerCase() === 'meteo') !== -1 ? self._config.categories.findIndex(c => c.name.toLowerCase() === 'meteo') : 0;
+      const sub = self._config.categories?.[ci]?.submenus?.[0] || {};
+      return html`
+        <div>
+          <h4>CONFIGURATION CONFIGURATION MÉTÉO</h4>
+          ${self._inp('Lien iFrame Météo (URL)', `categories.${ci}.submenus.0.iframe_url`, sub.iframe_url)}
+        </div>`;
+    };
+
+    const renderZones = () => html`<div><h4>SECTEURS & ZONES</h4></div>`;
+    const renderVideo = () => html`<div><h4>SYSTÈMES VIDÉO</h4></div>`;
+    const renderServeurs = () => html`<div><h4>INFRASTRUCTURE SERVEURS</h4></div>`;
+    
+    const renderSpa = () => {
+      const ci = self._config.categories?.findIndex(c => c.name.toLowerCase() === 'spa') !== -1 ? self._config.categories.findIndex(c => c.name.toLowerCase() === 'spa') : 0;
+      const w = self._config.categories?.[ci]?.submenus?.[0]?.widgets?.[0] || {};
+      return html`
+        <div>
+          <h4>MODULE LAY-Z-SPA</h4>
+          ${self._inp('Capteur Température Eau', `categories.${ci}.submenus.0.widgets.0.entity`, w.entity)}
+          ${self._inp('Contrôle Climate', `categories.${ci}.submenus.0.widgets.0.targetEntity`, w.targetEntity)}
+          ${self._inp('Image d\'arrière plan', `categories.${ci}.submenus.0.widgets.0.bgImage`, w.bgImage)}
+        </div>`;
+    };
+
+    const renderEnergie = () => html`<div><h4>FLUX ÉNERGÉTIQUES</h4></div>`;
+    const renderSante = () => html`<div><h4>BIOMÉTRIE / PHYTOLOGIE</h4></div>`;
+    
+    const renderTracker = () => {
+      const ci = self._config.categories?.findIndex(c => c.name.toLowerCase().includes('biom')) !== -1 ? self._config.categories.findIndex(c => c.name.toLowerCase().includes('biom')) : 0;
+      const p = self._config.categories?.[ci]?.submenus?.[0]?.widgets?.[0]?.people?.[0] || {};
+      const pi = 0;
+      return html`
+        <div>
+          <h4>LOCALISATION TRACKERS</h4>
+          ${self._inp('Geocodage', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.geocoded_entity`, p.geocoded_entity)}
+        </div>`;
+    };
+
+    const panels = [renderGeneral, renderMeteo, renderZones, renderVideo, renderServeurs, renderSpa, renderEnergie, renderSante, renderTracker];
+
     return html`
-      <div style="padding: 20px; font-family: sans-serif; color: #fff; background: #222; border-radius: 4px;">
-        <h3 style="color: #ff3333; margin-top: 0;">☣️ UMBRELLA ENGINE CONFIGURATOR</h3>
-        <p style="font-size: 12px; color: #aaa; line-height: 1.5;">
-          L'architecture modulaire de votre interface utilise des structures imbriquées complexes (Catégories ➔ Sous-menus ➔ Widgets). 
-          Pour conserver un contrôle total sur vos cartes réseaux, caméras, et iFrames :
-        </p>
-        <div style="background: #111; padding: 12px; border-left: 3px solid #ff3333; font-size: 11px; margin: 15px 0; font-family: monospace;">
-          ⚙️ Cliquez sur <strong>"Afficher l'éditeur de code"</strong> (en bas à gauche) pour ajuster finement vos entités au format YAML.
+      <div style="font-family:'Courier New',monospace;background:#080d14;border-radius:8px;overflow:hidden;">
+        <div style="background:#0d1b2e;border-bottom:1px solid #1a2744;padding:10px 12px;">
+          <div style="font-size:14px;font-weight:800;color:#ef4444;letter-spacing:2px;margin-bottom:8px;">
+            ☣ RESIDENT EVIL CARD — ÉDITEUR
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            ${tabs.map((t, i) => html`
+              <button style="${tabStyle(i)}" @click="${() => { self._activeTab = i; self.requestUpdate(); }}">${t}</button>
+            `)}
+          </div>
+        </div>
+        <div style="padding:14px;max-height:500px;overflow-y:auto;">
+          ${panels[self._activeTab] ? panels[self._activeTab]() : html``}
+        </div>
+        <div style="padding:8px 14px;background:#0b1321;font-size:10px;color:#4f5e7d;text-align:right;border-top:1px solid #142238;">
+          UMBRELLA OS v4.2 // ENGINE CONNECTED
         </div>
       </div>
     `;
   }
 }
+
+// ─────────────────────────────────────────────────────────
+// LA LIGNE CRUCIALE QUI MANQUAIT : ENREGISTREMENT DE L'ÉDITEUR
+// ─────────────────────────────────────────────────────────
 customElements.define('resident-evil-card-editor', ResidentEvilCardEditor);
