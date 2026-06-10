@@ -2582,7 +2582,17 @@ class ResidentEvilCardEditor extends LitElement {
   }
 }
 
+// Enregistrement de la carte principale
+customElements.define("resident-evil-card", ResidentEvilCard);
 
+// Enregistrement de l'éditeur visuel pour qu'il apparaisse dans l'interface
+customElements.define("resident-evil-card-editor", ResidentEvilCardEditor);
 
-customElements.define('custom:resident-evil-card-editor', ResidentEvilCardEditor);
-customElements.define('custom:resident-evil-card', ResidentEvilCard);
+// Déclaration de la carte dans le sélecteur de cartes Home Assistant
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "resident-evil-card",
+  name: "Resident Evil Terminal Card",
+  description: "Un terminal rétro-éclairé style Umbrella Corporation avec ECG et onglets tactiques.",
+  preview: true // Permet d'afficher un aperçu visuel dans le menu
+});
