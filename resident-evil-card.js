@@ -834,7 +834,6 @@ class ResidentEvilCard extends LitElement {
     }
 
     if (view === "cam") {
-      const liveCamHtml = targetObj ? html`<div class="camera-stream-container"><div style="color:#555;font-size:11px;">FLUX SYSTÈME SECURISE</div></div>` : html``;
       return html`
         <div class="sensor-card type-camera-feed" style="width:100%; height:100%; border:none;">
           <div class="camera-scanlines"></div>
@@ -844,7 +843,7 @@ class ResidentEvilCard extends LitElement {
             <div class="camera-hud-overlay">
               <div class="hud-top-row">
                 <span class="hud-rec-indicator"><span class="spa-dot" style="background:#ff0000; box-shadow:0 0 4px #ff0000;"></span>REC</span>
-                <span class="hud-cam-name">ZONE SPA - ZONE_0${w.view === 'cam' ? '1' : '2'}</span>
+                <span class="hud-cam-name">ZONE SPA - ZONE_01</span>
               </div>
               <div class="hud-bottom-row">
                 <span class="hud-timestamp">${this._timeString.split(" ")[1] || ""}</span>
@@ -907,7 +906,7 @@ if (!customElements.get("resident-evil-card")) {
 
 
 // ==========================================
-// 2. ÉDITEUR VISUEL DE LA CARTE (RESIDENT EVIL)
+// 2. ÉDITEUR VISUEL AMÉLIORÉ AVEC ÉDITEUR YAML INTÉGRÉ
 // ==========================================
 class ResidentEvilCardEditor extends LitElement {
   static get properties() {
@@ -930,110 +929,82 @@ class ResidentEvilCardEditor extends LitElement {
   render() {
     if (!this.hass || !this._config) return html``;
 
-    const self = this;
-    const tabs = ["GÉNÉRAL", "MÉTÉO", "ZONES", "VIDÉO", "SERVEURS", "SPA", "ÉNERGIE", "SANTÉ", "TRACKER"];
+    const tabs = ["GÉNÉRAL", "ÉDITEUR CONFIG (YAML)"];
     
     const tabStyle = (idx) => `
-      padding: 6px 10px;
-      font-size: 10px;
+      padding: 8px 16px;
+      font-size: 11px;
       font-weight: bold;
       font-family: inherit;
-      background: ${self._activeTab === idx ? '#ef4444' : '#111827'};
-      color: ${self._activeTab === idx ? '#ffffff' : '#9ca3af'};
-      border: 1px solid ${self._activeTab === idx ? '#ef4444' : '#1f2937'};
+      background: ${this._activeTab === idx ? '#8b0000' : '#111827'};
+      color: ${this._activeTab === idx ? '#ffffff' : '#9ca3af'};
+      border: 1px solid ${this._activeTab === idx ? '#8b0000' : '#1f2937'};
       cursor: pointer;
       flex: 1;
       text-align: center;
-      white-space: nowrap;
+      letter-spacing: 1px;
     `;
-
-    // Helpers d'édition
-    self._inp = (label, path, currentVal) => html`
-      <div style="margin-bottom:10px; display:flex; flex-direction:column; gap:4px;">
-        <label style="font-size:10px; color:#9ca3af; font-weight:bold; text-transform:uppercase;">${label}</label>
-        <input style="background:#1f2937; border:1px solid #374151; color:#fff; padding:6px 8px; font-family:inherit; font-size:12px; border-radius:4px;"
-               type="text" .value="${currentVal || ''}" @change="${(e) => self._updatePath(path, e.target.value)}"/>
-      </div>
-    `;
-
-    // Panels de rendu
-    const renderGeneral = () => html`
-      <div>
-        <div style="font-size:11px; color:#9ca3af; margin-bottom:12px; line-height:1.4;">
-          Configurez l'arborescence globale de votre Terminal Umbrella. Chaque bloc correspond à un onglet principal ou à un sous-menu Lovelace.
-        </div>
-        ${self._inp('Titre Terminal', 'title', self._config.title || 'UMBRELLA CORP.')}
-      </div>
-    `;
-
-    const renderMeteo = () => html`<div>${self._inp('Entité Météo Principale', 'categories.0.submenus.0.sensors.0.entity', (((self._config.categories||[])[0]||{}).submenus||[])[0]?.sensors?.[0]?.entity)}</div>`;
-    const renderZones = () => html`<div style="color:#9ca3af; font-size:11px;">Configuration des capteurs d'ouverture et lumières par pièce via YAML.</div>`;
-    const renderVideo = () => html`<div>${self._inp('URL Caméra Garage (MJPEG)', 'categories.0.submenus.2.iframe_url', (((self._config.categories||[])[0]||{}).submenus||[])[2]?.iframe_url)}</div>`;
-    const renderServeurs = () => html`<div style="color:#9ca3af; font-size:11px;">Moniteurs Proxmox, TrueNAS et Docker.</div>`;
-    
-    const renderSpa = () => {
-      const c = self._config.categories || [];
-      return html`
-        <div>
-          ${self._inp('Capteur Température Eau', 'categories.0.submenus.0.widgets.0.entity', c[0]?.submenus?.[0]?.widgets?.[0]?.entity)}
-          ${self._inp('Contrôle Thermostat (Climate)', 'categories.0.submenus.0.widgets.0.targetEntity', c[0]?.submenus?.[0]?.widgets?.[0]?.targetEntity)}
-        </div>
-      `;
-    };
-
-    const renderEnergie = () => html`<div style="color:#9ca3af; font-size:11px;">Suivi de production Beem/IBC et stockage Marstek/Storcube.</div>`;
-    const renderSante = () => html`<div style="color:#9ca3af; font-size:11px;">Seuils d'alertes ECG et constantes vitales de la cellule familiale.</div>`;
-    
-    const renderTracker = () => {
-      const p = (((self._config.categories||[])[0]||{}).submenus||[])[0]?.widgets?.[0]?.persons?.[0] || {};
-      const ci = 0; const pi = 0;
-      return html`
-        <div>
-          <div style="font-size:12px; font-weight:bold; color:#ef4444; margin-bottom:8px;">👤 CONFIGURATION DES PERSONNES</div>
-          ${self._inp('Nom de la personne', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.name`, p.name)}
-          ${self._inp('Tracker RFS (Zone/Présence)', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.tracker_entity`, p.tracker_entity)}
-          ${self._inp('Geocodage', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.geocoded_entity`, p.geocoded_entity)}
-        </div>`;
-    };
-
-    const panels = [renderGeneral, renderMeteo, renderZones, renderVideo, renderServeurs, renderSpa, renderEnergie, renderSante, renderTracker];
 
     return html`
-      <div style="font-family:'Courier New',monospace;background:#080d14;border-radius:8px;overflow:hidden;">
-        <div style="background:#0d1b2e;border-bottom:1px solid #1a2744;padding:10px 12px;">
-          <div style="font-size:14px;font-weight:800;color:#ef4444;letter-spacing:2px;margin-bottom:8px;">
-            ☣ RESIDENT EVIL CARD — ÉDITEUR
+      <div style="font-family:'Courier New',monospace; background:#080d14; border-radius:4px; overflow:hidden; border:1px solid #2a2a2a;">
+        <div style="background:#000000; border-bottom:2px solid #8b0000; padding:12px;">
+          <div style="font-size:13px; font-weight:800; color:#fff; letter-spacing:2px; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+            <span>☣ UMBRELLA CENTRAL TERMINAL — CONFIGURATION</span>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          <div style="display:flex; gap:4px;">
             ${tabs.map((t, i) => html`
-              <button style="${tabStyle(i)}" @click="${() => { self._activeTab = i; self.requestUpdate(); }}">${t}</button>
+              <button style="${tabStyle(i)}" @click="${() => { this._activeTab = i; this.requestUpdate(); }}">${t}</button>
             `)}
           </div>
         </div>
-        <div style="padding:14px;max-height:500px;overflow-y:auto;">
-          ${panels[self._activeTab] ? panels[self._activeTab]() : html``}
+        
+        <div style="padding:16px; background:#050505;">
+          ${this._activeTab === 0 ? html`
+            <div>
+              <div style="margin-bottom:15px; display:flex; flex-direction:column; gap:6px;">
+                <label style="font-size:10px; color:#8a8a8a; font-weight:bold; letter-spacing:1px;">TITRE DU TERMINAL PRINCIPAL</label>
+                <input style="background:#0d0d0d; border:1px solid #222; color:#fff; padding:8px; font-family:inherit; font-size:12px;"
+                       type="text" .value="${this._config.title || ''}" @change="${(e) => this._updateConfigPath('title', e.target.value)}"/>
+              </div>
+              <div style="font-size:11px; color:#555; line-height:1.4; border-left:2px solid #333; padding-left:10px; margin-top:20px;">
+                Pour modifier, ajouter ou réorganiser la liste complète de vos catégories, capteurs, caméras et widgets tactiques, utilisez le deuxième onglet <strong>"ÉDITEUR CONFIG (YAML)"</strong> ci-dessus.
+              </div>
+            </div>
+          ` : html`
+            <div>
+              <div style="font-size:11px; color:#ff9900; margin-bottom:10px; font-weight:bold;">
+                🗲 ACCÈS DIRECT À TOUS VOS CAPTEURS ET VOS DESIGN-WIDGETS :
+              </div>
+              <ha-yaml-editor
+                .hass="${this.hass}"
+                .value="${this._config}"
+                @value-changed="${this._onYamlChange}"
+              ></ha-yaml-editor>
+            </div>
+          `}
         </div>
-        <div style="padding:8px 14px; background:#0b131f; border-top:1px solid #1a2744; text-align:right; font-size:9px; color:#4b5563;">
-          UMBRELLA CORP GUI v2.4.0
+        <div style="padding:8px 12px; background:#000; border-top:1px solid #111; text-align:right; font-size:9px; color:#444; letter-spacing:1px;">
+          SYSTEM STATUS: ONLINE
         </div>
       </div>
     `;
   }
 
-  _updatePath(path, value) {
-    if (!this._config) return;
+  _updateConfigPath(field, value) {
     const config = JSON.parse(JSON.stringify(this._config));
-    const parts = path.split('.');
-    let current = config;
-    
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (!current[parts[i]]) current[parts[i]] = {};
-      current = current[parts[i]];
+    config[field] = value;
+    this._fireConfigChanged(config);
+  }
+
+  _onYamlChange(ev) {
+    ev.stopPropagation();
+    if (ev.detail && ev.detail.value) {
+      this._fireConfigChanged(ev.detail.value);
     }
-    
-    current[parts[parts.length - 1]] = value;
+  }
+
+  _fireConfigChanged(config) {
     this._config = config;
-    
     const event = new CustomEvent("config-changed", {
       detail: { config: config },
       bubbles: true,
