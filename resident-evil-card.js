@@ -611,28 +611,482 @@ class ResidentEvilCardEditor extends LitElement {
   }
 }
 
+import { LitElement, html, css } from 'https://unpkg.com/lit@3/index.js?module';
+
 // ==========================================
-// 3. ENREGISTREMENT ET ÉLÉMENTS DU MENU HOME ASSISTANT
+// DESIGN RETRO-TERMINAL AMÉLIORÉ / SPA INTEGRATION
 // ==========================================
+const cardStyles = css`
+  :host {
+    --re-bg: #050505;
+    --re-card-bg: #0a0a0a;
+    --re-border-color: #2a2a2a;
+    --re-red: #8b0000;
+    --re-red-bright: #ff0000;
+    --re-red-glow: rgba(139, 0, 0, 0.6);
+    --re-green: #00ff00;
+    --re-green-bright: #00ff00;
+    --re-green-glow: rgba(0, 255, 0, 0.4);
+    --re-text-gray: #8a8a8a;
+    display: block;
+    width: 100%;
+  }
+  ha-card {
+    background: var(--re-card-bg);
+    border: 2px solid var(--re-border-color);
+    border-radius: 0px; 
+    color: #ffffff;
+    font-family: 'Courier New', Courier, monospace;
+    height: 600px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .crt-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
+    background-size: 100% 4px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .re-header {
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    background: #000000;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .re-title { font-size: 16px; font-weight: bold; letter-spacing: 2px; color: #ffffff; }
+  .ecg-container { display: flex; align-items: center; gap: 10px; }
+  .status-text { color: var(--re-green); font-size: 11px; text-shadow: 0 0 4px var(--re-green-glow); }
+  .ecg-svg { width: 90px; height: 25px; }
+  .ecg-line { fill: none; stroke: var(--re-green); stroke-width: 2; stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: dash 4s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: 0; } }
+  
+  .re-body { display: flex; flex: 1; height: calc(100% - 50px); overflow: hidden; background: var(--re-bg); }
+  .re-sidebar { width: 180px; background: #090909; border-right: 1px dashed var(--re-border-color); display: flex; flex-direction: column; gap: 8px; padding: 15px 0px 15px 10px; overflow: hidden; }
+  
+  .submenu-btn { background: #121212; border: 1px solid #222; border-right: none; color: var(--re-text-gray); padding: 12px 10px; text-align: left; display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: inherit; transition: all 0.2s ease; transform: translateX(0px); }
+  .submenu-btn:hover { color: var(--re-green); background: #151515; transform: translateX(5px); }
+  .submenu-btn.active { background: #1a1a1a; color: var(--re-green); font-weight: bold; border: 1px solid var(--re-green); border-right: 3px solid var(--re-bg); transform: translateX(8px); box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.5); z-index: 2; }
+  .submenu-btn ha-icon { --mdc-icon-size: 18px; min-width: 18px; }
+  
+  .re-content-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .re-content-scroll { flex: 1; padding: 20px; overflow-y: auto; background: #030303; border-left: 1px solid #1c1c1c; display: flex; flex-direction: column; box-sizing: border-box; z-index: 1; }
+  .re-content-scroll::-webkit-scrollbar { width: 6px; }
+  .re-content-scroll::-webkit-scrollbar-thumb { background: var(--re-red); }
 
-// Enregistrement de la carte principale
-if (!customElements.get("resident-evil-card")) {
-  customElements.define("resident-evil-card", ResidentEvilCard);
+  .umbrella-pulse { animation: umbrella-pulse-anim 3s ease-in-out infinite; }
+  @keyframes umbrella-pulse-anim {
+    0%,100% { opacity: 0.02; transform: scale(1); }
+    50%      { opacity: 0.05; transform: scale(1.02); }
+  }
+
+  /* SPA GRID & HUD DESIGN */
+  .spa-hud-container { display: flex; flex-direction: column; width: 100%; gap: 15px; }
+  .spa-top-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1c1c1c; padding-bottom: 8px; }
+  .spa-badge-heater { background: rgba(255, 255, 255, 0.02); border: 1px solid #222; padding: 6px 12px; font-size: 10px; display: flex; align-items: center; gap: 8px; letter-spacing: 1px; }
+  .spa-badge-heater.heating { border-color: #5c1d1d; color: #ff3333; background: rgba(255, 51, 51, 0.03); text-shadow: 0 0 4px var(--re-red-glow); }
+  .spa-dot { width: 6px; height: 6px; border-radius: 50%; background: #444; }
+  .spa-badge-heater.heating .spa-dot { background: #ff3333; box-shadow: 0 0 6px #ff3333; animation: alert-flash 1s infinite alternate; }
+
+  .spa-trident-layout { display: grid; grid-template-columns: 1fr 140px 1fr; align-items: center; width: 100%; margin: 5px 0; }
+  .spa-side-metric { display: flex; flex-direction: column; }
+  .spa-side-metric.left { align-items: flex-start; }
+  .spa-side-metric.right { align-items: flex-end; }
+  .spa-huge-val { font-size: 26px; font-weight: bold; color: #fff; }
+  .spa-metric-lbl { font-size: 9px; color: var(--re-text-gray); font-weight: bold; margin: 2px 0; letter-spacing: 1px; }
+  .spa-sub-badge { background: #0a0a0a; border: 1px solid #161616; padding: 2px 8px; border-radius: 12px; font-size: 10px; color: var(--re-green); }
+
+  .spa-center-dial { display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; }
+  .spa-circular-monitor { width: 110px; height: 110px; border-radius: 50%; border: 1px dashed #252525; background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, rgba(10,10,10,0.2) 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 0 15px rgba(0,0,0,0.8); }
+  .spa-dial-lbl { font-size: 8px; color: #444; letter-spacing: 2px; }
+  .spa-dial-temp { font-size: 30px; font-weight: bold; color: var(--re-green-bright); text-shadow: 0 0 8px var(--re-green-glow); }
+  .spa-dial-target { font-size: 9px; color: #ffaa00; background: rgba(255,170,0,0.05); border: 1px solid rgba(255,170,0,0.1); padding: 1px 5px; margin-top: 2px; }
+  .spa-dial-arrow { background: none; border: none; color: #555; cursor: pointer; font-size: 14px; padding: 2px; font-family: inherit; transition: color 0.2s; }
+  .spa-dial-arrow:hover { color: var(--re-green); }
+
+  .spa-energy-row { display: flex; justify-content: center; gap: 10px; margin: 5px 0; }
+  .spa-chip { background: #080808; border: 1px solid #161616; padding: 4px 10px; font-size: 10px; color: #bcbcbc; font-family: monospace; }
+
+  .spa-maintenance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; margin-top: 5px; }
+  .spa-maint-strip { background: rgba(255,255,255,0.01); border: 1px solid #121212; padding: 8px 12px; position: relative; }
+  .spa-strip-header { display: flex; justify-content: space-between; font-size: 9px; font-weight: bold; color: #666; }
+  .spa-strip-track { width: 100%; height: 4px; background: #111; margin: 6px 0; overflow: hidden; border: 1px solid #222; }
+  .spa-strip-fill { height: 100%; background: var(--re-green); box-shadow: 0 0 4px var(--re-green-glow); transition: width 0.5s ease; }
+  .spa-strip-fill.warning { background: var(--re-red-bright); box-shadow: 0 0 4px var(--re-red-glow); }
+  .spa-strip-footer { font-size: 9px; color: #444; display: flex; justify-content: space-between; align-items: center; }
+  .re-reset-btn { background: #1a1a1a; border: 1px solid #333; color: var(--re-text-gray); font-size: 8px; padding: 1px 4px; cursor: pointer; font-family: inherit; }
+  .re-reset-btn:hover { color: #fff; border-color: #555; }
+
+  .chem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+  .chem-card { background: #0d0d0d; border: 1px solid #222; padding: 12px; position: relative; display: flex; flex-direction: column; gap: 4px; }
+  .chem-card.alert { border-color: var(--re-red); background: #140505; }
+  .chem-header { display: flex; justify-content: space-between; font-size: 10px; color: var(--re-text-gray); }
+  .chem-value { font-size: 20px; font-weight: bold; color: #fff; }
+  .chem-card.alert .chem-value { color: var(--re-red-bright); text-shadow: 0 0 4px var(--re-red-glow); }
+  .chem-limits { font-size: 8px; color: #444; text-align: right; }
+
+  .switches-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; width: 100%; }
+  .sw-card { background: #0d0d0d; border: 1px solid #222; padding: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; }
+  .sw-card:hover { border-color: #444; background: #111; }
+  .sw-card.active { border-color: var(--re-green); background: #041404; }
+  .sw-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .sw-name { font-size: 11px; font-weight: bold; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sw-card.active .sw-name { color: #fff; }
+  .sw-entity { font-size: 8px; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sw-icon { --mdc-icon-size: 18px; color: #444; }
+  .sw-card.active .sw-icon { color: var(--re-green-bright); filter: drop-shadow(0 0 3px var(--re-green-glow)); }
+
+  /* CAMERA HUD VISUALS */
+  .camera-container { width: 100%; border: 1px solid #222; background: #000; position: relative; overflow: hidden; display: flex; aspect-ratio: 16/9; }
+  .camera-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; filter: sepia(15%) contrast(110%); }
+  .camera-scanlines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%); background-size: 100% 4px; pointer-events: none; }
+  .camera-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-sizing: border-box; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; font-size: 10px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+  .hud-rec { color: #ff0000; display: flex; align-items: center; gap: 4px; animation: alert-flash 1s infinite alternate; }
+  .hud-timestamp { color: #ff9900; }
+  
+  .leak-banner { background: #210505; border: 1px solid var(--re-red-bright); padding: 8px; font-size: 11px; font-weight: bold; color: var(--re-red-bright); text-shadow: 0 0 4px var(--re-red-glow); display: flex; align-items: center; gap: 8px; animation: alert-pulse 1.5s infinite alternate; }
+  
+  @keyframes alert-flash { 0% { opacity: 0.2; } 100% { opacity: 1; } }
+  @keyframes alert-pulse { 0% { box-shadow: none; } 100% { box-shadow: inset 0 0 10px var(--re-red-glow); } }
+`;
+
+class ResidentEvilSpaCard extends LitElement {
+  static get properties() {
+    return {
+      hass: {},
+      config: {},
+      _activeSubMenu: { type: Number },
+      _timeString: { type: String }
+    };
+  }
+
+  constructor() {
+    super();
+    this._activeSubMenu = 0;
+    this._timeString = "";
+    this._timeUpdater = null;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._timeUpdater = setInterval(() => {
+      const now = new Date();
+      this._timeString = now.toLocaleDateString('fr-FR') + " " + now.toLocaleTimeString('fr-FR');
+    }, 1000);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this._timeUpdater) clearInterval(this._timeUpdater);
+  }
+
+  setConfig(config) {
+    this.config = config;
+  }
+
+  _handleAction(entityId) {
+    if (!entityId || !this.hass.states[entityId]) return;
+    const domain = entityId.split('.')[0];
+    if (['switch', 'light', 'button'].includes(domain)) {
+      this.hass.callService(domain, domain === 'button' ? 'press' : 'toggle', { entity_id: entityId });
+    } else {
+      this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }));
+    }
+  }
+
+  _adjustTemperature(entityId, amount) {
+    const stateObj = this.hass.states[entityId];
+    if (!stateObj) return;
+    if (entityId.startsWith('climate.')) {
+      const currentTemp = stateObj.attributes.temperature || 35;
+      this.hass.callService('climate', 'set_temperature', { entity_id: entityId, temperature: currentTemp + amount });
+    }
+  }
+
+  _umbrellaWatermark() {
+    return html`
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%); pointer-events:none;z-index:0;">
+        <svg class="umbrella-pulse" width="250" height="250" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="48" fill="none" stroke="#8b0000" stroke-width="1.5"/>
+          <path d="M50,50 L50,4 A46,46 0 0,1 96,50 Z" fill="#8b0000"/>
+          <path d="M50,50 L96,50 A46,46 0 0,1 50,96 Z" fill="#8b0000"/>
+          <path d="M50,50 L50,96 A46,46 0 0,1 4,50 Z" fill="#8b0000"/>
+          <path d="M50,50 L4,50 A46,46 0 0,1 50,4 Z" fill="#8b0000"/>
+          <path d="M50,50 L82,18 A46,46 0 0,1 96,50 Z" fill="#cccccc"/>
+          <path d="M50,50 L82,82 A46,46 0 0,1 50,96 Z" fill="#cccccc"/>
+          <path d="M50,50 L18,82 A46,46 0 0,1 4,50 Z" fill="#cccccc"/>
+          <path d="M50,50 L18,18 A46,46 0 0,1 50,4 Z" fill="#cccccc"/>
+          <circle cx="50" cy="50" r="10" fill="#050505"/>
+        </svg>
+      </div>`;
+  }
+
+  render() {
+    if (!this.config || !this.hass) return html``;
+    const submenus = this.config.submenus || [];
+    const currentSubmenu = submenus[this._activeSubMenu];
+    const w = currentSubmenu && currentSubmenu.widgets ? currentSubmenu.widgets[0] : {};
+
+    return html`
+      <ha-card>
+        <div class="crt-overlay"></div>
+        
+        <!-- HEADER -->
+        <div class="re-header">
+          <div class="re-title">UMBRELLA CORP // SPA MONITOR</div>
+          <div class="ecg-container">
+            <span class="status-text">SYSTEM ONLINE</span>
+            <svg class="ecg-svg" viewBox="0 0 100 30">
+              <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,15 L50,15 L53,10 L56,20 L60,15 L100,15" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- MAIN INTERFACE -->
+        <div class="re-body">
+          
+          <!-- SIDEBAR SUBMENUS -->
+          <div class="re-sidebar">
+            ${submenus.map((sub, idx) => html`
+              <button class="submenu-btn ${this._activeSubMenu === idx ? 'active' : ''}" @click="${() => this._activeSubMenu = idx}">
+                <ha-icon icon="${sub.icon || 'mdi:adjust'}"></ha-icon>
+                <span>${sub.name}</span>
+              </button>
+            `)}
+          </div>
+
+          <!-- CONTENT WINDOW -->
+          <div class="re-content-container">
+            ${this._umbrellaWatermark()}
+            <div class="re-content-scroll">
+              ${this._renderContent(w)}
+            </div>
+          </div>
+
+        </div>
+      </ha-card>
+    `;
+  }
+
+  _renderContent(w) {
+    if (!w || !w.view) return html`<div>Aucun widget configuré.</div>`;
+
+    // Bannière d'alerte fuite d'eau globale si applicable
+    const isLeak = w.leakEntity && this.hass.states[w.leakEntity]?.state === 'on';
+    const isTamper = w.tamperEntity && this.hass.states[w.tamperEntity]?.state === 'on';
+
+    return html`
+      ${isLeak ? html`<div class="leak-banner"><ha-icon icon="mdi:water-alert"></ha-icon> CRITICAL ERROR: SPA WATER LEAK DETECTED !</div>` : html``}
+      ${isTamper ? html`<div class="leak-banner" style="background:#2b1605; border-color:#ff9900; color:#ff9900;"><ha-icon icon="mdi:shield-alert"></ha-icon> SECURITY: SENSOR TAMPER DETECTED</div>` : html``}
+      <div style="margin-top: ${isLeak || isTamper ? '10px' : '0px'};"></div>
+      
+      ${w.view === 'home' ? this._renderHomeView(w) : html``}
+      ${w.view === 'chem' ? this._renderChemView(w) : html``}
+      ${w.view === 'sw' ? this._renderSwitchesView(w) : html``}
+      ${w.view === 'cam' ? this._renderCameraView(w) : html``}
+    `;
+  }
+
+  // 1. VUE GÉNÉRALE (HOME)
+  _renderHomeView(w) {
+    const waterTemp = this.hass.states[w.entity]?.state || '--';
+    const targetState = this.hass.states[w.targetEntity];
+    const targetTemp = targetState?.attributes?.temperature || '--';
+    const isHeating = targetState?.attributes?.hvac_action === 'heating' || targetState?.state === 'heat';
+
+    const extTemp = w.extTempEntity ? this.hass.states[w.extTempEntity]?.state : null;
+    const extHum = w.extHumEntity ? this.hass.states[w.extHumEntity]?.state : null;
+    const airTemp = w.airTempEntity ? this.hass.states[w.airTempEntity]?.state : null;
+    const airHum = w.airHumEntity ? this.hass.states[w.airHumEntity]?.state : null;
+
+    const power = w.powerEntity ? this.hass.states[w.powerEntity]?.state : null;
+    const energy = w.energyEntity ? this.hass.states[w.energyEntity]?.state : null;
+
+    const filterAge = w.filterEntity ? parseFloat(this.hass.states[w.filterEntity]?.state || 0) : null;
+    const chlorineAge = w.chlorineEntity ? parseFloat(this.hass.states[w.chlorineEntity]?.state || 0) : null;
+
+    return html`
+      <div class="spa-hud-container">
+        <div class="spa-top-bar">
+          <div class="spa-badge-heater ${isHeating ? 'heating' : ''}">
+            <span class="spa-dot"></span>
+            <span>DIAGNOSTIQUE CHAUFFE: ${isHeating ? 'ACTIVE / HEATING' : 'STANDBY'}</span>
+          </div>
+        </div>
+
+        <div class="spa-trident-layout">
+          <!-- GAUCHE: EXTÉRIEUR -->
+          <div class="spa-side-metric left">
+            <div class="spa-huge-val">${extTemp || '--'}°C</div>
+            <div class="spa-metric-lbl">EXTÉRIEUR</div>
+            <div class="spa-sub-badge">${extHum || '--'}% HR</div>
+          </div>
+
+          <!-- CENTRE: MONITOR CIBLE -->
+          <div class="spa-center-dial">
+            <button class="spa-dial-arrow" @click="${() => this._adjustTemperature(w.targetEntity, 0.5)}">▲</button>
+            <div class="spa-circular-monitor">
+              <div class="spa-dial-lbl">WATER TEMP</div>
+              <div class="spa-dial-temp">${waterTemp}°</div>
+              <div class="spa-dial-target">CIBLE ${targetTemp}°C</div>
+            </div>
+            <button class="spa-dial-arrow" @click="${() => this._adjustTemperature(w.targetEntity, -0.5)}">▼</button>
+          </div>
+
+          <!-- DROITE: AIR INTERNE -->
+          <div class="spa-side-metric right">
+            <div class="spa-huge-val">${airTemp || '--'}°C</div>
+            <div class="spa-metric-lbl">AIR ABRI SPA</div>
+            <div class="spa-sub-badge">${airHum || '--'}% HR</div>
+          </div>
+        </div>
+
+        <!-- ENERGY CHIPS -->
+        <div class="spa-energy-row">
+          ${power ? html`<div class="spa-chip">⚡ CHARGE: ${power} W</div>` : html``}
+          ${energy ? html`<div class="spa-chip">📊 INDEX: ${energy} kWh</div>` : html``}
+          ${w.floodBatEntity ? html`<div class="spa-chip">🔋 SENSORS BATTERY: ${this.hass.states[w.floodBatEntity]?.state}%</div>` : html``}
+        </div>
+
+        <!-- MAINTENANCE FILTRES / CHLORE -->
+        <div class="spa-maintenance-grid">
+          ${filterAge !== null ? html`
+            <div class="spa-maint-strip">
+              <div class="spa-strip-header"><span>🗘 USAGE FILTRE</span><span>${filterAge >= (w.filterMax || 3) ? 'REPLACE' : 'OK'}</span></div>
+              <div class="spa-strip-track">
+                <div class="spa-strip-fill ${filterAge >= (w.filterMax || 3) ? 'warning' : ''}" style="width: ${Math.min(100, (filterAge / (w.filterMax || 3)) * 100)}%;"></div>
+              </div>
+              <div class="spa-strip-footer">
+                <span>${filterAge} / ${w.filterMax || 3} Jours</span>
+                ${w.resetFilterEntity ? html`<button class="re-reset-btn" @click="${() => this._handleAction(w.resetFilterEntity)}">RESET</button>` : html``}
+              </div>
+            </div>
+          ` : html``}
+
+          ${chlorineAge !== null ? html`
+            <div class="spa-maint-strip">
+              <div class="spa-strip-header"><span>🧪 CYSTAL CHLORE</span><span>${chlorineAge >= (w.chlorineMax || 13) ? 'RELOAD' : 'OK'}</span></div>
+              <div class="spa-strip-track">
+                <div class="spa-strip-fill ${chlorineAge >= (w.chlorineMax || 13) ? 'warning' : ''}" style="width: ${Math.min(100, (chlorineAge / (w.chlorineMax || 13)) * 100)}%;"></div>
+              </div>
+              <div class="spa-strip-footer">
+                <span>${chlorineAge} / ${w.chlorineMax || 13} Jours</span>
+                ${w.resetChlorineEntity ? html`<button class="re-reset-btn" @click="${() => this._handleAction(w.resetChlorineEntity)}">RESET</button>` : html``}
+              </div>
+            </div>
+          ` : html``}
+        </div>
+      </div>
+    `;
+  }
+
+  // 2. VUE CHIMIE
+  _renderChemView(w) {
+    const renderChemCard = (entity, min, max, name) => {
+      if (!entity || !this.hass.states[entity]) return html``;
+      const state = parseFloat(this.hass.states[entity].state || 0);
+      const isAlert = state < min || state > max;
+      const unit = this.hass.states[entity].attributes.unit_of_measurement || '';
+      return html`
+        <div class="chem-card ${isAlert ? 'alert' : ''}" @click="${() => this._handleAction(entity)}">
+          <div class="chem-header">
+            <span>${name}</span>
+            <span>${isAlert ? '▲ ABNORMAL' : '✓ STABLE'}</span>
+          </div>
+          <div class="chem-value">${state} ${unit}</div>
+          <div class="chem-limits">LIMITES IDÉALES: ${min} - ${max}</div>
+        </div>
+      `;
+    };
+
+    return html`
+      <div class="chem-grid">
+        ${renderChemCard(w.phEntity, w.ph_min || 7, w.ph_max || 7.6, "POTENTIEL HYDROGÈNE (pH)")}
+        ${renderChemCard(w.orpEntity, w.orp_min || 650, w.orp_max || 800, "REDOX / ORP")}
+        ${renderChemCard(w.tdsEntity, w.tds_min || 500, w.tds_max || 2000, "SOLID DISSOLVED (TDS)")}
+        ${renderChemCard(w.saltEntity, w.salt_min || 300, w.salt_max || 500, "SALINITÉ DE L'EAU")}
+      </div>
+    `;
+  }
+
+  // 3. VUE INTERRUPTEURS
+  _renderSwitchesView(w) {
+    const switches = [];
+    for (let i = 1; i <= 10; i++) {
+      if (w[`switch_${i}`]) {
+        switches.push({
+          entity: w[`switch_${i}`],
+          name: w[`name_switch_${i}`] || `Interrupteur ${i}`
+        });
+      }
+    }
+
+    return html`
+      <div class="switches-grid">
+        ${switches.map(sw => {
+          const stateObj = this.hass.states[sw.entity];
+          const isActive = stateObj && (stateObj.state === 'on' || stateObj.state === 'open');
+          let icon = sw.entity.startsWith('light.') ? 'mdi:lightbulb' : 'mdi:power';
+          if (stateObj?.attributes?.icon) icon = stateObj.attributes.icon;
+
+          return html`
+            <div class="sw-card ${isActive ? 'active' : ''}" @click="${() => this._handleAction(sw.entity)}">
+              <div class="sw-info">
+                <span class="sw-name">${sw.name}</span>
+                <span class="sw-entity">${sw.entity.split('.')[1]}</span>
+              </div>
+              <ha-icon class="sw-icon" icon="${icon}"></ha-icon>
+            </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+
+  // 4. VUE CAMÉRA
+  _renderCameraView(w) {
+    const camId = w.cameraEntity;
+    const camState = camId ? this.hass.states[camId] : null;
+    const cameraUrl = camState ? `/api/camera_proxy/${camId}?token=${camState.attributes.access_token}` : null;
+    const targetState = w.scheduleEntity ? this.hass.states[w.scheduleEntity] : null;
+
+    return html`
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        ${cameraUrl ? html`
+          <div class="camera-container" @click="${() => this._handleAction(camId)}">
+            <img class="camera-img" src="${cameraUrl}" alt="Spa Feed" />
+            <div class="camera-scanlines"></div>
+            <div class="camera-hud">
+              <div class="hud-rec">● LIVE STREAMING</div>
+              <div class="hud-timestamp">${this._timeString}</div>
+            </div>
+          </div>
+        ` : html`<div style="color:var(--re-text-gray); font-size:11px;">AUCUN FLUX CAMÉRA DÉTECTÉ</div>`}
+
+        <!-- SÉCURITÉ DE PLANIFICATION / ÉTAT PRÊT -->
+        ${targetState ? html`
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid #222; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 10px; color: var(--re-text-gray);">PROGRAMMATION DE CHAUFFE CYBERNETIQUE</div>
+              <div style="font-size: 16px; font-weight: bold; color: #fff; font-family: monospace; margin-top: 2px;">PRÊT À : ${targetState.state}</div>
+            </div>
+            <ha-icon icon="mdi:clock-check" style="color: var(--re-green); --mdc-icon-size: 24px; filter: drop-shadow(0 0 4px var(--re-green-glow));" @click="${() => this._handleAction(w.scheduleEntity)}"></ha-icon>
+          </div>
+        ` : html``}
+      </div>
+    `;
+  }
+
+  static get styles() {
+    return cardStyles;
+  }
 }
 
-// Enregistrement de l'éditeur visuel de carte
-if (!customElements.get("resident-evil-card-editor")) {
-  customElements.define("resident-evil-card-editor", ResidentEvilCardEditor);
-}
-
-// Déclaration de la carte pour l'interface de sélection Lovelace
-window.customCards = window.customCards || [];
-const isAlreadyDeclared = window.customCards.some(c => c.type === "resident-evil-card");
-if (!isAlreadyDeclared) {
-  window.customCards.push({
-    type: "resident-evil-card",
-    name: "Resident Evil Terminal Card",
-    description: "Un terminal rétro style Umbrella Corporation complet avec ECG et onglets tactiques (Général, Spa, Caméras, Énergie).",
-    preview: true // Permet d'afficher la prévisualisation dans la grille Lovelace
-  });
-}
+customElements.define('resident-evil-card', ResidentEvilSpaCard);
