@@ -168,7 +168,7 @@ class ResidentEvilCard extends LitElement {
             <svg class="ecg-svg" viewBox="0 0 100 30">
               <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,15 L50,15 L53,10 L56,20 L60,15 L100,15"></path>
             </svg>
-            <img src="/local/Umbrella_Corporation_logo.svg.png" class="umbrella-img-logo" />
+            <img src="/local/Umbrella.png" class="umbrella-bg-watermark" />
           </div>
         </div>
 
