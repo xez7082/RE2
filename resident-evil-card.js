@@ -453,6 +453,11 @@ const cardStyles = css`
 class ResidentEvilCard extends LitElement {
   static styles = cardStyles;
 
+  // LIAISON INDISPENSABLE POUR L'ÉDITEUR VISUEL
+  static getConfigElement() {
+    return document.createElement("resident-evil-card-editor");
+  }
+
   static properties = {
     hass: { type: Object },
     config: { type: Object },
@@ -553,9 +558,6 @@ class ResidentEvilCard extends LitElement {
     }
   }
 
-  // ==========================================
-  // RENDU DU WIDGET BIOMÉTRIQUE (SANTÉ CRITIQUE)
-  // ==========================================
   _renderHealthWidget(w, sizeStyle, noBorder) {
     return html`
       <div class="dw-card ${noBorder ? 'no-border' : ''}" style="border-color: var(--re-border-color, #ff0000); ${sizeStyle}; overflow-y: auto; background: #000;">
@@ -607,9 +609,6 @@ class ResidentEvilCard extends LitElement {
     `;
   }
 
-  // ==========================================
-  // RENDU DU WIDGET PHYTOLOGIQUE (PLANTES)
-  // ==========================================
   _renderPlantWidget(w, sizeStyle, noBorder) {
     const battState = this.hass.states[w.battery_sensor];
     const battery = battState ? parseInt(battState.state) : null;
@@ -978,7 +977,6 @@ class ResidentEvilCard extends LitElement {
       <ha-card>
         <div class="crt-overlay"></div>
         
-        <!-- HEADER TERMINAL -->
         <div class="re-header">
           <div class="re-title">☣ UMBRELLA CORP. INTERNET BROWSER</div>
           <div class="ecg-container">
@@ -986,12 +984,10 @@ class ResidentEvilCard extends LitElement {
             <svg class="ecg-svg" viewBox="0 0 100 30">
               <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,15 L50,15 L53,10 L56,20 L60,15 L100,15"></path>
             </svg>
-            <!-- LOGO OFFICIEL UMBRELLA ANIMÉ -->
             <img src="/local/Umbrella_Corporation_logo.svg.png" class="umbrella-img-logo" alt="Umbrella Corp" />
           </div>
         </div>
 
-        <!-- RE-MAIN-MENU (NIVEAU 1 - HORIZONTAL) -->
         <div class="re-main-menu">
           ${this.config.categories.map((c, idx) => html`
             <div class="main-nav-item ${this._activeMenuIdx === idx ? 'active' : ''}"
@@ -1001,10 +997,8 @@ class ResidentEvilCard extends LitElement {
           `)}
         </div>
 
-        <!-- RE-BODY (SIDEBAR + CONTENT) -->
         <div class="re-body">
           
-          <!-- SIDEBAR (NIVEAU 2 - VERTICAL) -->
           ${sidebarItems.length > 0 ? html`
             <div class="re-sidebar">
               ${sidebarItems.map((sub, idx) => html`
@@ -1017,10 +1011,8 @@ class ResidentEvilCard extends LitElement {
             </div>
           ` : ''}
 
-          <!-- CONTENT BOX (NIVEAU 3 - FILTRES + GRILLE / IFRAME) -->
           <div class="re-content-container">
             
-            <!-- BARRE DE FILTRES SUBSUBMENU -->
             ${filters.length > 1 ? html`
               <div class="re-filter-bar">
                 ${filters.map(f => html`
@@ -1032,9 +1024,7 @@ class ResidentEvilCard extends LitElement {
               </div>
             ` : ''}
 
-            <!-- SCROLLABLE SENSORS CONTENT -->
             <div class="re-content-scroll">
-              <!-- FILIGRANE D'ARRIÈRE-PLAN AVEC LE LOGO OFFICIEL UMBRELLA -->
               <img src="/local/Umbrella_Corporation_logo.svg.png" class="umbrella-bg-watermark" alt="" />
 
               <div style="z-index:1; display:contents;">
