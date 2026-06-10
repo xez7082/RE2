@@ -122,6 +122,11 @@ const cardStyles = css`
     z-index: 1;
   }
   .empty-tab { text-align: center; color: #555; padding-top: 40px; font-size: 12px; }
+
+  /* Style spécial caméra */
+  .camera-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; width: 100%; z-index: 2; }
+  .camera-card { border: 1px solid var(--re-border-color); background: #000; overflow: hidden; position: relative; }
+  .camera-title { background: rgba(0,0,0,0.7); color: var(--re-green); padding: 4px 8px; font-size: 10px; position: absolute; top: 0; left: 0; width: 100%; z-index: 3; }
 `;
 
 // ==========================================
@@ -181,7 +186,7 @@ class ResidentEvilCard extends LitElement {
     const submenus = currentCategory ? (currentCategory.submenus || []) : [];
     const currentSubmenu = submenus[this._activeSubmenuIndex] || null;
 
-    // Détermination dynamique et ordonnée des sous-sous-menus (Filtres horizontaux)
+    // Détermination dynamique des filtres horizontaux
     let availableFilters = ['all'];
     if (currentSubmenu && currentSubmenu.sensors) {
       currentSubmenu.sensors.forEach(s => {
@@ -248,9 +253,10 @@ class ResidentEvilCard extends LitElement {
 
               ${(() => {
                 if (!currentSubmenu) {
-                  return html`<div class="empty-tab">SÉLECTIONNEZ UN MODULE COMPLET</div>`;
+                  return html`<div class="empty-tab">SÉLECTIONNEZ UN SOU-MODULE</div>`;
                 }
 
+                // RENDU DE L'IFRAME RE-SÉCURISÉ
                 if (currentSubmenu.mode === 'iframe' || currentSubmenu.iframe_url) {
                   return html`
                     <div class="re-iframe-wrapper">
@@ -259,13 +265,35 @@ class ResidentEvilCard extends LitElement {
                   `;
                 }
 
+                // RENDU SUPORTÉ DES CAMÉRAS ET MODULES DESIGN
+                if (currentSubmenu.mode === 'design' || currentSubmenu.widgets || currentSubmenu.cameras) {
+                  const cams = currentSubmenu.cameras || currentSubmenu.widgets || [];
+                  if (cams.length === 0) return html`<div class="empty-tab">AUCUNE CAMÉRA CONFIGURÉE</div>`;
+                  
+                  return html`
+                    <div class="camera-container">
+                      ${cams.map(c => {
+                        const entity = c.entity || c.camera_entity;
+                        if (!entity) return html``;
+                        return html`
+                          <div class="camera-card" @click="${() => this._handleAction(entity)}">
+                            <div class="camera-title">[LIVE] ${String(c.name || entity).toUpperCase()}</div>
+                            <more-info-camera .hass="${this.hass}" .entityId="${entity}" style="width:100%; height:auto; display:block;"></more-info-camera>
+                          </div>
+                        `;
+                      })}
+                    </div>
+                  `;
+                }
+
+                // APPAREILS FLUX CLASSIQUES (GRID SENSORS)
                 let sensorsToRender = currentSubmenu.sensors || [];
                 if (this._activeFilter !== 'all') {
                   sensorsToRender = sensorsToRender.filter(s => s.subcat === this._activeFilter);
                 }
                 
                 if (sensorsToRender.length === 0) {
-                  return html`<div class="empty-tab">AUCUNE ENTITÉ ASSOCIÉE À CE FILTRE ACTIVE</div>`;
+                  return html`<div class="empty-tab">AUCUNE ENTITÉ ASSOCIÉE</div>`;
                 }
 
                 return html`
@@ -309,7 +337,7 @@ customElements.define('resident-evil-card', ResidentEvilCard);
 
 
 // ==========================================
-// 3. ÉDITEUR VISUEL DYNAMIQUE (AVEC FILTRES)
+// 3. ÉDITEUR VISUEL COMPATIBLE TOUS MODULES
 // ==========================================
 class ResidentEvilCardEditor extends LitElement {
   static get properties() {
@@ -362,6 +390,7 @@ class ResidentEvilCardEditor extends LitElement {
     const submenus = currentCat ? (currentCat.submenus || []) : [];
     const currentSub = submenus[this._selectedSubmenuIdx] || null;
     const sensors = currentSub ? (currentSub.sensors || []) : [];
+    const cameras = currentSub ? (currentSub.cameras || currentSub.widgets || []) : [];
 
     return html`
       <div style="font-family: monospace; background: #0c0c0c; color: #fff; padding: 14px; border: 1px solid #333;">
@@ -394,49 +423,75 @@ class ResidentEvilCardEditor extends LitElement {
                        .value="${currentSub ? currentSub.icon : ''}" placeholder="Icône (mdi:...)"
                        @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.icon`, e.target.value)}" />
               </div>
+              <div style="margin-top: 5px;">
+                <label style="color: #8a8a8a; font-size: 10px;">Mode du sous-menu :</label>
+                <select style="width:100%; background:#111; color:#fff; border:1px solid #333; padding:4px;"
+                        @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.mode`, e.target.value)}">
+                  <option value="grid" ?selected="${currentSub && currentSub.mode !== 'iframe' && currentSubmenu && currentSub.mode !== 'design'}">Grille de Capteurs / Sous-sous-menus</option>
+                  <option value="iframe" ?selected="${currentSub && currentSub.mode === 'iframe'}">Lien Web / iFrame (Météo...)</option>
+                  <option value="design" ?selected="${currentSub && currentSub.mode === 'design'}">Mode Caméras / Vidéoprotection</option>
+                </select>
+              </div>
               <div style="margin-top:5px;">
                 <input type="text" style="width:100%; background:#111; color:#ff9900; border:1px solid #333; padding:5px; font-size:11px;"
-                       .value="${currentSub && currentSub.iframe_url ? currentSub.iframe_url : ''}" placeholder="URL de l'iFrame (Météo, Caméra...)"
+                       .value="${currentSub && currentSub.iframe_url ? currentSub.iframe_url : ''}" placeholder="URL de l'iFrame (Si mode iFrame actif)"
                        @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.iframe_url`, e.target.value)}" />
               </div>
-            ` : html`<div style="font-size:11px; color:#ef4444; margin-top:5px;">Aucun sous-menu trouvé. Créez-en un dans votre code ou ajoutez un capteur.</div>`}
+            ` : html`<div style="font-size:11px; color:#ef4444; margin-top:5px;">Aucun sous-menu trouvé.</div>`}
           </div>
         ` : html``}
 
-        ${currentSub ? html`
+        ${currentSub && (currentSub.mode === 'design' || currentSub.cameras) ? html`
+          <div style="margin-bottom: 10px; border-top: 1px solid #333; padding-top: 10px;">
+            <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. ENREGISTREMENT DES CAMÉRAS DE SÉCURITÉ</label>
+            <div style="max-height: 200px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
+              ${cameras.map((c, idx) => html`
+                <div style="border-bottom: 1px solid #292929; padding-bottom: 6px; margin-bottom: 6px; font-size:11px;">
+                  <input type="text" style="width:100%; background:#1e1e1e; color:#fff; border:1px solid #444; padding:4px;"
+                         .value="${c.entity || c.camera_entity || ''}" placeholder="camera.nom_de_la_camera"
+                         @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.cameras.${idx}.entity`, e.target.value)}" />
+                  <input type="text" style="width:100%; background:#1e1e1e; color:#aaa; border:1px solid #444; padding:4px; margin-top:2px;"
+                         .value="${c.name || ''}" placeholder="Label de la Caméra"
+                         @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.cameras.${idx}.name`, e.target.value)}" />
+                </div>
+              `)}
+            </div>
+            <button style="width:100%; margin-top:8px; background:#1c0202; color:#fff; border:1px solid #8b0000; padding:8px; cursor:pointer;"
+                    @click="${() => {
+                      const newCams = [...cameras, { entity: '', name: '' }];
+                      this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.cameras`, newCams);
+                    }}">
+              + AJOUTER UN FLUX CAMÉRA LIVE
+            </button>
+          </div>
+        ` : html``}
+
+        ${currentSub && currentSub.mode !== 'design' && !currentSub.cameras ? html`
           <div style="margin-bottom: 10px; border-top: 1px solid #333; padding-top: 10px;">
             <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. COMPOSANTS (SENSORS) & SOUS-SOUS-MENUS</label>
-            <div style="max-height: 220px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
+            <div style="max-height: 200px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
               ${sensors.map((s, idx) => html`
                 <div style="border-bottom: 1px solid #292929; padding-bottom: 8px; margin-bottom: 8px; font-size:11px;">
-                  <div style="display:flex; justify-content:space-between; color: #00ff00; font-weight: bold; margin-bottom: 4px;">
-                    <span>SENSORS #${idx + 1}</span>
-                    <span style="color:#ff3333; cursor:pointer;" @click="${() => {
-                      const tmp = [...sensors];
-                      tmp.splice(idx, 1);
-                      this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors`, tmp);
-                    }}">[SUPPRIMER]</span>
-                  </div>
-                  <input type="text" style="width:100%; background:#1e1e1e; color:#fff; border:1px solid #444; padding:4px; margin-bottom:4px; box-sizing:border-box;"
+                  <input type="text" style="width:100%; background:#1e1e1e; color:#fff; border:1px solid #444; padding:4px;"
                          .value="${s.entity || ''}" placeholder="sensor.nom_de_l_entite"
                          @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.entity`, e.target.value)}" />
-                  <div style="display:flex; gap:4px;">
-                    <input type="text" style="flex:1; background:#1e1e1e; color:#aaa; border:1px solid #444; padding:4px; box-sizing:border-box;"
+                  <div style="display:flex; gap:4px; margin-top:2px;">
+                    <input type="text" style="flex:1; background:#1e1e1e; color:#aaa; border:1px solid #444; padding:4px;"
                            .value="${s.name || ''}" placeholder="Label d'affichage"
                            @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.name`, e.target.value)}" />
-                    <input type="text" style="width:110px; background:#1e1e1e; color:#ff3333; font-weight:bold; border:1px solid #444; padding:4px; box-sizing:border-box;"
+                    <input type="text" style="width:110px; background:#1e1e1e; color:#ff3333; font-weight:bold; border:1px solid #444; padding:4px;"
                            .value="${s.subcat || ''}" placeholder="Filtre (ex: Ouvertures)"
                            @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors.${idx}.subcat`, e.target.value)}" />
                   </div>
                 </div>
               `)}
             </div>
-            <button style="width:100%; margin-top:8px; background:#1c0202; color:#fff; border:1px solid #8b0000; padding:8px; cursor:pointer; font-weight:bold;"
+            <button style="width:100%; margin-top:8px; background:#111; color:#fff; border:1px solid #444; padding:8px; cursor:pointer;"
                     @click="${() => {
-                      const newSensors = [...sensors, { entity: '', name: '', subcat: 'Ouvertures', icon: 'mdi:eye' }];
+                      const newSensors = [...sensors, { entity: '', name: '', subcat: 'Général', icon: 'mdi:eye' }];
                       this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors`, newSensors);
                     }}">
-              + AJOUTER UN CAPTEUR & FILTRE HORIZONTAL
+              + AJOUTER UN CAPTEUR / FILTRE HORIZONTAL
             </button>
           </div>
         ` : html``}
