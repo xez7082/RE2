@@ -82,13 +82,13 @@ const cardStyles = css`
   .filter-item:hover { color: #fff; border-color: #555; }
   .filter-item.active { background: #1f1402; color: #ff9900; border-color: #ff9900; text-shadow: 0 0 4px rgba(255,153,0,0.4); }
 
-  .re-content-scroll { flex: 1; padding: 20px; overflow-y: auto; background: #030303; border-left: 1px solid #1c1c1c; display: flex; flex-direction: column; box-sizing: border-box; }
+  .re-content-scroll { flex: 1; padding: 20px; overflow-y: auto; background: #030303; border-left: 1px solid #1c1c1c; display: flex; flex-direction: column; box-sizing: border-box; position: relative; }
   .re-content-scroll::-webkit-scrollbar { width: 6px; }
   .re-content-scroll::-webkit-scrollbar-thumb { background: var(--re-red); }
 
-  .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; width: 100%; }
+  .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; width: 100%; z-index: 1; }
   
-  .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; display: flex; margin: 0; padding: 0; overflow: hidden; min-height: 0; }
+  .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; display: flex; margin: 0; padding: 0; overflow: hidden; min-height: 0; z-index: 1; }
   .re-iframe { width: 100%; height: 100%; border: none; background: transparent; display: block; min-height: 0; }
 
   .sensor-card { 
@@ -328,14 +328,35 @@ const cardStyles = css`
   .text-red { color: var(--re-red-bright) !important; text-shadow: 0 0 4px var(--re-red-glow) !important; }
   .error { border-color: var(--re-red-bright); color: var(--re-red-bright); }
   .empty-tab { grid-column: 1 / -1; text-align: center; color: #555; font-size: 12px; margin-top: 50px; }
-  .umbrella-spin { animation: umbrella-rotate 8s linear infinite; transform-origin: center;
-    filter: drop-shadow(0 0 6px rgba(139,0,0,0.8)); }
-  .umbrella-spin:hover { animation-duration: 2s; filter: drop-shadow(0 0 12px rgba(255,0,0,0.9)); }
+  
+  /* LOGO UMBRELLA CORPORATION */
+  .umbrella-img-logo { 
+    width: 24px; 
+    height: 24px; 
+    animation: umbrella-rotate 8s linear infinite; 
+    transform-origin: center;
+    filter: drop-shadow(0 0 4px rgba(255,0,0,0.6));
+  }
+  .umbrella-img-logo:hover { 
+    animation-duration: 2s; 
+    filter: drop-shadow(0 0 10px rgba(255,0,0,0.9)); 
+  }
   @keyframes umbrella-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .umbrella-pulse { animation: umbrella-pulse-anim 3s ease-in-out infinite; }
+  
+  .umbrella-bg-watermark { 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    width: 320px; 
+    height: 320px; 
+    transform: translate(-50%, -50%); 
+    pointer-events: none; 
+    z-index: 0; 
+    animation: umbrella-pulse-anim 4s ease-in-out infinite;
+  }
   @keyframes umbrella-pulse-anim {
-    0%,100% { opacity: 0.04; transform: scale(1); }
-    50%      { opacity: 0.08; transform: scale(1.02); }
+    0%, 100% { opacity: 0.03; transform: translate(-50%, -50%) scale(1); }
+    50%      { opacity: 0.06; transform: translate(-50%, -50%) scale(1.05); }
   }
 
   /* ==========================================
@@ -348,6 +369,7 @@ const cardStyles = css`
     width: 100%;
     align-items: flex-start;
     box-sizing: border-box;
+    z-index: 1;
   }
 
   .dw-card {
@@ -956,6 +978,7 @@ class ResidentEvilCard extends LitElement {
       <ha-card>
         <div class="crt-overlay"></div>
         
+        <!-- HEADER TERMINAL -->
         <div class="re-header">
           <div class="re-title">☣ UMBRELLA CORP. INTERNET BROWSER</div>
           <div class="ecg-container">
@@ -963,17 +986,12 @@ class ResidentEvilCard extends LitElement {
             <svg class="ecg-svg" viewBox="0 0 100 30">
               <path class="ecg-line" d="M0,15 L30,15 L35,5 L40,25 L45,15 L50,15 L53,10 L56,20 L60,15 L100,15"></path>
             </svg>
-            <svg class="umbrella-spin" width="22" height="22" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="46" fill="none" stroke="#8b0000" stroke-width="4"/>
-              <path d="M50,50 L20,20 A42,42 0 0,1 80,20 Z" fill="#ff0000"/>
-              <path d="M50,50 L80,20 A42,42 0 0,1 80,80 Z" fill="#ffffff"/>
-              <path d="M50,50 L80,80 A42,42 0 0,1 20,80 Z" fill="#ff0000"/>
-              <path d="M50,50 L20,80 A42,42 0 0,1 20,20 Z" fill="#ffffff"/>
-              <circle cx="50" cy="50" r="8" fill="#050505"/>
-            </svg>
+            <!-- LOGO OFFICIEL UMBRELLA ANIMÉ -->
+            <img src="/local/Umbrella_Corporation_logo.svg.png" class="umbrella-img-logo" alt="Umbrella Corp" />
           </div>
         </div>
 
+        <!-- RE-MAIN-MENU (NIVEAU 1 - HORIZONTAL) -->
         <div class="re-main-menu">
           ${this.config.categories.map((c, idx) => html`
             <div class="main-nav-item ${this._activeMenuIdx === idx ? 'active' : ''}"
@@ -983,8 +1001,10 @@ class ResidentEvilCard extends LitElement {
           `)}
         </div>
 
+        <!-- RE-BODY (SIDEBAR + CONTENT) -->
         <div class="re-body">
           
+          <!-- SIDEBAR (NIVEAU 2 - VERTICAL) -->
           ${sidebarItems.length > 0 ? html`
             <div class="re-sidebar">
               ${sidebarItems.map((sub, idx) => html`
@@ -997,8 +1017,10 @@ class ResidentEvilCard extends LitElement {
             </div>
           ` : ''}
 
+          <!-- CONTENT BOX (NIVEAU 3 - FILTRES + GRILLE / IFRAME) -->
           <div class="re-content-container">
             
+            <!-- BARRE DE FILTRES SUBSUBMENU -->
             ${filters.length > 1 ? html`
               <div class="re-filter-bar">
                 ${filters.map(f => html`
@@ -1010,15 +1032,10 @@ class ResidentEvilCard extends LitElement {
               </div>
             ` : ''}
 
+            <!-- SCROLLABLE SENSORS CONTENT -->
             <div class="re-content-scroll">
-              <div style="position:absolute; top:45%; left:30%; width:300px; height:300px; opacity:0.04; pointer-events:none; z-index:0;" class="umbrella-pulse">
-                <svg width="100%" height="100%" viewBox="0 0 100 100">
-                  <path d="M50,50 L20,20 A42,42 0 0,1 80,20 Z" fill="#ffffff"/>
-                  <path d="M50,50 L80,20 A42,42 0 0,1 80,80 Z" fill="#ffffff"/>
-                  <path d="M50,50 L80,80 A42,42 0 0,1 20,80 Z" fill="#ffffff"/>
-                  <path d="M50,50 L20,80 A42,42 0 0,1 20,20 Z" fill="#ffffff"/>
-                </svg>
-              </div>
+              <!-- FILIGRANE D'ARRIÈRE-PLAN AVEC LE LOGO OFFICIEL UMBRELLA -->
+              <img src="/local/Umbrella_Corporation_logo.svg.png" class="umbrella-bg-watermark" alt="" />
 
               <div style="z-index:1; display:contents;">
                 ${currentSubmenu && currentSubmenu.mode === 'iframe' ? html`
