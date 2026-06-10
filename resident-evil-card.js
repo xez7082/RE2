@@ -123,10 +123,9 @@ const cardStyles = css`
   }
   .empty-tab { text-align: center; color: #555; padding-top: 40px; font-size: 12px; }
 
-  /* Style spécial caméra */
-  .camera-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; width: 100%; z-index: 2; }
+  .camera-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; width: 100%; z-index: 2; }
   .camera-card { border: 1px solid var(--re-border-color); background: #000; overflow: hidden; position: relative; }
-  .camera-title { background: rgba(0,0,0,0.7); color: var(--re-green); padding: 4px 8px; font-size: 10px; position: absolute; top: 0; left: 0; width: 100%; z-index: 3; }
+  .camera-title { background: rgba(0,0,0,0.8); color: var(--re-green); padding: 6px; font-size: 10px; position: absolute; top: 0; left: 0; width: 100%; z-index: 3; border-bottom: 1px solid #222; }
 `;
 
 // ==========================================
@@ -186,7 +185,7 @@ class ResidentEvilCard extends LitElement {
     const submenus = currentCategory ? (currentCategory.submenus || []) : [];
     const currentSubmenu = submenus[this._activeSubmenuIndex] || null;
 
-    // Détermination dynamique des filtres horizontaux
+    // Détermination dynamique des filtres horizontaux (sous-sous-menus)
     let availableFilters = ['all'];
     if (currentSubmenu && currentSubmenu.sensors) {
       currentSubmenu.sensors.forEach(s => {
@@ -253,10 +252,10 @@ class ResidentEvilCard extends LitElement {
 
               ${(() => {
                 if (!currentSubmenu) {
-                  return html`<div class="empty-tab">SÉLECTIONNEZ UN SOU-MODULE</div>`;
+                  return html`<div class="empty-tab">SÉLECTIONNEZ UN SOUS-MODULE</div>`;
                 }
 
-                // RENDU DE L'IFRAME RE-SÉCURISÉ
+                // MODE IFRAME
                 if (currentSubmenu.mode === 'iframe' || currentSubmenu.iframe_url) {
                   return html`
                     <div class="re-iframe-wrapper">
@@ -265,10 +264,10 @@ class ResidentEvilCard extends LitElement {
                   `;
                 }
 
-                // RENDU SUPORTÉ DES CAMÉRAS ET MODULES DESIGN
-                if (currentSubmenu.mode === 'design' || currentSubmenu.widgets || currentSubmenu.cameras) {
-                  const cams = currentSubmenu.cameras || currentSubmenu.widgets || [];
-                  if (cams.length === 0) return html`<div class="empty-tab">AUCUNE CAMÉRA CONFIGURÉE</div>`;
+                // MODE DESIGN / CAMÉRAS
+                if (currentSubmenu.mode === 'design' || currentSubmenu.cameras) {
+                  const cams = currentSubmenu.cameras || [];
+                  if (cams.length === 0) return html`<div class="empty-tab">AUCUNE CAMÉRA DE SÉCURITÉ ENREGISTRÉE</div>`;
                   
                   return html`
                     <div class="camera-container">
@@ -277,8 +276,8 @@ class ResidentEvilCard extends LitElement {
                         if (!entity) return html``;
                         return html`
                           <div class="camera-card" @click="${() => this._handleAction(entity)}">
-                            <div class="camera-title">[LIVE] ${String(c.name || entity).toUpperCase()}</div>
-                            <more-info-camera .hass="${this.hass}" .entityId="${entity}" style="width:100%; height:auto; display:block;"></more-info-camera>
+                            <div class="camera-title">[CAM.LIVE] ${(c.name || entity).toUpperCase()}</div>
+                            <more-info-camera .hass="${this.hass}" .entityId="${entity}" style="width:100%; display:block;"></more-info-camera>
                           </div>
                         `;
                       })}
@@ -286,14 +285,14 @@ class ResidentEvilCard extends LitElement {
                   `;
                 }
 
-                // APPAREILS FLUX CLASSIQUES (GRID SENSORS)
+                // MODE CLASSIQUE (GRILLE CAPTEURS)
                 let sensorsToRender = currentSubmenu.sensors || [];
                 if (this._activeFilter !== 'all') {
                   sensorsToRender = sensorsToRender.filter(s => s.subcat === this._activeFilter);
                 }
                 
                 if (sensorsToRender.length === 0) {
-                  return html`<div class="empty-tab">AUCUNE ENTITÉ ASSOCIÉE</div>`;
+                  return html`<div class="empty-tab">AUCUN COMPOSANT APPARTENANT À CE FILTRE</div>`;
                 }
 
                 return html`
@@ -337,7 +336,7 @@ customElements.define('resident-evil-card', ResidentEvilCard);
 
 
 // ==========================================
-// 3. ÉDITEUR VISUEL COMPATIBLE TOUS MODULES
+// 3. ÉDITEUR VISUEL SÉCURISÉ (RE-CORRIGÉ)
 // ==========================================
 class ResidentEvilCardEditor extends LitElement {
   static get properties() {
@@ -390,7 +389,9 @@ class ResidentEvilCardEditor extends LitElement {
     const submenus = currentCat ? (currentCat.submenus || []) : [];
     const currentSub = submenus[this._selectedSubmenuIdx] || null;
     const sensors = currentSub ? (currentSub.sensors || []) : [];
-    const cameras = currentSub ? (currentSub.cameras || currentSub.widgets || []) : [];
+    const cameras = currentSub ? (currentSub.cameras || []) : [];
+
+    const currentMode = currentSub ? (currentSub.mode || 'grid') : 'grid';
 
     return html`
       <div style="font-family: monospace; background: #0c0c0c; color: #fff; padding: 14px; border: 1px solid #333;">
@@ -427,9 +428,9 @@ class ResidentEvilCardEditor extends LitElement {
                 <label style="color: #8a8a8a; font-size: 10px;">Mode du sous-menu :</label>
                 <select style="width:100%; background:#111; color:#fff; border:1px solid #333; padding:4px;"
                         @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.mode`, e.target.value)}">
-                  <option value="grid" ?selected="${currentSub && currentSub.mode !== 'iframe' && currentSubmenu && currentSub.mode !== 'design'}">Grille de Capteurs / Sous-sous-menus</option>
-                  <option value="iframe" ?selected="${currentSub && currentSub.mode === 'iframe'}">Lien Web / iFrame (Météo...)</option>
-                  <option value="design" ?selected="${currentSub && currentSub.mode === 'design'}">Mode Caméras / Vidéoprotection</option>
+                  <option value="grid" ?selected="${currentMode === 'grid'}">Grille de Capteurs / Sous-sous-menus</option>
+                  <option value="iframe" ?selected="${currentMode === 'iframe'}">Lien Web / iFrame (Météo...)</option>
+                  <option value="design" ?selected="${currentMode === 'design'}">Mode Caméras / Vidéoprotection</option>
                 </select>
               </div>
               <div style="margin-top:5px;">
@@ -441,14 +442,15 @@ class ResidentEvilCardEditor extends LitElement {
           </div>
         ` : html``}
 
-        ${currentSub && (currentSub.mode === 'design' || currentSub.cameras) ? html`
+        <!-- AFFICHAGE DES FORMULAIRES DE COMPOSANTS SELON LE MODE COCHÉ -->
+        ${currentSub && currentMode === 'design' ? html`
           <div style="margin-bottom: 10px; border-top: 1px solid #333; padding-top: 10px;">
             <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. ENREGISTREMENT DES CAMÉRAS DE SÉCURITÉ</label>
             <div style="max-height: 200px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
               ${cameras.map((c, idx) => html`
                 <div style="border-bottom: 1px solid #292929; padding-bottom: 6px; margin-bottom: 6px; font-size:11px;">
                   <input type="text" style="width:100%; background:#1e1e1e; color:#fff; border:1px solid #444; padding:4px;"
-                         .value="${c.entity || c.camera_entity || ''}" placeholder="camera.nom_de_la_camera"
+                         .value="${c.entity || ''}" placeholder="camera.nom_de_la_camera"
                          @change="${e => this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.cameras.${idx}.entity`, e.target.value)}" />
                   <input type="text" style="width:100%; background:#1e1e1e; color:#aaa; border:1px solid #444; padding:4px; margin-top:2px;"
                          .value="${c.name || ''}" placeholder="Label de la Caméra"
@@ -466,7 +468,7 @@ class ResidentEvilCardEditor extends LitElement {
           </div>
         ` : html``}
 
-        ${currentSub && currentSub.mode !== 'design' && !currentSub.cameras ? html`
+        ${currentSub && currentMode === 'grid' ? html`
           <div style="margin-bottom: 10px; border-top: 1px solid #333; padding-top: 10px;">
             <label style="color: #8a8a8a; font-size: 11px; display: block; margin-bottom: 6px;">3. COMPOSANTS (SENSORS) & SOUS-SOUS-MENUS</label>
             <div style="max-height: 200px; overflow-y: auto; background: #111; padding: 6px; border: 1px solid #222;">
@@ -488,7 +490,7 @@ class ResidentEvilCardEditor extends LitElement {
             </div>
             <button style="width:100%; margin-top:8px; background:#111; color:#fff; border:1px solid #444; padding:8px; cursor:pointer;"
                     @click="${() => {
-                      const newSensors = [...sensors, { entity: '', name: '', subcat: 'Général', icon: 'mdi:eye' }];
+                      const newSensors = [...sensors, { entity: '', name: '', subcat: 'Ouvertures', icon: 'mdi:eye' }];
                       this._editValue(`categories.${this._selectedCategoryIdx}.submenus.${this._selectedSubmenuIdx}.sensors`, newSensors);
                     }}">
               + AJOUTER UN CAPTEUR / FILTRE HORIZONTAL
