@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v95 (version RICHE : widgets)
+   RESIDENT EVIL CARD v97 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1930,8 +1930,250 @@ class ResidentEvilCard extends LitElement {
   }
 
   _renderApplianceWidget(w, sizeStyle, noBorder=false) {
-    // (conservé tel quel — non utilisé par la config actuelle)
-    return html`<div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}"></div>`;
+    const categories = w.categories || [];
+    const tabKey     = '_appTab_' + (w.widget_id || 'def');
+    const activeTab  = this[tabKey] || 0;
+    const setTab     = (i) => { this[tabKey] = i; this.requestUpdate(); };
+
+    const getSt  = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
+    const fmt    = (v) => { const n = parseFloat(v); return isNaN(n) ? (v||'--') : n.toFixed(1); };
+    const toggle = (eid) => { if(!eid||!this.hass) return; const d=eid.split('.')[0]; this.hass.callService(d,'toggle',{entity_id:eid}); };
+
+    if (w.view != null) {
+      const viewIdx = parseInt(w.view);
+      if (!isNaN(viewIdx)) this[tabKey] = viewIdx;
+    }
+    const cat   = categories[w.view != null ? (parseInt(w.view)||0) : activeTab] || categories[0] || {};
+    const items = cat.items || [];
+
+    const renderTool = (item) => {
+      const st   = this.hass?.states[item.entity];
+      const isOn = st?.state === 'on';
+      const col  = isOn ? '#06b6d4' : '#475569';
+      return html`
+        <div style="flex:1 1 320px;min-width:300px;background:${isOn?'rgba(6,182,212,.08)':'rgba(255,255,255,.03)'};border:1px solid ${isOn?'rgba(6,182,212,.3)':'#1e2d3d'};border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;cursor:pointer;"
+             @click="${(e)=>{e.stopPropagation();toggle(item.entity);}}">
+          <div style="display:flex;align-items:center;gap:12px;">
+            ${item.img?html`<div style="width:64px;height:64px;flex-shrink:0;background:#111;border-radius:10px;overflow:hidden;border:1px solid #1e2d3d;"><img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:4px;${isOn?'':'filter:grayscale(.7) opacity(.6);'}"/></div>`:html``}
+            <div style="flex:1;">
+              <div style="font-size:16px;font-weight:700;color:#f1f5f9;">${item.name}</div>
+              <div style="font-size:14px;font-weight:800;color:${col};margin-top:2px;">${isOn?'EN MARCHE':'ARRÊTÉ'}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${(item.sensors||[]).map(eid => {
+              const sv  = getSt(eid);
+              const sst = this.hass?.states[eid];
+              const un  = sst?.attributes?.unit_of_measurement || '';
+              const icons = {'V':'mdi:sine-wave','A':'mdi:current-ac','W':'mdi:lightning-bolt','kWh':'mdi:lightning-bolt-outline','%':'mdi:percent'};
+              return html`<div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.05);border:1px solid #1e2d3d;border-radius:20px;padding:4px 11px;font-size:13px;color:#cbd5e1;">
+                <ha-icon icon="${icons[un]||'mdi:eye'}" style="--mdc-icon-size:13px;color:#f59e0b;"></ha-icon>${fmt(sv)} ${un}</div>`;
+            })}
+          </div>
+        </div>`;
+    };
+
+    const renderAppliance = (item) => {
+      const st    = this.hass?.states[item.entity];
+      const isOn  = st?.state === 'on';
+      const col   = isOn ? '#f59e0b' : '#475569';
+      const cycSt = item.cycle ? this.hass?.states[item.cycle] : null;
+      const cyc   = cycSt && !['unavailable','unknown'].includes(cycSt.state) ? cycSt.state : null;
+      return html`
+        <div style="flex:1 1 320px;min-width:300px;background:${isOn?'rgba(245,158,11,.08)':'rgba(255,255,255,.03)'};border:1px solid ${isOn?'rgba(245,158,11,.3)':'#1e2d3d'};border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;cursor:pointer;"
+             @click="${(e)=>{e.stopPropagation();toggle(item.entity);}}">
+          <div style="display:flex;align-items:center;gap:12px;">
+            ${item.img?html`<div style="width:64px;height:64px;flex-shrink:0;background:#111;border-radius:10px;overflow:hidden;border:1px solid #1e2d3d;"><img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:4px;${isOn?'':'filter:grayscale(.7) opacity(.6);'}"/></div>`:html``}
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:16px;font-weight:700;color:#f1f5f9;">${item.name}</div>
+              <div style="font-size:14px;font-weight:800;color:${col};margin-top:2px;">${isOn?'EN MARCHE':'ARRÊTÉ'}</div>
+              ${cyc?html`<div style="font-size:13px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">⟳ ${cyc}</div>`:html``}
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${(item.sensors||[]).map(eid => {
+              const sst = this.hass?.states[eid];
+              if (!sst) return html``;
+              const un  = sst.attributes.unit_of_measurement || '';
+              const lbl = (sst.attributes.friendly_name||eid.split('.').pop()).split(' ').slice(-2).join(' ');
+              return html`<div style="display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,.05);border:1px solid #1e2d3d;border-radius:9px;padding:5px 11px;min-width:0;">
+                <span style="font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${lbl}</span>
+                <span style="font-size:14px;font-weight:700;color:#e2e8f0;">${fmt(sst.state)} ${un}</span>
+              </div>`;
+            })}
+          </div>
+        </div>`;
+    };
+
+    const renderVacuum = (item) => {
+      const p       = (item.entity||'').replace('vacuum.','');
+      const st      = this.hass?.states[item.entity];
+      const state   = st?.state || '--';
+      const attr    = st?.attributes || {};
+      const batSt   = this.hass?.states['sensor.'+p+'_battery_level'];
+      const roomSt  = this.hass?.states['sensor.'+p+'_current_room'];
+      const stateSt = this.hass?.states['sensor.'+p+'_state'];
+      const bat     = batSt ? parseFloat(batSt.state) : (attr.battery_level||null);
+      const curRoom = roomSt  && roomSt.state  !== 'unavailable' ? roomSt.state  : null;
+      const stateExt= stateSt && stateSt.state !== 'unavailable' ? stateSt.state : null;
+      const sc1Eid  = 'button.'+p+'_shortcut_1';
+      const sc2Eid  = 'button.'+p+'_shortcut_2';
+      const sc1St   = this.hass?.states[sc1Eid];
+      const sc2St   = this.hass?.states[sc2Eid];
+      const sc1Name = sc1St?.attributes?.friendly_name || 'Raccourci 1';
+      const sc2Name = sc2St?.attributes?.friendly_name || 'Raccourci 2';
+      const batCol  = bat >= 70 ? '#22c55e' : bat >= 30 ? '#f59e0b' : '#ef4444';
+      const isOn    = !['docked','idle','paused','error'].includes(state);
+      const stLbl   = {docked:'EN VEILLE',cleaning:'NETTOYAGE',paused:'EN PAUSE',returning:'RETOUR BASE',idle:'INACTIF',error:'ERREUR'}[state]||state.toUpperCase();
+      const stCol   = isOn ? '#818cf8' : state==='docked' ? '#22c55e' : '#475569';
+      const camUrl  = item.map_camera && this.hass?.states[item.map_camera]?.attributes?.entity_picture;
+      const callVac = (svc,data={}) => this.hass.callService('vacuum',svc,{entity_id:item.entity,...data});
+      const callBtn = (eid) => this.hass.callService('button','press',{entity_id:eid});
+      const trOpt   = (s) => ({'Charging':'En charge','Idle':'Inactif','Sleeping':'En veille','Sweeping':'Aspiration','Mopping':'Lavage','Returning':'Retour base','Docked':'En veille','Paused':'En pause','Error':'Erreur','Turbo':'Turbo','Quiet':'Silencieux','Balanced':'Équilibré','Standard':'Standard','Low':'Faible','Medium':'Moyen','High':'Élevé'}[s]||s);
+      const fw      = attr.firmware_version || null;
+      const area    = attr.cleaned_area || null;
+      const dur     = attr.cleaning_duration || null;
+      const fanSpeed= attr.fan_speed || null;
+      const rooms   = attr.room_list || attr.rooms || [];
+      const cons    = [{l:'BROSSE PRINC.',v:attr.main_brush_left},{l:'BROSSE LAT.',v:attr.side_brush_left},{l:'FILTRE',v:attr.filter_left},{l:'SERPILLIÈRE',v:attr.mop_left},{l:'DÉTERGENT',v:attr.detergent_left},{l:'CAPTEURS',v:attr.sensor_dirty_left}].filter(c=>c.v!=null).map(c=>({...c,v:Math.round(c.v)}));
+      const cBar=(label,v)=>{const col=v<=20?'#ef4444':v<=50?'#f59e0b':'#00ff88';return html`<div style="display:grid;grid-template-columns:100px 1fr 38px;align-items:center;gap:6px;"><span style="font-size:12px;color:#94a3b8;font-family:'Courier New',monospace;">${label}</span><div style="height:5px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:${v}%;background:${col};box-shadow:0 0 4px ${col}66;"></div></div><span style="font-size:13px;font-weight:700;color:${col};text-align:right;">${v}%</span></div>`;};
+      return html`
+        <div style="flex:1;min-width:0;border:1px solid rgba(129,140,248,.2);border-radius:12px;background:rgba(5,10,20,.85);overflow:hidden;display:flex;flex-direction:column;font-family:'Courier New',monospace;">
+          <div style="height:2px;background:linear-gradient(90deg,#818cf8,#22c55e,transparent);"></div>
+          <div style="padding:10px 12px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(129,140,248,.1);">
+            ${item.img?html`<div style="width:48px;height:48px;flex-shrink:0;background:rgba(0,0,0,.4);border:1px solid rgba(129,140,248,.2);border-radius:8px;overflow:hidden;"><img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:3px;"/></div>`:html``}
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;color:#e2e8f0;">${item.name}</div>${item.subtitle?html`<div style="font-size:13px;color:#64748b;">${item.subtitle}</div>`:html``}${fw?html`<div style="font-size:12px;color:#475569;">// ${fw}</div>`:html``}</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+              ${bat!=null?html`<span style="font-size:14px;font-weight:700;color:${batCol};">⚡ ${bat}%</span>`:html``}
+              <span style="font-size:13px;font-weight:700;padding:2px 8px;border:1px solid ${stCol}44;color:${stCol};">${stLbl}</span>
+              ${stateExt?html`<span style="font-size:12px;color:#64748b;">${trOpt(stateExt)}</span>`:html``}
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;display:flex;gap:0;">
+            <div class="no-scrollbar" style="flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid rgba(129,140,248,.08);overflow-y:auto;">
+              ${(curRoom||area||dur||fanSpeed)?html`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                ${curRoom?html`<div style="background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.15);border-radius:4px;padding:3px 8px;"><span style="font-size:12px;color:#64748b;">PIÈCE </span><span style="font-size:14px;color:#818cf8;font-weight:700;">${curRoom}</span></div>`:html``}
+                ${area?html`<div><span style="font-size:17px;font-weight:800;color:#818cf8;">${area}</span><span style="font-size:12px;color:#64748b;"> m²</span></div>`:html``}
+                ${dur?html`<div><span style="font-size:17px;font-weight:800;color:#818cf8;">${dur}</span><span style="font-size:12px;color:#64748b;"> min</span></div>`:html``}
+                ${fanSpeed?html`<span style="font-size:12px;padding:2px 7px;border:1px solid #06b6d422;color:#06b6d4;">⚙ ${trOpt(fanSpeed)}</span>`:html``}
+              </div>`:html``}
+              ${cons.length>0?html`<div><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:4px;">// CONSOMMABLES</div><div style="display:flex;flex-direction:column;gap:5px;">${cons.map(c=>cBar(c.l,c.v))}</div></div>`:html``}
+              ${(sc1St||sc2St)?html`<div><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:4px;">// RACCOURCIS</div><div style="display:flex;gap:5px;flex-wrap:wrap;">
+                ${sc1St?html`<button style="flex:1;padding:6px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.25);color:#818cf8;" @click="${(e)=>{e.stopPropagation();callBtn(sc1Eid);}}">⊞ ${sc1Name}</button>`:html``}
+                ${sc2St?html`<button style="flex:1;padding:6px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.25);color:#818cf8;" @click="${(e)=>{e.stopPropagation();callBtn(sc2Eid);}}">⊞ ${sc2Name}</button>`:html``}
+              </div></div>`:html``}
+              ${rooms.length>0?html`<div><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:4px;">// ZONES</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${rooms.map(r=>html`<button style="padding:4px 9px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#06b6d4;" @click="${(e)=>{e.stopPropagation();callVac('send_command',{command:'segment_clean',params:{segments:[r.id||r]}});}}">⊙ ${r.name||r}</button>`)}</div></div>`:html``}
+            </div>
+            ${camUrl?html`<div style="width:200px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);overflow:hidden;"><img src="${camUrl}" style="max-width:200px;max-height:230px;object-fit:contain;filter:brightness(.85) contrast(1.1);"/></div>`:html``}
+          </div>
+          <div style="padding:7px 10px;border-top:1px solid rgba(129,140,248,.1);display:flex;flex-wrap:wrap;gap:5px;">
+            ${[{l:'▶ DÉMARRER',fn:()=>callVac('start'),col:'#22c55e'},{l:'⏸ PAUSE',fn:()=>callVac('pause'),col:'#818cf8'},{l:'⌂ BASE',fn:()=>callVac('return_to_base'),col:'#06b6d4'},{l:'⊙ LOCALISER',fn:()=>callVac('locate'),col:'#f59e0b'},{l:'▣ VIDER BAC',fn:()=>callVac('send_command',{command:'start_wash'}),col:'#64748b'}].map(b=>html`<button style="flex:1;min-width:60px;padding:6px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
+          </div>
+        </div>`;
+    };
+
+    const renderMower = (item) => {
+      const p       = item.mower_prefix || 'eve';
+      const st      = this.hass?.states['lawn_mower.'+p];
+      const state   = st?.state || '--';
+      const attr    = st?.attributes || {};
+      const batSt   = this.hass?.states['sensor.'+p+'_batterie'];
+      const bat     = batSt ? parseFloat(batSt.state) : (attr.battery_level||null);
+      const batCol  = bat >= 70 ? '#22c55e' : bat >= 30 ? '#f59e0b' : '#ef4444';
+      const isOn    = ['mowing'].includes(state);
+      const stLbl   = {docked:'CHARGE COMPLÈTE',mowing:'TONTE EN COURS',paused:'EN PAUSE',returning:'RETOUR BASE',error:'ERREUR',edgedocking:'RETOUR',docking:'RETOUR'}[state]||state.toUpperCase();
+      const stCol   = isOn ? '#22c55e' : state==='docked' ? '#06b6d4' : '#475569';
+      const camUrl  = item.map_camera && this.hass?.states[item.map_camera]?.attributes?.entity_picture;
+      const progSt  = this.hass?.states['sensor.'+p+'_progression_de_la_tonte'];
+      const progRaw = progSt ? progSt.state : null;
+      const progNum = progRaw && progRaw!=='unavailable' && progRaw!=='unknown' ? parseFloat(progRaw) : null;
+      const callMow = (svc,data={}) => this.hass.callService('lawn_mower',svc,{entity_id:'lawn_mower.'+p,...data});
+      const callSel = (eid,opt) => this.hass.callService('select','select_option',{entity_id:eid,option:opt});
+      const callBtn = (eid) => this.hass.callService('button','press',{entity_id:eid});
+      const lameSt  = this.hass?.states['sensor.'+p+'_etat_des_lames'];
+      const maintSt = this.hass?.states['sensor.'+p+'_etat_de_maintenance'];
+      const brushSt = this.hass?.states['sensor.'+p+'_etat_de_la_brosse'];
+      const lames   = lameSt  && lameSt.state  !== 'unavailable' ? parseFloat(lameSt.state).toFixed(1)  : null;
+      const maint   = maintSt && maintSt.state !== 'unavailable' ? parseFloat(maintSt.state).toFixed(1) : null;
+      const brosse  = brushSt && brushSt.state !== 'unavailable' ? parseFloat(brushSt.state).toFixed(1) : null;
+      const btnLames  = 'button.'+p+'_reinitialiser_le_compteur_des_lames';
+      const btnMaint  = 'button.'+p+'_reinitialiser_le_compteur_de_maintenance';
+      const btnBrosse = 'button.'+p+'_reinitialiser_le_compteur_de_brosse';
+      const mapEid  = 'select.'+p+'_map';
+      const zoneEid = 'select.'+p+'_zone';
+      const actEid  = 'select.'+p+'_mowing_action';
+      const mapSt   = this.hass?.states[mapEid];
+      const zoneSt  = this.hass?.states[zoneEid];
+      const actSt   = this.hass?.states[actEid];
+      const mapOpts = mapSt  ? (mapSt.attributes.options  || []) : [];
+      const zoneOpts= zoneSt ? (zoneSt.attributes.options || []) : [];
+      const actOpts = actSt  ? (actSt.attributes.options  || []) : [];
+      const mapCur  = mapSt  ? mapSt.state  : null;
+      const zoneCur = zoneSt ? zoneSt.state : null;
+      const actCur  = actSt  ? actSt.state  : null;
+      const trOpt   = (s) => ({'All area':'Toute la surface','all_area':'Toute la surface','Select zone':'Tonte par zones','select_zone':'Tonte par zones','Edge':'Bordure','edge':'Bordure','Spot':'Zone ponctuelle'}[s]||s);
+      const cBar=(label,v,col2)=>{const n=parseFloat(v);const col=n<=20?'#ef4444':n<=50?'#f59e0b':(col2||'#22c55e');return html`<div style="display:grid;grid-template-columns:90px 1fr 44px;align-items:center;gap:6px;"><span style="font-size:12px;color:#94a3b8;font-family:'Courier New',monospace;">${label}</span><div style="height:5px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:${Math.min(n,100)}%;background:${col};box-shadow:0 0 4px ${col}66;"></div></div><span style="font-size:13px;font-weight:700;color:${col};text-align:right;">${v}%</span></div>`;};
+      const consRow=(label,val,col,btnEid)=>val==null?html``:html`<div style="margin-bottom:7px;">${cBar(label,val,col)}<button style="width:100%;margin-top:3px;padding:5px 8px;border-radius:3px;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;background:${col}10;border:1px solid ${col}33;color:${col};" @click="${(e)=>{e.stopPropagation();callBtn(btnEid);}}">↺ RÉINITIALISER</button></div>`;
+      const selStyle=`width:100%;padding:6px 26px 6px 9px;background:rgba(0,0,0,.6);color:#e2e8f0;border:1px solid rgba(34,197,94,.3);border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;`;
+      const selRow=(label,eid,opts,cur)=>opts.length===0?html``:html`<div><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:3px;">${label}</div><div style="position:relative;"><select style="${selStyle}" .value="${cur||''}" @change="${(e)=>{e.stopPropagation();callSel(eid,e.target.value);}}">${opts.map(o=>html`<option value="${o}" .selected="${o===cur}">${trOpt(o)}</option>`)}</select><span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);color:#22c55e;font-size:12px;pointer-events:none;">▼</span></div><div style="font-size:12px;color:#22c55e;margin-top:2px;padding-left:2px;">▸ ${trOpt(cur)||'—'}</div></div>`;
+      return html`
+        <div style="flex:1;min-width:0;border:1px solid rgba(34,197,94,.2);border-radius:12px;background:rgba(5,10,20,.85);overflow:hidden;display:flex;flex-direction:column;font-family:'Courier New',monospace;">
+          <div style="height:2px;background:linear-gradient(90deg,#22c55e,#06b6d4,transparent);"></div>
+          <div style="padding:10px 12px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(34,197,94,.1);">
+            ${item.img?html`<div style="width:48px;height:48px;flex-shrink:0;background:rgba(0,0,0,.4);border:1px solid rgba(34,197,94,.2);border-radius:8px;overflow:hidden;"><img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:3px;"/></div>`:html``}
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;color:#e2e8f0;">${item.name}</div>${item.subtitle?html`<div style="font-size:13px;color:#64748b;">${item.subtitle}</div>`:html``}</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+              ${bat!=null?html`<span style="font-size:14px;font-weight:700;color:${batCol};">⚡ ${bat}%</span>`:html``}
+              <span style="font-size:13px;font-weight:700;padding:2px 8px;border:1px solid ${stCol}44;color:${stCol};">${stLbl}</span>
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;display:flex;gap:0;">
+            <div class="no-scrollbar" style="flex:0 0 245px;padding:8px 12px;display:flex;flex-direction:column;gap:4px;border-right:1px solid rgba(34,197,94,.08);overflow-y:auto;">
+              <div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:2px;">// CONSOMMABLES</div>
+              ${consRow('LAMES',lames,'#22c55e',btnLames)}
+              ${consRow('MAINT.',maint,'#06b6d4',btnMaint)}
+              ${consRow('BROSSE',brosse,'#818cf8',btnBrosse)}
+              <div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin:4px 0 2px;">// MISSION</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                ${selRow('CARTE',mapEid,mapOpts,mapCur)}
+                ${selRow('ZONE',zoneEid,zoneOpts,zoneCur)}
+                ${selRow('ACTION',actEid,actOpts,actCur)}
+              </div>
+              ${progNum!=null&&!isNaN(progNum)?html`<div style="margin-top:6px;"><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:4px;">// PROGRESSION</div><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:3px;"><span style="color:#94a3b8;">Tonte</span><span style="font-weight:800;color:#22c55e;">${progNum.toFixed(0)}%</span></div><div style="height:5px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:${progNum.toFixed(0)}%;background:linear-gradient(90deg,#22c55e,#86efac);box-shadow:0 0 6px #22c55e88;"></div></div></div>`:html``}
+            </div>
+            ${camUrl?html`<div style="flex:1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.2);overflow:hidden;position:relative;"><img src="${camUrl+'&_t='+(Math.floor(Date.now()/5000)*5000)}" style="max-width:100%;max-height:240px;object-fit:contain;"/>${isOn?html`<div style="position:absolute;top:6px;right:6px;font-size:12px;color:#22c55e;font-family:'Courier New',monospace;background:rgba(0,0,0,.6);padding:2px 5px;border:1px solid #22c55e44;">● LIVE</div>`:html``}</div>`:html``}
+          </div>
+          <div style="padding:7px 10px;border-top:1px solid rgba(34,197,94,.1);display:flex;flex-wrap:wrap;gap:5px;">
+            ${[{l:'▶ TONDRE',fn:()=>callMow('start_mowing'),col:'#22c55e',flex:2},{l:'⏸ PAUSE',fn:()=>callMow('pause'),col:'#818cf8',flex:1},{l:'⌂ BASE',fn:()=>callMow('dock'),col:'#06b6d4',flex:1},{l:'⌂ BASE DOUX',fn:()=>callBtn('button.'+p+'_revenir_a_la_base_sans_arreter_la_tache'),col:'#475569',flex:1}].map(b=>html`<button style="flex:${b.flex};min-width:60px;padding:7px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
+          </div>
+        </div>`;
+    };
+
+    const renderItem = (item) => {
+      if (item.type === 'robot_vacuum') return renderVacuum(item);
+      if (item.type === 'robot_mower')  return renderMower(item);
+      if (item.type === 'tool')         return renderTool(item);
+      const domain = (item.entity||'').split('.')[0];
+      if (domain === 'vacuum')     return renderVacuum(item);
+      if (domain === 'lawn_mower') return renderMower(item);
+      return renderAppliance(item);
+    };
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} background:#0d1321;border-color:#06b6d422;overflow:hidden;position:relative;font-family:'Roboto','Segoe UI',sans-serif;display:flex;flex-direction:column;">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#06b6d4,#818cf8,#22c55e);z-index:5;"></div>
+        <div style="flex-shrink:0;padding:12px 14px 0;display:flex;gap:8px;flex-wrap:wrap;${w.view!=null?'display:none;':''}">
+          ${categories.map((c,i) => html`
+            <button style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:.2s;border:1px solid;background:${activeTab===i?'#06b6d4':'rgba(255,255,255,.05)'};border-color:${activeTab===i?'#06b6d4':'#1e2d3d'};color:${activeTab===i?'#0d1321':'#94a3b8'};"
+              @click="${(e)=>{e.stopPropagation();setTab(i);}}">
+              <ha-icon icon="${c.icon||'mdi:apps'}" style="--mdc-icon-size:15px;color:${activeTab===i?'#0d1321':'#64748b'};"></ha-icon>
+              ${c.label||'Tab '+(i+1)}
+            </button>`)}
+        </div>
+        <div class="no-scrollbar" style="flex:1;min-height:0;padding:12px 14px 14px;display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;overflow-y:auto;align-content:start;">
+          ${items.map(item => renderItem(item))}
+        </div>
+      </div>`;
   }
 
   _renderSolarWidget(w, sizeStyle, noBorder=false) {
