@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v92 (version RICHE : widgets)
+   RESIDENT EVIL CARD v93 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -264,7 +264,7 @@ class ResidentEvilCard extends LitElement {
     super();
     this._activeMainMenu = 0;
     this._activeSubMenu = 0;
-    this._activeFilter = "all";
+    this._activeFilter = null;
     this._timeString = "";
     this._timeUpdater = null;
     this._sparkHistory = {};
@@ -546,14 +546,16 @@ class ResidentEvilCard extends LitElement {
     };
   }
 
-  _renderDesignWidget(w) {
+  _renderDesignWidget(w, fillSingle = false) {
     const type     = w.type    || 'badge';
     const color    = w.color   || '#00ff00';
     const glow     = color + '66';
     const noBorder = w.noBorder === true;
     const widthPct = Math.min(100, Math.max(5, parseInt(w.widthPct) || 30));
     const heightPx = parseInt(w.heightPx) || 0;
-    const sizeStyle = `width: calc(${widthPct}% - 10px); ${heightPx ? 'height:' + heightPx + 'px;' : ''}`;
+    const sizeStyle = fillSingle
+      ? `width: 100%; height: 100%;`
+      : `width: calc(${widthPct}% - 10px); ${heightPx ? 'height:' + heightPx + 'px;' : ''}`;
 
     switch (type) {
       case 'shape':    return this._renderShape(w, color, glow, sizeStyle, noBorder);
@@ -2015,7 +2017,18 @@ class ResidentEvilCard extends LitElement {
     const activeCategory = categories[this._activeMainMenu] || { name: '', submenus: [] };
     const activeSubMenu  = activeCategory.submenus && activeCategory.submenus[this._activeSubMenu]
                            ? activeCategory.submenus[this._activeSubMenu] : { name: '', sensors: [] };
-    const subsubmenus    = activeSubMenu.subsubmenus || [];
+    let subsubmenus      = activeSubMenu.subsubmenus || [];
+    // Ordre d'affichage : TEMPÉRATURES en premier, TOUT en dernier
+    if (subsubmenus.length) {
+      const temps = subsubmenus.filter(s => s.id === 'climates');
+      const alls  = subsubmenus.filter(s => s.id === 'all');
+      const rest  = subsubmenus.filter(s => s.id !== 'all' && s.id !== 'climates');
+      subsubmenus = [...temps, ...rest, ...alls];
+    }
+    // Filtre actif par défaut = premier filtre de la liste (les températures)
+    const effectiveFilter = this._activeFilter != null
+      ? this._activeFilter
+      : (subsubmenus[0]?.id || 'all');
     const sensorsRaw     = activeSubMenu.iframe ? (activeSubMenu.sensors || []) : (activeSubMenu.sensors || []).map(s => s.entity || s).filter(Boolean);
     const hasIframe      = activeSubMenu.iframe;
     const isSpaMode      = activeSubMenu.mode === 'spa';
@@ -2056,7 +2069,7 @@ class ResidentEvilCard extends LitElement {
             const emoji = catIcons[cat.name] || '▸';
             return html`
               <div class="main-nav-item ${this._activeMainMenu === index ? 'active' : ''}"
-                   @click="${() => { this._activeMainMenu = index; this._activeSubMenu = 0; this._activeFilter = 'all'; this.requestUpdate(); }}">
+                   @click="${() => { this._activeMainMenu = index; this._activeSubMenu = 0; this._activeFilter = null; this.requestUpdate(); }}">
                 <span style="margin-right:4px;font-size:12px;">${emoji}</span>${cat.name}
               </div>`;
           })}
@@ -2066,7 +2079,7 @@ class ResidentEvilCard extends LitElement {
           <div class="re-sidebar">
             ${activeCategory.submenus ? activeCategory.submenus.map((sub, index) => html`
               <button class="submenu-btn ${this._activeSubMenu === index ? 'active' : ''}"
-                      @click="${() => { this._activeSubMenu = index; this._activeFilter = 'all'; this.requestUpdate(); }}">
+                      @click="${() => { this._activeSubMenu = index; this._activeFilter = null; this.requestUpdate(); }}">
                 <ha-icon icon="${sub.icon || 'mdi:chevron-right'}"></ha-icon>
                 <span>${sub.name}</span>
               </button>
@@ -2076,7 +2089,7 @@ class ResidentEvilCard extends LitElement {
             ${!hasIframe && !isSpaMode && !isDesignMode && sensorsRaw.length > 0 && subsubmenus.length > 0 ? html`
               <div class="re-filter-bar">
                 ${subsubmenus.map(subsub => html`
-                  <button class="filter-item ${this._activeFilter === subsub.id ? 'active' : ''}"
+                  <button class="filter-item ${effectiveFilter === subsub.id ? 'active' : ''}"
                           @click="${() => { this._activeFilter = subsub.id; this.requestUpdate(); }}">
                     ${subsub.name}
                   </button>`)}
@@ -2085,14 +2098,14 @@ class ResidentEvilCard extends LitElement {
               ${hasIframe
                 ? sensorsRaw.map(id => this.renderEntity(id))
                 : isDesignMode
-                  ? html`<div class="design-grid">${(activeSubMenu.widgets || []).map(w => this._renderDesignWidget(w))}</div>`
+                  ? html`<div class="design-grid" style="height:100%;">${(activeSubMenu.widgets || []).map(w => this._renderDesignWidget(w, (activeSubMenu.widgets || []).length === 1))}</div>`
                   : html`
                       <div class="re-sensor-grid">
-                        ${(this._activeFilter === 'all' || !this._activeFilter
+                        ${(effectiveFilter === 'all'
                           ? sensorsRaw
                           : sensorsRaw.filter(id => {
                               const s = (activeSubMenu.sensors || []).find(s => (s.entity||s) === id);
-                              return s && s.type === this._activeFilter;
+                              return s && s.type === effectiveFilter;
                             })
                         ).map(id => this.renderEntity(id))}
                       </div>`}
