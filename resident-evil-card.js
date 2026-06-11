@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v88 (version RICHE : widgets)
+   RESIDENT EVIL CARD v89 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1897,7 +1897,7 @@ class ResidentEvilCard extends LitElement {
     const statusColor    = statusOk ? '#22c55e' : '#ef4444';
 
     return html`
-      <div class="re-container">
+      <div class="re-container" style="height:${parseInt(this.config.card_height) || 550}px;">
         <div class="re-header">
           <div class="re-logo">
             <div class="re-umbrella">
