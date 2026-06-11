@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v86 (version RICHE : widgets)
+   RESIDENT EVIL CARD v87 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1661,6 +1661,55 @@ class ResidentEvilCard extends LitElement {
       </div>`;
   }
 
+  // Dessine un avatar sur la carte pour les personnes SANS coordonnées GPS
+  // (ex: présence détectée par le routeur WiFi → person sans latitude/longitude).
+  // Position de repli : la zone correspondant à l'état (zone.home si "home").
+  _syncFallbackMarkers(cardEl, persons) {
+    const haMap = cardEl.shadowRoot && cardEl.shadowRoot.querySelector('ha-map');
+    const L   = haMap && haMap.Leaflet;
+    const map = haMap && haMap.leafletMap;
+    if (!L || !map) return;
+    if (!this._fbMarkers) this._fbMarkers = {};
+
+    let fbIndex = 0;
+    persons.forEach(p => {
+      if (!p.person) return;
+      const st = this.hass?.states[p.person];
+      const key = p.person;
+      const hasCoords = st && st.attributes.latitude != null && st.attributes.longitude != null;
+
+      // La personne a des coords → la carte HA gère son marqueur, on retire le fallback
+      if (!st || hasCoords) {
+        if (this._fbMarkers[key]) { try { map.removeLayer(this._fbMarkers[key]); } catch(_e) {} delete this._fbMarkers[key]; }
+        return;
+      }
+
+      // Coords de repli : zone correspondant à l'état, sinon zone.home
+      const zone = this.hass.states['zone.' + st.state] || this.hass.states['zone.home'];
+      const lat = zone?.attributes?.latitude;
+      const lon = zone?.attributes?.longitude;
+      if (lat == null || lon == null) return;
+
+      // Léger décalage si plusieurs fallbacks au même endroit
+      const offset = fbIndex * 0.0006;
+      fbIndex++;
+
+      const pic = st.attributes.entity_picture;
+      const initial = (p.name || st.attributes.friendly_name || '?')[0].toUpperCase();
+      const iconHtml = pic
+        ? `<div style="width:40px;height:40px;border-radius:50%;border:2px solid #22c55e;overflow:hidden;background:#000;box-shadow:0 2px 8px rgba(0,0,0,.6);"><img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/></div>`
+        : `<div style="width:40px;height:40px;border-radius:50%;border:2px solid #22c55e;background:#1e2d3d;color:#22c55e;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.6);">${initial}</div>`;
+      const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [40, 40], iconAnchor: [20, 20] });
+
+      if (this._fbMarkers[key]) {
+        this._fbMarkers[key].setLatLng([lat + offset, lon + offset]);
+        this._fbMarkers[key].setIcon(icon);
+      } else {
+        this._fbMarkers[key] = L.marker([lat + offset, lon + offset], { icon, zIndexOffset: 1000 }).addTo(map);
+      }
+    });
+  }
+
   _renderMapWidget(w, sizeStyle, noBorder=false) {
     // Carte Lovelace "map" via card helpers + auto_fit (recadre sur les marqueurs)
     // + bandeau d'infos par personne sous la carte.
@@ -1697,6 +1746,7 @@ class ResidentEvilCard extends LitElement {
           [800, 2000].forEach(t => setTimeout(() => {
             const m = el.shadowRoot && el.shadowRoot.querySelector('ha-map');
             if (m && typeof m.fitMap === 'function') { try { m.fitMap(); } catch(_e) {} }
+            this._syncFallbackMarkers(el, persons);
           }, t));
         } catch (e) {
           this._mapCards[key] = 'error';
@@ -1706,7 +1756,10 @@ class ResidentEvilCard extends LitElement {
     }
 
     const card = this._mapCards[key];
-    if (card && card !== 'loading' && card !== 'error') card.hass = this.hass;
+    if (card && card !== 'loading' && card !== 'error') {
+      card.hass = this.hass;
+      this._syncFallbackMarkers(card, persons);
+    }
 
     // ── Bandeau d'infos par personne ─────────────────────────────
     const getSt = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
