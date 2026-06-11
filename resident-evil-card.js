@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v91 (version RICHE : widgets)
+   RESIDENT EVIL CARD v92 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1518,18 +1518,18 @@ class ResidentEvilCard extends LitElement {
     // ── Tuile statistique (icône colorée + libellé + grosse valeur + unité à droite) ──
     const statTile = (iconBg, iconCol, icon, label, value, un, sub) => html`
       <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;
-                  padding:16px 18px;display:flex;align-items:center;gap:14px;min-width:0;position:relative;">
-        <div style="width:52px;height:52px;border-radius:14px;background:${iconBg};display:flex;align-items:center;
+                  padding:12px 16px;display:flex;align-items:center;gap:12px;min-width:0;position:relative;">
+        <div style="width:46px;height:46px;border-radius:13px;background:${iconBg};display:flex;align-items:center;
                     justify-content:center;flex-shrink:0;box-shadow:0 0 14px ${iconBg};">
-          <ha-icon icon="${icon}" style="--mdc-icon-size:28px;color:${iconCol};"></ha-icon>
+          <ha-icon icon="${icon}" style="--mdc-icon-size:25px;color:${iconCol};"></ha-icon>
         </div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;color:#94a3b8;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
-          <div style="font-size:30px;font-weight:800;color:#f1f5f9;line-height:1.15;">${value}</div>
+          <div style="font-size:14px;color:#94a3b8;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
+          <div style="font-size:26px;font-weight:800;color:#f1f5f9;line-height:1.15;">${value}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
           ${sub ? html`<span style="font-size:14px;color:#94a3b8;">${sub}</span>` : html``}
-          ${un  ? html`<span style="font-size:15px;color:#64748b;font-weight:600;">${un}</span>` : html``}
+          ${un  ? html`<span style="font-size:14px;color:#64748b;font-weight:600;">${un}</span>` : html``}
         </div>
       </div>`;
 
@@ -1538,7 +1538,7 @@ class ResidentEvilCard extends LitElement {
       const v = num(eid);
       return html`
         <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;
-                    padding:12px 16px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:0;">
+                    padding:10px 14px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0;">
           <div style="font-size:14px;color:#94a3b8;font-weight:600;">${label}</div>
           <div style="font-size:22px;font-weight:800;color:${col};">${v!=null?v.toFixed(1):'--'}°C</div>
         </div>`;
@@ -1591,7 +1591,7 @@ class ResidentEvilCard extends LitElement {
            style="${sizeStyle} background:#0a0c14;border-color:${alert?'#ef444455':'rgba(255,255,255,.06)'};overflow:hidden;
                   position:relative;display:flex;flex-direction:column;font-family:'Roboto','Segoe UI',sans-serif;border-radius:18px;">
 
-        <div style="flex:1;min-height:0;display:flex;gap:24px;padding:24px 26px 12px;">
+        <div style="flex:1;min-height:0;display:flex;gap:20px;padding:18px 22px 10px;">
 
           <!-- ════ GAUCHE : ÉCHELLE + CUVE EN VERRE ════ -->
           <div style="flex:0 0 44%;display:flex;gap:14px;min-width:0;">
@@ -1642,7 +1642,7 @@ class ResidentEvilCard extends LitElement {
           </div>
 
           <!-- ════ DROITE : INFOS ════ -->
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;overflow-y:auto;">
+          <div class="no-scrollbar" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:11px;overflow-y:auto;">
 
             <!-- En-tête -->
             <div style="flex-shrink:0;display:flex;align-items:center;gap:14px;">
@@ -1695,7 +1695,7 @@ class ResidentEvilCard extends LitElement {
 
         <!-- ════ PIED : PROFONDEUR + CAPTEUR ════ -->
         <div style="flex-shrink:0;display:flex;justify-content:space-between;align-items:center;
-                    padding:14px 26px;border-top:1px solid rgba(255,255,255,.07);">
+                    padding:10px 22px;border-top:1px solid rgba(255,255,255,.07);">
           <div style="display:flex;align-items:center;gap:10px;font-size:16px;color:#94a3b8;">
             <ha-icon icon="mdi:ruler" style="--mdc-icon-size:20px;color:#64748b;"></ha-icon>
             Profondeur: <span style="font-weight:800;color:#f1f5f9;">${fmtNum(num(w.depth_entity))} ${unit(w.depth_entity)||'cm'}</span>
@@ -2134,8 +2134,10 @@ class ResidentEvilCard extends LitElement {
       .filter-item:hover { color: #94a3b8; }
       .filter-item.active { color: #06b6d4; border-color: rgba(6,182,212,.4); background: rgba(6,182,212,.08); }
       .re-content-scroll { flex: 1; overflow-y: auto; padding: 12px; }
-      .re-content-scroll::-webkit-scrollbar { width: 6px; }
-      .re-content-scroll::-webkit-scrollbar-thumb { background: var(--re-red); }
+      .re-content-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+      .re-content-scroll::-webkit-scrollbar { display: none; }
+      .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
       .re-sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
       .design-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; width: 100%; }
       .dw-card { background: #0a0a0a; cursor: pointer; position: relative; transition: border-color 0.2s, box-shadow 0.2s; overflow: hidden; box-sizing: border-box; flex-shrink: 0; min-height: 60px; border: 1px solid #1e1e1e; }
