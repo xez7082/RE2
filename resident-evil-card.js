@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v94 (version RICHE : widgets)
+   RESIDENT EVIL CARD v95 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1646,25 +1646,6 @@ class ResidentEvilCard extends LitElement {
 
           <!-- ════ DROITE : INFOS ════ -->
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;overflow:hidden;">
-
-            <!-- En-tête -->
-            <div style="flex-shrink:0;display:flex;align-items:center;gap:14px;">
-              <div style="width:48px;height:48px;border-radius:14px;background:rgba(94,200,255,.12);display:flex;
-                          align-items:center;justify-content:center;flex-shrink:0;">
-                <ha-icon icon="mdi:water" style="--mdc-icon-size:28px;color:${waterCol};"></ha-icon>
-              </div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:22px;font-weight:800;color:#f1f5f9;">${w.tank_title||'Cuve'}</div>
-                <div style="font-size:14px;color:#94a3b8;">${w.subtitle||''}</div>
-              </div>
-              ${w.camera_entity ? html`
-                <button style="display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.15);border-radius:12px;
-                               background:rgba(255,255,255,.06);color:#e2e8f0;font-family:inherit;font-size:15px;font-weight:700;
-                               padding:9px 16px;cursor:pointer;"
-                  @click="${(e)=>{e.stopPropagation();this._handleAction(w.camera_entity);}}">
-                  <ha-icon icon="mdi:cctv" style="--mdc-icon-size:18px;"></ha-icon>Caméras
-                </button>` : html``}
-            </div>
 
             <!-- Tuiles 2×2 (élastiques : remplissent l'espace restant) -->
             <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:10px;">
