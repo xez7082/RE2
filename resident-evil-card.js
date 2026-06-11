@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v84 (version RICHE : widgets)
+   RESIDENT EVIL CARD v85 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1662,18 +1662,54 @@ class ResidentEvilCard extends LitElement {
   }
 
   _renderMapWidget(w, sizeStyle, noBorder=false) {
+    // Crée une vraie carte Lovelace "map" via les card helpers HA.
+    // <ha-map> en direct ne fonctionne pas : l'élément n'est jamais chargé
+    // par HA hors de la carte map officielle.
     const persons = w.persons || [];
     const entities = persons.map(p => p.person).filter(Boolean);
+    if (entities.length === 0) {
+      return html`
+        <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} padding:0;">
+          <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">AUCUNE PERSONNE</div>
+        </div>`;
+    }
+
+    if (!this._mapCards) this._mapCards = {};
+    const key = entities.join('|') + '#' + (w.zoom || 12);
+
+    if (!this._mapCards[key]) {
+      this._mapCards[key] = 'loading';
+      (async () => {
+        try {
+          const helpers = await window.loadCardHelpers();
+          const el = helpers.createCardElement({
+            type: 'map',
+            entities: entities,
+            default_zoom: Number(w.zoom || 12),
+            theme_mode: 'dark',
+            hours_to_show: Number(w.hours_to_show || 0),
+          });
+          el.hass = this.hass;
+          el.style.cssText = 'display:block;width:100%;height:100%;';
+          this._mapCards[key] = el;
+          this.requestUpdate();
+        } catch (e) {
+          this._mapCards[key] = 'error';
+          this.requestUpdate();
+        }
+      })();
+    }
+
+    const card = this._mapCards[key];
+    if (card && card !== 'loading' && card !== 'error') card.hass = this.hass;
+
     return html`
       <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} padding:0;overflow:hidden;position:relative;">
-        ${entities.length > 0 ? html`
-          <ha-map
-            .hass="${this.hass}"
-            .entities="${entities}"
-            .zoom="${w.zoom || 12}"
-            style="width:100%;height:100%;display:block;border-radius:inherit;">
-          </ha-map>
-        ` : html`<div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">AUCUNE PERSONNE</div>`}
+        ${card === 'loading' ? html`
+          <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">CHARGEMENT DE LA CARTE…</div>
+        ` : card === 'error' ? html`
+          <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;color:#ef4444;">ERREUR CHARGEMENT CARTE</div>
+        ` : card}
       </div>`;
   }
 
