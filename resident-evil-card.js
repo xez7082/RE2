@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v97 (version RICHE : widgets)
+   RESIDENT EVIL CARD v98 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -83,9 +83,9 @@ const cardStyles = css`
   @keyframes batt-flash { 0% { opacity: 0.2; } 100% { opacity: 1; } }
 
   .sensor-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; width: 100%; }
-  .sensor-name { font-size: 12px; color: var(--re-text-gray); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .sensor-name { font-size: var(--ec-fs-name, 12px); color: var(--re-text-gray); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
   .sensor-icon { --mdc-icon-size: 20px; color: var(--re-text-gray); transition: all 0.25s ease; }
-  .sensor-value { font-size: 18px; color: #cccccc; font-weight: bold; margin-top: 8px; }
+  .sensor-value { font-size: var(--ec-fs-value, 18px); color: #cccccc; font-weight: bold; margin-top: 8px; }
   .sensor-value .unit { font-size: 12px; color: #888; font-weight: normal; }
 
   .sensor-card.type-server {
@@ -2264,7 +2264,24 @@ class ResidentEvilCard extends LitElement {
     const statusColor    = statusOk ? '#22c55e' : '#ef4444';
 
     return html`
-      <div class="re-container" style="height:${parseInt(this.config.card_height) || 550}px;">
+      <div class="re-container" style="height:${parseInt(this.config.card_height) || 550}px;${(() => {
+        const t = this.config.theme || {};
+        return [
+          t.accent      ? '--ec-accent:'+t.accent+';' : '',
+          t.active      ? '--ec-active:'+t.active+';' : '',
+          t.bg          ? '--ec-bg:'+t.bg+';' : '',
+          t.side_bg     ? '--ec-side-bg:'+t.side_bg+';' : '',
+          t.text        ? '--ec-text:'+t.text+';' : '',
+          t.text_dim    ? '--ec-text-dim:'+t.text_dim+';' : '',
+          t.fs_title    ? '--ec-fs-title:'+parseInt(t.fs_title)+'px;' : '',
+          t.fs_nav      ? '--ec-fs-nav:'+parseInt(t.fs_nav)+'px;' : '',
+          t.fs_side     ? '--ec-fs-side:'+parseInt(t.fs_side)+'px;' : '',
+          t.fs_filter   ? '--ec-fs-filter:'+parseInt(t.fs_filter)+'px;' : '',
+          t.fs_name     ? '--ec-fs-name:'+parseInt(t.fs_name)+'px;' : '',
+          t.fs_value    ? '--ec-fs-value:'+parseInt(t.fs_value)+'px;' : '',
+          t.sidebar_width ? '--ec-sidebar-w:'+parseInt(t.sidebar_width)+'px;' : '',
+        ].join('');
+      })()}">
         <div class="re-header">
           <div class="re-logo">
             <div class="re-umbrella">
@@ -2344,30 +2361,30 @@ class ResidentEvilCard extends LitElement {
     return [cardStyles, css`
       :host { display: block; font-family: 'Courier New', Courier, monospace; background: transparent; }
       * { box-sizing: border-box; }
-      .re-container { display: flex; flex-direction: column; height: 550px; background: #080d14; border: 1px solid #1a2744; border-radius: 12px; overflow: hidden; }
+      .re-container { display: flex; flex-direction: column; height: 550px; background: var(--ec-bg, #080d14); border: 1px solid #1a2744; border-radius: 12px; overflow: hidden; }
       .re-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: linear-gradient(135deg,#0d1b2e,#111827); border-bottom: 1px solid #1a2744; flex-shrink: 0; }
       .re-logo { display: flex; align-items: center; gap: 12px; }
       .re-umbrella { width: 44px; height: 44px; flex-shrink: 0; }
       .re-umbrella-icon { width: 100%; height: 100%; object-fit: contain; }
       .re-title-block { display: flex; flex-direction: column; }
-      .re-title { font-size: 18px; font-weight: 800; color: #e2e8f0; letter-spacing: 2px; line-height: 1.2; }
+      .re-title { font-size: var(--ec-fs-title, 18px); font-weight: 800; color: var(--ec-text, #e2e8f0); letter-spacing: 2px; line-height: 1.2; }
       .re-subtitle { font-size: 12px; color: #475569; letter-spacing: 3px; }
       .re-status { display: flex; align-items: center; gap: 8px; }
       .re-status-text { font-size: 13px; font-weight: 700; letter-spacing: 1px; }
       .re-ecg { width: 80px; height: 24px; flex-shrink: 0; }
       .re-nav { display: flex; gap: 0; border-bottom: 1px solid #1a2744; background: #060b12; flex-shrink: 0; overflow-x: auto; }
-      .main-nav-item { padding: 10px 14px; font-size: 12px; font-weight: 700; color: #475569; cursor: pointer; letter-spacing: 1px; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .2s; }
+      .main-nav-item { padding: 10px 14px; font-size: var(--ec-fs-nav, 12px); font-weight: 700; color: var(--ec-text-dim, #475569); cursor: pointer; letter-spacing: 1px; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .2s; }
       .main-nav-item:hover { color: #94a3b8; background: rgba(255,255,255,.03); }
-      .main-nav-item.active { color: #ef4444; border-bottom-color: #ef4444; background: rgba(239,68,68,.05); }
+      .main-nav-item.active { color: var(--ec-accent, #ef4444); border-bottom-color: var(--ec-accent, #ef4444); background: rgba(239,68,68,.05); }
       .re-body { display: flex; flex: 1; min-height: 0; }
-      .re-sidebar { width: 200px; flex-shrink: 0; background: #060b12; border-right: 1px solid #1a2744; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow-y: auto; }
-      .submenu-btn { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #475569; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; letter-spacing: .5px; text-align: left; width: 100%; transition: all .15s; }
+      .re-sidebar { width: var(--ec-sidebar-w, 200px); flex-shrink: 0; background: var(--ec-side-bg, #060b12); border-right: 1px solid #1a2744; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow-y: auto; }
+      .submenu-btn { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--ec-text-dim, #475569); font-family: inherit; font-size: var(--ec-fs-side, 12px); font-weight: 600; cursor: pointer; letter-spacing: .5px; text-align: left; width: 100%; transition: all .15s; }
       .submenu-btn:hover { color: #94a3b8; background: rgba(255,255,255,.04); }
-      .submenu-btn.active { color: #22c55e; background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.25); }
+      .submenu-btn.active { color: var(--ec-active, #22c55e); background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.25); }
       .submenu-btn ha-icon { --mdc-icon-size: 16px; flex-shrink: 0; }
       .re-content-container { flex: 1; min-width: 0; display: flex; flex-direction: column; }
       .re-filter-bar { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid #1a2744; flex-shrink: 0; flex-wrap: wrap; }
-      .filter-item { padding: 4px 12px; border-radius: 20px; border: 1px solid #1e2d3d; background: transparent; color: #475569; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; letter-spacing: .5px; transition: all .15s; }
+      .filter-item { padding: 4px 12px; border-radius: 20px; border: 1px solid #1e2d3d; background: transparent; color: var(--ec-text-dim, #475569); font-family: inherit; font-size: var(--ec-fs-filter, 12px); font-weight: 600; cursor: pointer; letter-spacing: .5px; transition: all .15s; }
       .filter-item:hover { color: #94a3b8; }
       .filter-item.active { color: #06b6d4; border-color: rgba(6,182,212,.4); background: rgba(6,182,212,.08); }
       .re-content-scroll { flex: 1; overflow-y: auto; padding: 12px; }
@@ -2392,226 +2409,256 @@ class ResidentEvilCard extends LitElement {
 // ==========================================
 class ResidentEvilCardEditor extends LitElement {
   static get properties() {
-    return { hass: {}, _config: {}, _activeTab: { type: Number } };
+    return { hass: {}, _config: {}, _tab: { type: Number }, _ci: { type: Number }, _si: { type: Number } };
   }
 
-  constructor() {
-    super();
-    this._activeTab = 0;
-  }
-
+  constructor() { super(); this._tab = 0; this._ci = 0; this._si = 0; }
   setConfig(config) { this._config = JSON.parse(JSON.stringify(config)); }
+  _fire() { this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true })); }
+  _mutate(fn) { const c = JSON.parse(JSON.stringify(this._config)); fn(c); this._config = c; this._fire(); this.requestUpdate(); }
 
-  _fire(config) {
-    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config }, bubbles: true, composed: true }));
+  // ─── petits helpers UI ───
+  _lbl(t) { return html`<div style="font-size:13px;color:#7dd3fc;font-weight:700;letter-spacing:.5px;margin:2px 0 4px;">${t}</div>`; }
+  _txt(val, cb, ph='', list='') {
+    return html`<input type="text" list="${list}" placeholder="${ph}" .value="${val ?? ''}"
+      style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;
+             padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;"
+      @change="${(e)=>cb(e.target.value)}" />`;
   }
-
-  _set(path, value) {
-    const cfg = JSON.parse(JSON.stringify(this._config));
-    const parts = path.split('.');
-    let obj = cfg;
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (obj[parts[i]] === undefined) obj[parts[i]] = {};
-      obj = obj[parts[i]];
-    }
-    obj[parts[parts.length - 1]] = value;
-    this._config = cfg;
-    this._fire(cfg);
-    this.requestUpdate();
+  _num(val, cb, min=8, max=60) {
+    return html`<input type="number" min="${min}" max="${max}" .value="${val ?? ''}"
+      style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;
+             padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;"
+      @change="${(e)=>cb(e.target.value === '' ? undefined : parseInt(e.target.value))}" />`;
   }
-
-  _getPath(path, def) {
-    const parts = path.split('.');
-    let v = this._config;
-    for (const p of parts) {
-      if (v == null) return def !== undefined ? def : '';
-      v = v[p];
-    }
-    return v !== undefined && v !== null ? v : (def !== undefined ? def : '');
-  }
-
-  _inp(label, path, val) {
-    const self = this;
+  _color(val, def, cb) {
     return html`
-      <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px;">
-        <label style="font-size:12px;color:#64748b;font-weight:600;letter-spacing:.5px;">${label}</label>
-        <input style="background:#0d1117;border:1px solid #1e2d3d;color:#e2e8f0;padding:6px 8px;font-family:'Courier New',monospace;font-size:12px;border-radius:4px;width:100%;box-sizing:border-box;"
-          .value="${val || ''}"
-          @change="${(e) => self._set(path, e.target.value)}" />
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="color" .value="${val || def}"
+          style="width:48px;height:38px;border:1px solid #2a3a52;border-radius:6px;background:#0d1117;padding:2px;cursor:pointer;"
+          @change="${(e)=>cb(e.target.value)}" />
+        <button title="Réinitialiser" style="background:#1a2433;border:1px solid #2a3a52;color:#94a3b8;border-radius:6px;
+                width:34px;height:38px;cursor:pointer;font-size:15px;" @click="${()=>cb(undefined)}">↺</button>
       </div>`;
+  }
+  _btn(label, cb, color='#334155', title='') {
+    return html`<button title="${title}" style="background:${color}22;border:1px solid ${color}66;color:#e2e8f0;
+      border-radius:6px;padding:8px 11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;"
+      @click="${cb}">${label}</button>`;
+  }
+
+  _setTheme(key, val) {
+    this._mutate(c => { if (!c.theme) c.theme = {}; if (val === undefined || val === '') delete c.theme[key]; else c.theme[key] = val; if (Object.keys(c.theme).length === 0) delete c.theme; });
   }
 
   render() {
     if (!this._config) return html``;
-    const self = this;
     const cats = this._config.categories || [];
-    const tabs = ['GÉNÉRAL','MÉTÉO','ZONES','VIDÉO','SERVEURS','SPA','ÉNERGIE','SANTÉ','TRACKER'];
+    if (this._ci >= cats.length) this._ci = Math.max(0, cats.length - 1);
+    const cat  = cats[this._ci] || null;
+    const subs = cat ? (cat.submenus || []) : [];
+    if (this._si >= subs.length) this._si = Math.max(0, subs.length - 1);
+    const sub  = subs[this._si] || null;
+    const ci = this._ci, si = this._si;
 
-    const tabStyle = (i) => {
-      const active = self._activeTab === i;
-      return `padding:6px 10px;border:none;border-radius:6px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px;background:${active?'#ef4444':'rgba(255,255,255,.05)'};color:${active?'#fff':'#475569'};`;
-    };
+    const entOptions = this.hass ? Object.keys(this.hass.states).sort() : [];
 
-    const findCat = (name) => cats.find(c => c.name === name);
-    const catIdx = (name) => cats.indexOf(findCat(name));
+    const tabBtn = (i, label) => html`
+      <button style="flex:1;padding:10px 6px;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:800;
+                     letter-spacing:.5px;cursor:pointer;background:${this._tab===i?'#ef4444':'#1a2433'};
+                     color:${this._tab===i?'#fff':'#94a3b8'};"
+        @click="${()=>{ this._tab = i; this.requestUpdate(); }}">${label}</button>`;
 
+    // ═════════ ONGLET GÉNÉRAL ═════════
     const renderGeneral = () => html`
-      <div>
-        ${self._inp('Titre', 'title', self._config.title)}
-        ${self._inp('Logo (URL)', 'logo', self._config.logo)}
-        ${self._inp('Entité status', 'status_entity', self._config.status_entity)}
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>${this._lbl('Titre de la carte')}${this._txt(this._config.title, v=>this._mutate(c=>c.title=v))}</div>
+        <div>${this._lbl('Logo (URL)')}${this._txt(this._config.logo, v=>this._mutate(c=>{ if(v) c.logo=v; else delete c.logo; }), '/local/Umbrella.png')}</div>
+        <div>${this._lbl('Entité de statut (en-tête)')}${this._txt(this._config.status_entity, v=>this._mutate(c=>{ if(v) c.status_entity=v; else delete c.status_entity; }), 'binary_sensor.…', 're2ents')}</div>
+        <div>${this._lbl('Hauteur de la carte (px)')}${this._num(this._config.card_height ?? 550, v=>this._mutate(c=>{ if(v) c.card_height=v; else delete c.card_height; }), 300, 1600)}</div>
       </div>`;
 
-    const renderMeteo = () => html`
-      <div>
-        <div style="font-size:12px;color:#64748b;margin-bottom:8px;">URL de la page météo iframe :</div>
-        ${self._inp('URL iframe météo', 'categories.0.submenus.0.iframe_url',
-          self._getPath('categories.0.submenus.0.iframe_url', '/local/meteo_ha_ws.html'))}
+    // ═════════ ONGLET THÈME ═════════
+    const th = this._config.theme || {};
+    const colorRow = (label, key, def) => html`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#101826;
+                  border:1px solid #1e2d3d;border-radius:8px;padding:8px 12px;">
+        <span style="font-size:14px;color:#cbd5e1;font-weight:600;">${label}</span>
+        ${this._color(th[key], def, v=>this._setTheme(key, v))}
+      </div>`;
+    const sizeRow = (label, key, def, min=8, max=40) => html`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#101826;
+                  border:1px solid #1e2d3d;border-radius:8px;padding:8px 12px;">
+        <span style="font-size:14px;color:#cbd5e1;font-weight:600;">${label} <span style="color:#475569;">(${def})</span></span>
+        <div style="width:90px;">${this._num(th[key], v=>this._setTheme(key, v), min, max)}</div>
+      </div>`;
+    const renderTheme = () => html`
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          ${this._lbl('🎨 COULEURS')}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            ${colorRow('Menu actif (accent)', 'accent', '#ef4444')}
+            ${colorRow('Sous-menu actif', 'active', '#22c55e')}
+            ${colorRow('Fond de la carte', 'bg', '#080d14')}
+            ${colorRow('Barre latérale', 'side_bg', '#060b12')}
+            ${colorRow('Texte principal', 'text', '#e2e8f0')}
+            ${colorRow('Texte secondaire', 'text_dim', '#475569')}
+          </div>
+        </div>
+        <div>
+          ${this._lbl('🔠 TAILLES (px)')}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            ${sizeRow('Titre', 'fs_title', 18)}
+            ${sizeRow('Menus du haut', 'fs_nav', 12)}
+            ${sizeRow('Sous-menus', 'fs_side', 12)}
+            ${sizeRow('Filtres', 'fs_filter', 12)}
+            ${sizeRow('Nom des capteurs', 'fs_name', 12)}
+            ${sizeRow('Valeur des capteurs', 'fs_value', 18)}
+            ${sizeRow('Largeur barre latérale', 'sidebar_width', 200, 120, 360)}
+          </div>
+        </div>
+        <button style="background:#7f1d1d33;border:1px solid #7f1d1d;color:#fca5a5;border-radius:8px;
+                       padding:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;"
+          @click="${()=>this._mutate(c=>delete c.theme)}">↺ Réinitialiser tout le thème</button>
       </div>`;
 
-    const renderZones = () => {
-      const cat = findCat('ZONES DU COMPLEXE');
-      if (!cat) return html`<div style="color:#475569;font-size:12px;">Catégorie ZONES non trouvée</div>`;
-      return html`
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          ${(cat.submenus || []).map((sub) => html`
-            <div style="background:rgba(255,255,255,.03);border:1px solid #1e2d3d;border-radius:8px;padding:10px;">
-              <div style="font-size:12px;font-weight:700;color:#22c55e;margin-bottom:6px;">${sub.name}</div>
-              <div style="font-size:12px;color:#475569;">${(sub.sensors||[]).length} capteurs</div>
+    // ═════════ ONGLET STRUCTURE ═════════
+    const selStyle = 'flex:1;min-width:0;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;';
+    const mode = sub ? (sub.iframe ? 'iframe' : (sub.mode === 'design' ? 'design' : 'grid')) : 'grid';
+    const ssubs = sub ? (sub.subsubmenus || []) : [];
+    const sensors = (sub && mode === 'grid') ? (sub.sensors || []) : [];
+
+    const moveItem = (arrPath, idx, dir, fix) => this._mutate(c => {
+      const arr = arrPath(c);
+      const j = idx + dir;
+      if (j < 0 || j >= arr.length) return;
+      [arr[idx], arr[j]] = [arr[j], arr[idx]];
+      if (fix) fix(j);
+    });
+
+    const renderStructure = () => html`
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- ── CATÉGORIE (menu du haut) ── -->
+        <div style="background:#101826;border:1px solid #ef444433;border-radius:10px;padding:12px;">
+          ${this._lbl('1️⃣ MENU PRINCIPAL (titres)')}
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <select style="${selStyle}" @change="${e=>{ this._ci = parseInt(e.target.value); this._si = 0; this.requestUpdate(); }}">
+              ${cats.map((c,i)=>html`<option value="${i}" ?selected="${ci===i}">${c.name||('Catégorie '+i)}</option>`)}
+            </select>
+            ${this._btn('＋', ()=>this._mutate(c=>{ c.categories = c.categories||[]; c.categories.push({name:'NOUVELLE CATÉGORIE',submenus:[]}); this._ci = c.categories.length-1; this._si = 0; }), '#22c55e', 'Ajouter une catégorie')}
+            ${this._btn('◀', ()=>moveItem(c=>c.categories, ci, -1, j=>this._ci=j), '#334155', 'Déplacer à gauche')}
+            ${this._btn('▶', ()=>moveItem(c=>c.categories, ci, +1, j=>this._ci=j), '#334155', 'Déplacer à droite')}
+            ${this._btn('🗑', ()=>{ if(!cat) return; if(!confirm('Supprimer la catégorie « '+(cat.name||'')+' » et tout son contenu ?')) return; this._mutate(c=>{ c.categories.splice(ci,1); this._ci = 0; this._si = 0; }); }, '#ef4444', 'Supprimer la catégorie')}
+          </div>
+          ${cat ? this._txt(cat.name, v=>this._mutate(c=>c.categories[ci].name=v), 'Nom de la catégorie') : html``}
+        </div>
+
+        ${cat ? html`
+        <!-- ── SOUS-MENU ── -->
+        <div style="background:#101826;border:1px solid #22c55e33;border-radius:10px;padding:12px;">
+          ${this._lbl('2️⃣ SOUS-MENUS (sous-titres, barre latérale)')}
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <select style="${selStyle}" @change="${e=>{ this._si = parseInt(e.target.value); this.requestUpdate(); }}">
+              ${subs.map((s,i)=>html`<option value="${i}" ?selected="${si===i}">${s.name||('Sous-menu '+i)}</option>`)}
+            </select>
+            ${this._btn('＋', ()=>this._mutate(c=>{ const cc=c.categories[ci]; cc.submenus=cc.submenus||[]; cc.submenus.push({name:'NOUVEAU SOUS-MENU',icon:'mdi:folder',mode:'grid',subsubmenus:[{id:'all',name:'TOUT'}],sensors:[]}); this._si=cc.submenus.length-1; }), '#22c55e', 'Ajouter un sous-menu')}
+            ${this._btn('▲', ()=>moveItem(c=>c.categories[ci].submenus, si, -1, j=>this._si=j), '#334155', 'Monter')}
+            ${this._btn('▼', ()=>moveItem(c=>c.categories[ci].submenus, si, +1, j=>this._si=j), '#334155', 'Descendre')}
+            ${this._btn('🗑', ()=>{ if(!sub) return; if(!confirm('Supprimer le sous-menu « '+(sub.name||'')+' » ?')) return; this._mutate(c=>{ c.categories[ci].submenus.splice(si,1); this._si=0; }); }, '#ef4444', 'Supprimer le sous-menu')}
+          </div>
+          ${sub ? html`
+            <div style="display:grid;grid-template-columns:1fr 180px;gap:8px;margin-bottom:8px;">
+              <div>${this._lbl('Nom')}${this._txt(sub.name, v=>this._mutate(c=>c.categories[ci].submenus[si].name=v))}</div>
+              <div>${this._lbl('Icône')}${this._txt(sub.icon, v=>this._mutate(c=>c.categories[ci].submenus[si].icon=v), 'mdi:…')}</div>
             </div>
-          `)}
-        </div>`;
-    };
-
-    const renderVideo = () => {
-      const cat = findCat('VIDÉO-SURVEILLANCE');
-      if (!cat) return html`<div style="color:#475569;font-size:12px;">Non trouvé</div>`;
-      return html`
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          ${(cat.submenus||[]).map(sub => html`
-            <div style="background:rgba(255,255,255,.03);border:1px solid #1e2d3d;border-radius:8px;padding:10px;">
-              <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:6px;">${sub.name}</div>
-              ${(sub.cameras||[]).map(c => html`
-                <div style="font-size:12px;color:#475569;padding:1px 0;">${c.entity||c}</div>
-              `)}
+            <div>${this._lbl("Mode d'affichage")}
+              <select style="${selStyle};width:100%;" @change="${e=>{
+                const val = e.target.value;
+                this._mutate(c=>{ const s=c.categories[ci].submenus[si];
+                  delete s.iframe;
+                  if (val==='iframe') { s.iframe=true; delete s.mode; const u=(s.sensors&&s.sensors[0]&&s.sensors[0].url)||''; s.sensors=[{url:u}]; }
+                  else if (val==='design') { s.mode='design'; if(!s.widgets) s.widgets=[]; if(s.sensors&&s.sensors[0]&&s.sensors[0].url) s.sensors=[]; }
+                  else { s.mode='grid'; if(!Array.isArray(s.sensors)||(s.sensors[0]&&s.sensors[0].url)) s.sensors=[]; if(!s.subsubmenus) s.subsubmenus=[{id:'all',name:'TOUT'}]; }
+                });
+              }}">
+                <option value="grid" ?selected="${mode==='grid'}">Grille de capteurs</option>
+                <option value="design" ?selected="${mode==='design'}">Widgets (design)</option>
+                <option value="iframe" ?selected="${mode==='iframe'}">Page iFrame</option>
+              </select>
             </div>
-          `)}
-        </div>`;
-    };
+            ${mode==='iframe' ? html`
+              <div style="margin-top:8px;">${this._lbl('URL de la page')}
+                ${this._txt(sub.sensors?.[0]?.url, v=>this._mutate(c=>{ c.categories[ci].submenus[si].sensors=[{url:v}]; }), '/local/page.html')}
+              </div>` : html``}
+            ${mode==='design' ? html`
+              <div style="margin-top:8px;font-size:13px;color:#94a3b8;background:#0d1117;border:1px solid #1e2d3d;border-radius:6px;padding:9px 12px;">
+                ${(sub.widgets||[]).length} widget(s) : ${(sub.widgets||[]).map(x=>x.type).join(', ')||'aucun'} —
+                configuration détaillée via l'éditeur YAML.
+              </div>` : html``}
+          ` : html``}
+        </div>` : html``}
 
-    const renderServeurs = () => {
-      const cat = findCat('SERVEURS');
-      if (!cat) return html`<div style="color:#475569;font-size:12px;">Non trouvé</div>`;
-      const ci = catIdx('SERVEURS');
-      const widgets = cat.submenus?.[0]?.widgets || [];
-      return html`
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          ${widgets.map((w, wi) => html`
-            <div style="background:rgba(0,255,136,.03);border:1px solid #00ff8822;border-radius:8px;padding:10px;">
-              <div style="font-size:12px;font-weight:700;color:#00ff88;margin-bottom:8px;">${w.server_name||'Serveur '+wi}</div>
-              ${self._inp('Nom', `categories.${ci}.submenus.0.widgets.${wi}.server_name`, w.server_name)}
-              ${self._inp('CPU', `categories.${ci}.submenus.0.widgets.${wi}.cpu_entity`, w.cpu_entity)}
-              ${self._inp('RAM', `categories.${ci}.submenus.0.widgets.${wi}.ram_entity`, w.ram_entity)}
-              ${self._inp('HDD', `categories.${ci}.submenus.0.widgets.${wi}.hdd_entity`, w.hdd_entity)}
-            </div>
-          `)}
-        </div>`;
-    };
+        ${sub && mode==='grid' ? html`
+        <!-- ── SOUS-SOUS-MENUS (filtres) ── -->
+        <div style="background:#101826;border:1px solid #f59e0b33;border-radius:10px;padding:12px;">
+          ${this._lbl('3️⃣ FILTRES (sous-sous-titres)')}
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${ssubs.map((f,fi)=>html`
+              <div style="display:flex;gap:6px;align-items:center;">
+                <div style="width:120px;">${this._txt(f.id, v=>this._mutate(c=>{ const old=c.categories[ci].submenus[si].subsubmenus[fi].id; c.categories[ci].submenus[si].subsubmenus[fi].id=v; (c.categories[ci].submenus[si].sensors||[]).forEach(s=>{ if(s.type===old) s.type=v; }); }), 'id')}</div>
+                <div style="flex:1;">${this._txt(f.name, v=>this._mutate(c=>c.categories[ci].submenus[si].subsubmenus[fi].name=v), 'Libellé affiché')}</div>
+                ${this._btn('▲', ()=>moveItem(c=>c.categories[ci].submenus[si].subsubmenus, fi, -1), '#334155')}
+                ${this._btn('▼', ()=>moveItem(c=>c.categories[ci].submenus[si].subsubmenus, fi, +1), '#334155')}
+                ${this._btn('🗑', ()=>this._mutate(c=>c.categories[ci].submenus[si].subsubmenus.splice(fi,1)), '#ef4444')}
+              </div>`)}
+            ${this._btn('＋ Ajouter un filtre', ()=>this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.subsubmenus=s.subsubmenus||[]; s.subsubmenus.push({id:'nouveau',name:'NOUVEAU'}); }), '#22c55e')}
+          </div>
+        </div>
 
-    const renderSpa = () => {
-      const cat = findCat('SPA');
-      if (!cat) return html`<div style="color:#475569;font-size:12px;">Non trouvé</div>`;
-      const ci = catIdx('SPA');
-      const w = cat.submenus?.[0]?.widgets?.[0] || {};
-      return html`
-        <div>
-          ${self._inp('Température eau', `categories.${ci}.submenus.0.widgets.0.entity`, w.entity)}
-          ${self._inp('Thermostat', `categories.${ci}.submenus.0.widgets.0.targetEntity`, w.targetEntity)}
-          ${self._inp('Temp. extérieure', `categories.${ci}.submenus.0.widgets.0.extTempEntity`, w.extTempEntity)}
-          ${self._inp('Temp. air spa', `categories.${ci}.submenus.0.widgets.0.airTempEntity`, w.airTempEntity)}
-          ${self._inp('Puissance (W)', `categories.${ci}.submenus.0.widgets.0.powerEntity`, w.powerEntity)}
-          ${self._inp('Énergie (kWh)', `categories.${ci}.submenus.0.widgets.0.energyEntity`, w.energyEntity)}
-          ${self._inp('Filtre (jours)', `categories.${ci}.submenus.0.widgets.0.filterEntity`, w.filterEntity)}
-          ${self._inp('Chlore (jours)', `categories.${ci}.submenus.0.widgets.0.chlorineEntity`, w.chlorineEntity)}
-          ${self._inp('Fuite', `categories.${ci}.submenus.0.widgets.0.leakEntity`, w.leakEntity)}
-          ${self._inp('Image fond', `categories.${ci}.submenus.0.widgets.0.bgImage`, w.bgImage)}
-        </div>`;
-    };
-
-    const renderEnergie = () => {
-      const cat = findCat('ÉNERGIE & SOLAR');
-      if (!cat) return html`<div style="color:#475569;font-size:12px;">Non trouvé</div>`;
-      const ci = catIdx('ÉNERGIE & SOLAR');
-      const cfg = cat.submenus?.[0]?.widgets?.[0]?.solar_config || {};
-      return html`
-        <div>
-          ${self._inp('Production totale (W)', `categories.${ci}.submenus.0.widgets.0.solar_config.total_now`, cfg.total_now)}
-          ${self._inp('Consommation temps réel', `categories.${ci}.submenus.0.widgets.0.solar_config.main_cons`, cfg.main_cons)}
-          ${self._inp('Beem Maison (W)', `categories.${ci}.submenus.0.widgets.0.solar_config.beem_m_w`, cfg.beem_m_w)}
-          ${self._inp('Beem Spa (W)', `categories.${ci}.submenus.0.widgets.0.solar_config.beem_s_w`, cfg.beem_s_w)}
-          ${self._inp('IBC (W)', `categories.${ci}.submenus.0.widgets.0.solar_config.beem_i_w`, cfg.beem_i_w)}
-          ${self._inp('Batterie SOC', `categories.${ci}.submenus.0.widgets.0.solar_config.bat1_soc`, cfg.bat1_soc)}
-          ${self._inp('Weather entity', `categories.${ci}.submenus.0.widgets.0.solar_config.weather_entity`, cfg.weather_entity)}
-        </div>`;
-    };
-
-    const renderSante = () => {
-      const cat = findCat('SANTE & PLANTES') || findCat('SANTÉ & PLANTES');
-      if (!cat) return html`<div style="color:#475569;font-size:12px;">Non trouvé</div>`;
-      const ci = cats.indexOf(cat);
-      const people = cat.submenus?.[0]?.widgets?.[0]?.people || [];
-      return html`
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          ${people.map((p, pi) => html`
-            <div style="background:rgba(6,182,212,.03);border:1px solid #06b6d422;border-radius:8px;padding:10px;">
-              <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:8px;">${p.name}</div>
-              ${self._inp('Entité poids', `categories.${ci}.submenus.0.widgets.0.people.${pi}.weight_entity`, p.weight_entity)}
-              ${self._inp('Poids départ (kg)', `categories.${ci}.submenus.0.widgets.0.people.${pi}.start`, p.start)}
-              ${self._inp('Poids idéal (kg)', `categories.${ci}.submenus.0.widgets.0.people.${pi}.ideal`, p.ideal)}
-              ${self._inp('Image', `categories.${ci}.submenus.0.widgets.0.people.${pi}.image`, p.image)}
-            </div>
-          `)}
-        </div>`;
-    };
-
-    const renderTracker = () => {
-      const cat = findCat('TRACKER DE PRÉSENCE');
-      if (!cat) return html`<div style="color:#475569;font-size:12px;">Non trouvé</div>`;
-      const ci = catIdx('TRACKER DE PRÉSENCE');
-      const persons = cat.submenus?.[0]?.widgets?.[0]?.persons || [];
-      return html`
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          ${persons.map((p, pi) => html`
-            <div style="background:rgba(129,140,248,.03);border:1px solid #818cf822;border-radius:8px;padding:10px;">
-              <div style="font-size:12px;font-weight:700;color:#818cf8;margin-bottom:8px;">${p.name}</div>
-              ${self._inp('Person entity', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.person`, p.person)}
-              ${self._inp('Batterie', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.battery_entity`, p.battery_entity)}
-              ${self._inp('Distance', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.distance_entity`, p.distance_entity)}
-              ${self._inp('Geocodage', `categories.${ci}.submenus.0.widgets.0.persons.${pi}.geocoded_entity`, p.geocoded_entity)}
-            </div>
-          `)}
-        </div>`;
-    };
-
-    const panels = [renderGeneral, renderMeteo, renderZones, renderVideo, renderServeurs, renderSpa, renderEnergie, renderSante, renderTracker];
+        <!-- ── CAPTEURS ── -->
+        <div style="background:#101826;border:1px solid #06b6d433;border-radius:10px;padding:12px;">
+          ${this._lbl('4️⃣ CAPTEURS ('+sensors.length+')')}
+          <div style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:4px;">
+            ${sensors.map((s,xi)=>html`
+              <div style="background:#0b121d;border:1px solid #1e2d3d;border-radius:8px;padding:9px;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <div style="flex:1;">${this._txt(s.entity, v=>this._mutate(c=>c.categories[ci].submenus[si].sensors[xi].entity=v), 'entité', 're2ents')}</div>
+                  ${this._btn('▲', ()=>moveItem(c=>c.categories[ci].submenus[si].sensors, xi, -1), '#334155')}
+                  ${this._btn('▼', ()=>moveItem(c=>c.categories[ci].submenus[si].sensors, xi, +1), '#334155')}
+                  ${this._btn('🗑', ()=>this._mutate(c=>c.categories[ci].submenus[si].sensors.splice(xi,1)), '#ef4444')}
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+                  ${this._txt(s.name, v=>this._mutate(c=>{ if(v) c.categories[ci].submenus[si].sensors[xi].name=v; else delete c.categories[ci].submenus[si].sensors[xi].name; }), 'Nom affiché')}
+                  ${this._txt(s.icon, v=>this._mutate(c=>{ if(v) c.categories[ci].submenus[si].sensors[xi].icon=v; else delete c.categories[ci].submenus[si].sensors[xi].icon; }), 'mdi:…')}
+                  <select style="${selStyle};width:100%;" @change="${e=>this._mutate(c=>{ const v=e.target.value; if(v) c.categories[ci].submenus[si].sensors[xi].type=v; else delete c.categories[ci].submenus[si].sensors[xi].type; })}">
+                    <option value="" ?selected="${!s.type}">— filtre —</option>
+                    ${ssubs.filter(f=>f.id!=='all').map(f=>html`<option value="${f.id}" ?selected="${s.type===f.id}">${f.name||f.id}</option>`)}
+                  </select>
+                </div>
+              </div>`)}
+          </div>
+          <div style="margin-top:8px;">
+            ${this._btn('＋ Ajouter un capteur', ()=>this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.sensors=s.sensors||[]; s.sensors.push({entity:''}); }), '#22c55e')}
+          </div>
+        </div>` : html``}
+      </div>`;
 
     return html`
-      <div style="font-family:'Courier New',monospace;background:#080d14;border-radius:8px;overflow:hidden;">
-        <div style="background:#0d1b2e;border-bottom:1px solid #1a2744;padding:10px 12px;">
-          <div style="font-size:14px;font-weight:800;color:#ef4444;letter-spacing:2px;margin-bottom:8px;">
+      <div style="font-family:'Roboto','Segoe UI',sans-serif;background:#080d14;border-radius:10px;overflow:hidden;border:1px solid #1a2744;">
+        <datalist id="re2ents">${entOptions.map(e=>html`<option value="${e}"></option>`)}</datalist>
+        <div style="background:#0d1b2e;border-bottom:1px solid #1a2744;padding:12px;">
+          <div style="font-size:16px;font-weight:800;color:#ef4444;letter-spacing:2px;margin-bottom:10px;">
             ☣ RESIDENT EVIL CARD — ÉDITEUR
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;">
-            ${tabs.map((t, i) => html`
-              <button style="${tabStyle(i)}" @click="${() => { self._activeTab = i; self.requestUpdate(); }}">${t}</button>
-            `)}
+          <div style="display:flex;gap:6px;">
+            ${tabBtn(0,'GÉNÉRAL')}
+            ${tabBtn(1,'THÈME')}
+            ${tabBtn(2,'STRUCTURE')}
           </div>
         </div>
-        <div style="padding:14px;max-height:500px;overflow-y:auto;">
-          ${panels[self._activeTab] ? panels[self._activeTab]() : html``}
-        </div>
-        <div style="padding:8px 14px;border-top:1px solid #1a2744;font-size:12px;color:#1e3a5f;">
-          Pour les configurations avancées, utilisez l'éditeur YAML
+        <div style="padding:14px;max-height:600px;overflow-y:auto;">
+          ${this._tab===0 ? renderGeneral() : this._tab===1 ? renderTheme() : renderStructure()}
         </div>
       </div>`;
   }
