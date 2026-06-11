@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v90 (version RICHE : widgets)
+   RESIDENT EVIL CARD v91 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1506,133 +1506,207 @@ class ResidentEvilCard extends LitElement {
   _renderTankWidget(w, sizeStyle, noBorder=false) {
     const getSt = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
     const num   = (eid) => { const v = parseFloat(getSt(eid)); return isNaN(v) ? null : v; };
+    const unit  = (eid) => this.hass?.states[eid]?.attributes?.unit_of_measurement || '';
     const cap   = Number(w.capacity || 1000);
     const level = num(w.tank_level_entity);
     const vol   = num(w.tank_volume_entity);
     const lvlPct = level != null ? Math.min(100, Math.max(0, level)) : (vol != null ? Math.min(100, vol/cap*100) : 0);
-    const lvlCol = lvlPct <= 15 ? '#ef4444' : lvlPct <= 35 ? '#f59e0b' : '#38bdf8';
-    const lvlLbl = lvlPct <= 15 ? 'NIVEAU CRITIQUE' : lvlPct <= 35 ? 'NIVEAU BAS' : 'NIVEAU OK';
+    const waterCol = '#5ec8ff';
     const alert  = getSt(w.alert_entity) === 'on';
-    const missing = vol != null ? Math.max(0, cap - vol) : null;
+    const fmtNum = (v) => v != null ? v.toLocaleString('fr-FR', {maximumFractionDigits: 1}) : '--';
 
-    const metrics = [
-      { l:'Pluie directe',  e:w.inflow_entity,      i:'mdi:weather-pouring',          c:'#38bdf8' },
-      { l:'Précip. / jour', e:w.rain_entity,        i:'mdi:weather-rainy',            c:'#0ea5e9' },
-      { l:'Temp. ext.',     e:w.temp_entity,        i:'mdi:thermometer',              c:'#f97316' },
-      { l:'Cabane',         e:w.temp_cabane_entity, i:'mdi:home-thermometer',         c:'#fbbf24' },
-      { l:'Profondeur',     e:w.depth_entity,       i:'mdi:arrow-expand-vertical',    c:'#22d3ee' },
-      { l:'Min. annuel',    e:w.temp_min_entity,    i:'mdi:thermometer-chevron-down', c:'#60a5fa' },
-      { l:'Max. annuel',    e:w.temp_max_entity,    i:'mdi:thermometer-chevron-up',   c:'#f87171' },
-    ].filter(m => m.e && this.hass?.states[m.e]);
+    // ── Tuile statistique (icône colorée + libellé + grosse valeur + unité à droite) ──
+    const statTile = (iconBg, iconCol, icon, label, value, un, sub) => html`
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;
+                  padding:16px 18px;display:flex;align-items:center;gap:14px;min-width:0;position:relative;">
+        <div style="width:52px;height:52px;border-radius:14px;background:${iconBg};display:flex;align-items:center;
+                    justify-content:center;flex-shrink:0;box-shadow:0 0 14px ${iconBg};">
+          <ha-icon icon="${icon}" style="--mdc-icon-size:28px;color:${iconCol};"></ha-icon>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;color:#94a3b8;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
+          <div style="font-size:30px;font-weight:800;color:#f1f5f9;line-height:1.15;">${value}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+          ${sub ? html`<span style="font-size:14px;color:#94a3b8;">${sub}</span>` : html``}
+          ${un  ? html`<span style="font-size:15px;color:#64748b;font-weight:600;">${un}</span>` : html``}
+        </div>
+      </div>`;
 
-    const tile = (m) => {
-      const raw = getSt(m.e);
-      const sst = this.hass?.states[m.e];
-      const un  = sst?.attributes?.unit_of_measurement || '';
-      const v   = parseFloat(raw);
+    // ── Tuile température (libellé + valeur colorée) ──
+    const tempTile = (label, eid, col) => {
+      const v = num(eid);
       return html`
-        <div style="background:rgba(255,255,255,.04);border:1px solid ${m.c}33;border-left:4px solid ${m.c};
-                    border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0;">
-          <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#cbd5e1;
-                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            <ha-icon icon="${m.i}" style="--mdc-icon-size:20px;color:${m.c};flex-shrink:0;"></ha-icon>${m.l}
-          </div>
-          <div style="font-size:26px;font-weight:800;color:${m.c};font-family:'Courier New',monospace;line-height:1;">
-            ${isNaN(v)?(raw||'--'):v.toFixed(2)}<span style="font-size:15px;color:#94a3b8;font-weight:600;"> ${un}</span>
+        <div style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;
+                    padding:12px 16px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:0;">
+          <div style="font-size:14px;color:#94a3b8;font-weight:600;">${label}</div>
+          <div style="font-size:22px;font-weight:800;color:${col};">${v!=null?v.toFixed(1):'--'}°C</div>
+        </div>`;
+    };
+
+    // ── Commandes : interrupteurs + volets ──
+    const switches = w.switches || [];
+    const covers   = w.covers || [];
+    const swRow = (s) => {
+      const st  = this.hass?.states[s.entity];
+      const on  = st?.state === 'on';
+      return html`
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.02);
+                    border:1px solid rgba(255,255,255,.05);border-radius:12px;">
+          <ha-icon icon="${s.icon || 'mdi:power-plug'}" style="--mdc-icon-size:24px;color:#818cf8;flex-shrink:0;"></ha-icon>
+          <span style="flex:1;font-size:16px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name || s.entity}</span>
+          <button style="border:none;border-radius:10px;padding:8px 18px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;
+                         background:${on?'#4f46e5':'rgba(255,255,255,.08)'};color:${on?'#fff':'#94a3b8'};transition:.2s;"
+            @click="${(e)=>{e.stopPropagation();const d=s.entity.split('.')[0];this.hass.callService(d==='light'?'light':'switch','toggle',{entity_id:s.entity});}}">
+            ${on?'Allumé':'Éteint'}
+          </button>
+        </div>`;
+    };
+    const coverRow = (c) => {
+      const st  = this.hass?.states[c.entity];
+      const pos = st?.attributes?.current_position;
+      const btn = (icon, svc) => html`
+        <button style="width:42px;height:38px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:rgba(255,255,255,.05);
+                       color:#e2e8f0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;"
+          @click="${(e)=>{e.stopPropagation();this.hass.callService('cover',svc,{entity_id:c.entity});}}">
+          <ha-icon icon="${icon}" style="--mdc-icon-size:20px;"></ha-icon>
+        </button>`;
+      return html`
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.02);
+                    border:1px solid rgba(255,255,255,.05);border-radius:12px;">
+          <ha-icon icon="${c.icon || 'mdi:window-shutter'}" style="--mdc-icon-size:24px;color:#22c55e;flex-shrink:0;"></ha-icon>
+          <span style="flex:1;font-size:16px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${c.name || c.entity} ${pos!=null?html`<span style="font-size:14px;color:#64748b;font-weight:600;">(${pos}%)</span>`:html``}
+          </span>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            ${btn('mdi:arrow-up','open_cover')}
+            ${btn('mdi:stop','stop_cover')}
+            ${btn('mdi:arrow-down','close_cover')}
           </div>
         </div>`;
     };
 
     return html`
       <div class="dw-card ${noBorder?'no-border':''}"
-           style="${sizeStyle} background:#071019;border-color:${alert?'#ef444455':'#38bdf822'};overflow:hidden;
-                  position:relative;display:flex;flex-direction:column;font-family:'Roboto','Segoe UI',sans-serif;padding:16px;gap:14px;">
-        <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,${alert?'#ef4444':'#38bdf8'},#0ea5e9);z-index:5;"></div>
+           style="${sizeStyle} background:#0a0c14;border-color:${alert?'#ef444455':'rgba(255,255,255,.06)'};overflow:hidden;
+                  position:relative;display:flex;flex-direction:column;font-family:'Roboto','Segoe UI',sans-serif;border-radius:18px;">
 
-        <!-- EN-TÊTE -->
-        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <div>
-            <div style="font-size:22px;font-weight:800;color:#e0f2fe;letter-spacing:1px;">${w.tank_title||'Cuve'}</div>
-            <div style="font-size:14px;color:#94a3b8;">${w.subtitle||''}</div>
-          </div>
-          ${alert ? html`
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;
-                        background:rgba(239,68,68,.15);border:2px solid #ef4444;color:#ef4444;
-                        font-size:16px;font-weight:800;animation:batt-flash 1s infinite alternate;">
-              <ha-icon icon="mdi:alert" style="--mdc-icon-size:22px;"></ha-icon>ALERTE CUVE
-            </div>` : html`
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;
-                        background:rgba(34,197,94,.08);border:1px solid #22c55e44;color:#22c55e;
-                        font-size:15px;font-weight:700;">
-              <ha-icon icon="mdi:check-circle" style="--mdc-icon-size:20px;"></ha-icon>Surveillance OK
-            </div>`}
-        </div>
+        <div style="flex:1;min-height:0;display:flex;gap:24px;padding:24px 26px 12px;">
 
-        <!-- BLOC PRINCIPAL : CUVE + GROS CHIFFRES -->
-        <div style="flex-shrink:0;display:flex;align-items:stretch;gap:20px;">
+          <!-- ════ GAUCHE : ÉCHELLE + CUVE EN VERRE ════ -->
+          <div style="flex:0 0 44%;display:flex;gap:14px;min-width:0;">
 
-          <!-- Cuve animée -->
-          <div style="width:150px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;">
-            <div style="width:130px;height:190px;border:3px solid #1e3a5f;border-radius:12px;position:relative;
-                        overflow:hidden;background:#040b14;box-shadow:inset 0 0 20px rgba(0,0,0,.6);">
-              <div style="position:absolute;bottom:0;left:0;right:0;height:${lvlPct.toFixed(1)}%;
-                          background:linear-gradient(180deg,${lvlCol}dd,${lvlCol}99);transition:height 1s ease;">
-                <div style="position:absolute;top:-7px;left:-20%;width:140%;height:14px;border-radius:50%;
-                            background:${lvlCol};opacity:.85;animation:tank-wave 3.5s ease-in-out infinite;"></div>
-              </div>
-              <!-- Graduations 25/50/75 -->
-              ${[25,50,75].map(g => html`
-                <div style="position:absolute;left:0;right:0;bottom:${g}%;border-top:1px dashed rgba(255,255,255,.15);">
-                  <span style="position:absolute;right:4px;top:-16px;font-size:12px;color:rgba(255,255,255,.35);">${g}%</span>
+            <!-- Échelle verticale -->
+            <div style="width:46px;flex-shrink:0;position:relative;margin:6px 0 34px;">
+              <div style="position:absolute;right:6px;top:0;bottom:0;width:2px;background:rgba(255,255,255,.12);border-radius:1px;"></div>
+              ${[100,75,50,25,0].map(g => html`
+                <div style="position:absolute;right:0;bottom:calc(${g}% - 9px);display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:14px;color:#94a3b8;font-weight:600;">${g}%</span>
+                  <span style="width:10px;height:2px;background:rgba(255,255,255,.25);"></span>
                 </div>`)}
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                <span style="font-size:38px;font-weight:900;color:#fff;text-shadow:0 2px 8px #000;">${lvlPct.toFixed(0)}%</span>
+              <div style="position:absolute;right:-3px;bottom:calc(${lvlPct.toFixed(1)}% - 5px);width:16px;height:10px;border-radius:6px;
+                          background:${waterCol};box-shadow:0 0 12px ${waterCol};transition:bottom 1s ease;"></div>
+            </div>
+
+            <!-- Cuve en verre -->
+            <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+              <div style="flex:1;position:relative;border-radius:26px;overflow:hidden;min-height:0;
+                          background:linear-gradient(160deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.015) 35%,rgba(0,0,0,.25) 100%);
+                          border:2px solid rgba(255,255,255,.12);
+                          box-shadow:inset 0 2px 18px rgba(255,255,255,.05), inset 0 -10px 30px rgba(0,0,0,.5), 0 8px 30px rgba(0,0,0,.45);">
+                <!-- Reflet vitre -->
+                <div style="position:absolute;top:3%;left:5%;width:9%;height:80%;border-radius:20px;
+                            background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));pointer-events:none;"></div>
+                <!-- Eau -->
+                <div style="position:absolute;bottom:0;left:0;right:0;height:${lvlPct.toFixed(1)}%;transition:height 1.2s ease;
+                            background:linear-gradient(180deg,${waterCol} 0%,#2f9be0 60%,#1c6fb0 100%);
+                            box-shadow:0 -2px 18px ${waterCol}cc;">
+                  <div style="position:absolute;top:-2px;left:0;right:0;height:4px;background:#dff3ff;opacity:.9;
+                              border-radius:2px;filter:blur(1px);"></div>
+                </div>
+                <!-- % + volume centrés -->
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
+                  <span style="font-size:72px;font-weight:900;color:#fff;line-height:1;
+                               text-shadow:0 0 26px rgba(160,220,255,.85),0 2px 8px rgba(0,0,0,.7);">${lvlPct.toFixed(0)}%</span>
+                  <span style="font-size:26px;font-weight:700;color:#e2e8f0;text-shadow:0 1px 6px rgba(0,0,0,.7);">${fmtNum(vol)} L</span>
+                </div>
+              </div>
+              <!-- Sous la cuve -->
+              <div style="flex-shrink:0;display:flex;justify-content:space-between;align-items:center;padding:10px 6px 0;">
+                ${alert
+                  ? html`<span style="font-size:17px;font-weight:800;color:#ef4444;letter-spacing:1px;animation:batt-flash 1s infinite alternate;">ALERTE CUVE</span>`
+                  : html`<span style="font-size:16px;font-weight:800;color:#22c55e;letter-spacing:1px;">NIVEAU SURVEILLÉ</span>`}
+                <span style="font-size:16px;color:#94a3b8;font-weight:600;">Capacité: ${cap.toLocaleString('fr-FR')}L</span>
               </div>
             </div>
-            <div style="font-size:14px;font-weight:800;color:${lvlCol};letter-spacing:1px;">${lvlLbl}</div>
           </div>
 
-          <!-- Gros chiffres -->
-          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;min-width:0;">
-            <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
-              <span style="font-size:52px;font-weight:900;color:${lvlCol};font-family:'Courier New',monospace;line-height:1;">
-                ${vol!=null?vol.toLocaleString('fr-FR',{maximumFractionDigits:0}):'--'}
-              </span>
-              <span style="font-size:24px;font-weight:700;color:#94a3b8;">litres</span>
-              <span style="font-size:18px;color:#64748b;">/ ${cap.toLocaleString('fr-FR')} L</span>
+          <!-- ════ DROITE : INFOS ════ -->
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;overflow-y:auto;">
+
+            <!-- En-tête -->
+            <div style="flex-shrink:0;display:flex;align-items:center;gap:14px;">
+              <div style="width:48px;height:48px;border-radius:14px;background:rgba(94,200,255,.12);display:flex;
+                          align-items:center;justify-content:center;flex-shrink:0;">
+                <ha-icon icon="mdi:water" style="--mdc-icon-size:28px;color:${waterCol};"></ha-icon>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:22px;font-weight:800;color:#f1f5f9;">${w.tank_title||'Cuve'}</div>
+                <div style="font-size:14px;color:#94a3b8;">${w.subtitle||''}</div>
+              </div>
+              ${w.camera_entity ? html`
+                <button style="display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.15);border-radius:12px;
+                               background:rgba(255,255,255,.06);color:#e2e8f0;font-family:inherit;font-size:15px;font-weight:700;
+                               padding:9px 16px;cursor:pointer;"
+                  @click="${(e)=>{e.stopPropagation();this._handleAction(w.camera_entity);}}">
+                  <ha-icon icon="mdi:cctv" style="--mdc-icon-size:18px;"></ha-icon>Caméras
+                </button>` : html``}
             </div>
-            <div style="height:16px;background:#0d1b2e;border:1px solid #1e3a5f;border-radius:8px;overflow:hidden;">
-              <div style="height:100%;width:${lvlPct.toFixed(1)}%;background:linear-gradient(90deg,${lvlCol}88,${lvlCol});
-                          border-radius:8px;transition:width 1s ease;box-shadow:0 0 12px ${lvlCol}66;"></div>
+
+            <!-- Tuiles 2×2 -->
+            <div style="flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              ${statTile('rgba(79,70,229,.25)','#a5b4fc','mdi:gauge','Volume mesuré', fmtNum(vol)+' L','', 'Niveau: '+lvlPct.toFixed(0)+'%')}
+              ${statTile('rgba(34,197,94,.2)','#4ade80','mdi:water-plus','Pluie Directe', fmtNum(num(w.inflow_entity)), unit(w.inflow_entity)||'L','')}
+              ${statTile('rgba(56,189,248,.18)','#7dd3fc','mdi:weather-pouring','Précipitations', fmtNum(num(w.rain_entity)), unit(w.rain_entity)||'mm','')}
+              ${statTile('rgba(249,115,22,.2)','#fdba74','mdi:thermometer','Temp. Extérieure', fmtNum(num(w.temp_entity)), '°C','')}
             </div>
-            <div style="display:flex;gap:24px;flex-wrap:wrap;">
-              ${missing!=null ? html`
-                <div style="font-size:16px;color:#cbd5e1;">
-                  <span style="color:#64748b;">Avant plein :</span>
-                  <span style="font-weight:800;color:#38bdf8;"> ${missing.toLocaleString('fr-FR',{maximumFractionDigits:0})} L</span>
-                </div>` : html``}
-              <div style="font-size:16px;color:#cbd5e1;">
-                <span style="color:#64748b;">Capteur :</span>
-                <span style="font-weight:800;color:${(getSt(w.sensor_state_entity)||'')==='normal'?'#22c55e':'#f59e0b'};"> ${getSt(w.sensor_state_entity)||'--'}</span>
+
+            <!-- Suivi températures -->
+            <div style="flex-shrink:0;">
+              <div style="font-size:14px;font-weight:800;color:#94a3b8;letter-spacing:1.5px;margin-bottom:8px;">SUIVI TEMPÉRATURES</div>
+              <div style="display:flex;gap:12px;">
+                ${tempTile('Cabane', w.temp_cabane_entity, '#f59e0b')}
+                ${tempTile('Min Annuel', w.temp_min_entity, '#60a5fa')}
+                ${tempTile('Max Annuel', w.temp_max_entity, '#f87171')}
               </div>
             </div>
+
+            <!-- Commandes & équipements -->
+            ${(switches.length || covers.length) ? html`
+              <div style="flex-shrink:0;">
+                <div style="font-size:14px;font-weight:800;color:#94a3b8;letter-spacing:1.5px;margin-bottom:8px;">COMMANDES & ÉQUIPEMENTS</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  ${switches.map(s => swRow(s))}
+                  ${covers.map(c => coverRow(c))}
+                </div>
+              </div>` : html``}
           </div>
         </div>
 
-        <!-- TUILES MÉTÉO / TEMPÉRATURES -->
-        <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-content:start;overflow-y:auto;">
-          ${metrics.map(m => tile(m))}
+        <!-- ════ PIED : PROFONDEUR + CAPTEUR ════ -->
+        <div style="flex-shrink:0;display:flex;justify-content:space-between;align-items:center;
+                    padding:14px 26px;border-top:1px solid rgba(255,255,255,.07);">
+          <div style="display:flex;align-items:center;gap:10px;font-size:16px;color:#94a3b8;">
+            <ha-icon icon="mdi:ruler" style="--mdc-icon-size:20px;color:#64748b;"></ha-icon>
+            Profondeur: <span style="font-weight:800;color:#f1f5f9;">${fmtNum(num(w.depth_entity))} ${unit(w.depth_entity)||'cm'}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:16px;color:#94a3b8;">
+            <ha-icon icon="mdi:access-point" style="--mdc-icon-size:20px;color:#64748b;"></ha-icon>
+            Capteur: <span style="font-weight:800;color:${(getSt(w.sensor_state_entity)||'')==='normal'?'#f1f5f9':'#f59e0b'};">${getSt(w.sensor_state_entity)||'--'}</span>
+          </div>
         </div>
-
-        <style>
-          @keyframes tank-wave {
-            0%,100% { transform: translateX(0) scaleY(1); }
-            50%     { transform: translateX(8%) scaleY(1.4); }
-          }
-        </style>
       </div>`;
   }
-
   _renderTrackerWidget(w, sizeStyle, noBorder=false) {
     const persons = w.persons || [];
     const getSt  = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
