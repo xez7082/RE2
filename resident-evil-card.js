@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v85 (version RICHE : widgets)
+   RESIDENT EVIL CARD v86 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1662,9 +1662,8 @@ class ResidentEvilCard extends LitElement {
   }
 
   _renderMapWidget(w, sizeStyle, noBorder=false) {
-    // Crée une vraie carte Lovelace "map" via les card helpers HA.
-    // <ha-map> en direct ne fonctionne pas : l'élément n'est jamais chargé
-    // par HA hors de la carte map officielle.
+    // Carte Lovelace "map" via card helpers + auto_fit (recadre sur les marqueurs)
+    // + bandeau d'infos par personne sous la carte.
     const persons = w.persons || [];
     const entities = persons.map(p => p.person).filter(Boolean);
     if (entities.length === 0) {
@@ -1675,7 +1674,7 @@ class ResidentEvilCard extends LitElement {
     }
 
     if (!this._mapCards) this._mapCards = {};
-    const key = entities.join('|') + '#' + (w.zoom || 12);
+    const key = entities.join('|') + '#' + (w.zoom || 12) + '#' + (w.hours_to_show || 0);
 
     if (!this._mapCards[key]) {
       this._mapCards[key] = 'loading';
@@ -1687,12 +1686,18 @@ class ResidentEvilCard extends LitElement {
             entities: entities,
             default_zoom: Number(w.zoom || 12),
             theme_mode: 'dark',
+            auto_fit: true,
             hours_to_show: Number(w.hours_to_show || 0),
           });
           el.hass = this.hass;
           el.style.cssText = 'display:block;width:100%;height:100%;';
           this._mapCards[key] = el;
           this.requestUpdate();
+          // Recadrage forcé après init (le premier fit peut partir avant les coords)
+          [800, 2000].forEach(t => setTimeout(() => {
+            const m = el.shadowRoot && el.shadowRoot.querySelector('ha-map');
+            if (m && typeof m.fitMap === 'function') { try { m.fitMap(); } catch(_e) {} }
+          }, t));
         } catch (e) {
           this._mapCards[key] = 'error';
           this.requestUpdate();
@@ -1703,13 +1708,57 @@ class ResidentEvilCard extends LitElement {
     const card = this._mapCards[key];
     if (card && card !== 'loading' && card !== 'error') card.hass = this.hass;
 
+    // ── Bandeau d'infos par personne ─────────────────────────────
+    const getSt = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
+    const footRows = persons.map(p => {
+      const pObj  = p.person && this.hass?.states[p.person] ? this.hass.states[p.person] : null;
+      const home  = pObj ? pObj.state === 'home' : false;
+      const stLbl = pObj ? (home ? 'À DOMICILE' : (pObj.state === 'not_home' ? 'ABSENT' : pObj.state.toUpperCase())) : '--';
+      const stCol = home ? '#22c55e' : '#f59e0b';
+      const geo   = getSt(p.geocoded_entity);
+      const dist  = (() => { const v = parseFloat(getSt(p.distance_entity)); return isNaN(v) ? null : v; })();
+      const loc1  = getSt(p.location_1_entity);
+      const pic   = pObj?.attributes?.entity_picture;
+      const initials = (p.name||'?')[0].toUpperCase();
+      return html`
+        <div style="flex:1;min-width:260px;display:flex;align-items:center;gap:10px;
+                    background:rgba(129,140,248,.05);border:1px solid #1e2d3d;border-radius:10px;padding:8px 12px;">
+          <div style="width:36px;height:36px;border-radius:50%;border:2px solid ${stCol};overflow:hidden;flex-shrink:0;
+                      background:#1e2d3d;display:flex;align-items:center;justify-content:center;">
+            ${pic ? html`<img src="${pic}" style="width:100%;height:100%;object-fit:cover;" />`
+                  : html`<span style="font-size:16px;font-weight:800;color:${stCol};">${initials}</span>`}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:15px;font-weight:700;color:#f1f5f9;">${p.name||'—'}</span>
+              <span style="font-size:12px;font-weight:700;color:${stCol};border:1px solid ${stCol}44;border-radius:5px;padding:1px 7px;">${stLbl}</span>
+              ${dist != null ? html`<span style="font-size:13px;font-weight:700;color:#818cf8;">📍 ${dist.toFixed(2)} km</span>` : html``}
+            </div>
+            ${geo ? html`
+              <div style="font-size:13px;color:#cbd5e1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${geo}
+              </div>` : html``}
+            ${loc1 ? html`
+              <div style="font-size:12px;color:#64748b;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ⏱ ${loc1}
+              </div>` : html``}
+          </div>
+        </div>`;
+    });
+
     return html`
-      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} padding:0;overflow:hidden;position:relative;">
-        ${card === 'loading' ? html`
-          <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">CHARGEMENT DE LA CARTE…</div>
-        ` : card === 'error' ? html`
-          <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;color:#ef4444;">ERREUR CHARGEMENT CARTE</div>
-        ` : card}
+      <div class="dw-card ${noBorder?'no-border':''}"
+           style="${sizeStyle} padding:0;overflow:hidden;position:relative;display:flex;flex-direction:column;">
+        <div style="flex:1;min-height:0;position:relative;">
+          ${card === 'loading' ? html`
+            <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">CHARGEMENT DE LA CARTE…</div>
+          ` : card === 'error' ? html`
+            <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;color:#ef4444;">ERREUR CHARGEMENT CARTE</div>
+          ` : card}
+        </div>
+        <div style="flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;padding:8px;background:#0a0f1a;border-top:1px solid #1a2744;">
+          ${footRows}
+        </div>
       </div>`;
   }
 
