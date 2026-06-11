@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v93 (version RICHE : widgets)
+   RESIDENT EVIL CARD v94 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1132,6 +1132,7 @@ class ResidentEvilCard extends LitElement {
       const groups = {};
       (p.sensors||[]).forEach(s => {
         const c = s.cat||'forme';
+        if (c === 'sommeil') return; // catégorie sommeil masquée
         if (!groups[c]) groups[c]=[];
         groups[c].push(s);
       });
@@ -1520,7 +1521,7 @@ class ResidentEvilCard extends LitElement {
     // ── Tuile statistique (icône colorée + libellé + grosse valeur + unité à droite) ──
     const statTile = (iconBg, iconCol, icon, label, value, un, sub) => html`
       <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;
-                  padding:12px 16px;display:flex;align-items:center;gap:12px;min-width:0;position:relative;">
+                  padding:8px 16px;display:flex;align-items:center;gap:12px;min-width:0;min-height:0;overflow:hidden;position:relative;">
         <div style="width:46px;height:46px;border-radius:13px;background:${iconBg};display:flex;align-items:center;
                     justify-content:center;flex-shrink:0;box-shadow:0 0 14px ${iconBg};">
           <ha-icon icon="${icon}" style="--mdc-icon-size:25px;color:${iconCol};"></ha-icon>
@@ -1644,7 +1645,7 @@ class ResidentEvilCard extends LitElement {
           </div>
 
           <!-- ════ DROITE : INFOS ════ -->
-          <div class="no-scrollbar" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:11px;overflow-y:auto;">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;overflow:hidden;">
 
             <!-- En-tête -->
             <div style="flex-shrink:0;display:flex;align-items:center;gap:14px;">
@@ -1665,8 +1666,8 @@ class ResidentEvilCard extends LitElement {
                 </button>` : html``}
             </div>
 
-            <!-- Tuiles 2×2 -->
-            <div style="flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <!-- Tuiles 2×2 (élastiques : remplissent l'espace restant) -->
+            <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:10px;">
               ${statTile('rgba(79,70,229,.25)','#a5b4fc','mdi:gauge','Volume mesuré', fmtNum(vol)+' L','', 'Niveau: '+lvlPct.toFixed(0)+'%')}
               ${statTile('rgba(34,197,94,.2)','#4ade80','mdi:water-plus','Pluie Directe', fmtNum(num(w.inflow_entity)), unit(w.inflow_entity)||'L','')}
               ${statTile('rgba(56,189,248,.18)','#7dd3fc','mdi:weather-pouring','Précipitations', fmtNum(num(w.rain_entity)), unit(w.rain_entity)||'mm','')}
