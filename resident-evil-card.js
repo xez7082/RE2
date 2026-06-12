@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v103 (version RICHE : widgets)
+   RESIDENT EVIL CARD v104 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2470,8 +2470,8 @@ class ResidentEvilCard extends LitElement {
     return [cardStyles, css`
       :host { display: block; font-family: 'Courier New', Courier, monospace; background: transparent; }
       * { box-sizing: border-box; }
-      .re-container { display: flex; flex-direction: column; height: 550px; background: var(--ec-bg, #080d14); border: 1px solid #1a2744; border-radius: 12px; overflow: hidden; }
-      .re-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: linear-gradient(135deg,#0d1b2e,#111827); border-bottom: 1px solid #1a2744; flex-shrink: 0; }
+      .re-container { display: flex; flex-direction: column; height: 550px; background: var(--ec-bg, #080d14); border: 1px solid #1a2744; border-radius: 12px; overflow: hidden; padding: 10px; gap: 10px; box-sizing: border-box; }
+      .re-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: linear-gradient(135deg,#0d1b2e,#111827); border: 1px solid #1a2744; border-radius: 10px; flex-shrink: 0; }
       .re-logo { display: flex; align-items: center; gap: 12px; }
       .re-umbrella { width: 44px; height: 44px; flex-shrink: 0; }
       .re-umbrella-icon { width: 100%; height: 100%; object-fit: contain; }
@@ -2481,17 +2481,17 @@ class ResidentEvilCard extends LitElement {
       .re-status { display: flex; align-items: center; gap: 8px; }
       .re-status-text { font-size: 13px; font-weight: 700; letter-spacing: 1px; }
       .re-ecg { width: 80px; height: 24px; flex-shrink: 0; }
-      .re-nav { display: flex; gap: 0; border-bottom: 1px solid #1a2744; background: #060b12; flex-shrink: 0; overflow-x: auto; }
-      .main-nav-item { padding: 10px 14px; font-size: var(--ec-fs-nav, 12px); font-weight: 700; color: var(--ec-text-dim, #475569); cursor: pointer; letter-spacing: 1px; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .2s; }
+      .re-nav { display: flex; gap: 0; border: 1px solid #1a2744; border-radius: 10px; background: var(--ec-side-bg, #060b12); flex-shrink: 0; overflow-x: auto; }
+      .main-nav-item { padding: 10px 14px; font-size: var(--ec-fs-nav, 12px); font-weight: 700; color: var(--ec-text-dim, #475569); cursor: pointer; letter-spacing: 1px; white-space: nowrap; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; transition: all .2s; }
       .main-nav-item:hover { color: #94a3b8; background: rgba(255,255,255,.03); }
       .main-nav-item.active { color: var(--ec-accent, #ef4444); border-bottom-color: var(--ec-accent, #ef4444); background: rgba(239,68,68,.05); }
-      .re-body { display: flex; flex: 1; min-height: 0; }
-      .re-sidebar { width: var(--ec-sidebar-w, 200px); flex-shrink: 0; background: var(--ec-side-bg, #060b12); border-right: 1px solid #1a2744; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow-y: auto; }
+      .re-body { display: flex; flex: 1; min-height: 0; gap: 10px; }
+      .re-sidebar { width: var(--ec-sidebar-w, 200px); flex-shrink: 0; background: var(--ec-side-bg, #060b12); border: 1px solid #1a2744; border-radius: 10px; display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; overflow-y: auto; }
       .submenu-btn { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--ec-text-dim, #475569); font-family: inherit; font-size: var(--ec-fs-side, 12px); font-weight: 600; cursor: pointer; letter-spacing: .5px; text-align: left; width: 100%; transition: all .15s; }
       .submenu-btn:hover { color: #94a3b8; background: rgba(255,255,255,.04); }
       .submenu-btn.active { color: var(--ec-active, #22c55e); background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.25); }
       .submenu-btn ha-icon { --mdc-icon-size: 16px; flex-shrink: 0; }
-      .re-content-container { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .re-content-container { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 1px solid #1a2744; border-radius: 10px; background: rgba(255,255,255,.012); overflow: hidden; }
       .re-filter-bar { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid #1a2744; flex-shrink: 0; flex-wrap: wrap; }
       .filter-item { padding: 4px 12px; border-radius: 20px; border: 1px solid #1e2d3d; background: transparent; color: var(--ec-text-dim, #475569); font-family: inherit; font-size: var(--ec-fs-filter, 12px); font-weight: 600; cursor: pointer; letter-spacing: .5px; transition: all .15s; }
       .filter-item:hover { color: #94a3b8; }
