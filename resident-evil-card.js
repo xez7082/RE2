@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v99 (version RICHE : widgets)
+   RESIDENT EVIL CARD v100 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -563,6 +563,7 @@ class ResidentEvilCard extends LitElement {
       case 'sparkline':return this._renderSparkline(w, color, glow, sizeStyle, noBorder);
       case 'badge':    return this._renderBadge(w, color, glow, sizeStyle, noBorder);
       case 'spa_temp':  return this._renderSpaTemp(w, color, glow, sizeStyle, noBorder);
+      case 'energie':   return this._renderEnergieWidget(w, sizeStyle, noBorder);
       case 'health':    return this._renderHealthWidget(w, sizeStyle, noBorder);
       case 'plant':     return this._renderPlantWidget(w, sizeStyle, noBorder);
       case 'server':    return this._renderServerWidget(w, sizeStyle, noBorder);
@@ -2204,6 +2205,25 @@ class ResidentEvilCard extends LitElement {
         <div class="no-scrollbar" style="flex:1;min-height:0;padding:12px 14px 14px;display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;overflow-y:auto;align-content:start;">
           ${items.map(item => renderItem(item))}
         </div>
+      </div>`;
+  }
+
+  _renderEnergieWidget(w, sizeStyle, noBorder=false) {
+    // Intègre la carte "energie-card" (HACS) en pleine page.
+    const cfg = w.energie_config || {};
+    if (!customElements.get('energie-card')) {
+      return html`
+        <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;color:#f59e0b;font-size:14px;line-height:1.6;padding:20px;">
+            ⚠ Carte « energie-card » non installée.<br>
+            Ajoute la ressource <code style="color:#e2e8f0;">/hacsfiles/energie-card/energie-card.js</code> au tableau de bord.
+          </div>
+        </div>`;
+    }
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''} no-scrollbar"
+           style="${sizeStyle} padding:0;overflow-y:auto;overflow-x:hidden;">
+        <energie-card style="display:block;width:100%;" .hass="${this.hass}" .config="${cfg}"></energie-card>
       </div>`;
   }
 
