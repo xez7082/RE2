@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v102 (version RICHE : widgets)
+   RESIDENT EVIL CARD v103 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2279,6 +2279,37 @@ class ResidentEvilCard extends LitElement {
       { l: w.d3_label || 'Production du jour - IBC',    e: w.d3_entity || 'sensor.ibc_production_aujourd_hui',         c: '#22c55e' },
       { l: w.dt_label || 'Production du jour - Total',  e: w.dt_entity || 'sensor.production_totale_beem_jour',        c: '#a78bfa' },
     ];
+    const monthDefs = [
+      { l: w.m1_label || 'Production du mois - Maison', e: w.m1_entity || 'sensor.beem_maison_production_du_mois', c: '#f59e0b' },
+      { l: w.m2_label || 'Production du mois - Spa',    e: w.m2_entity || 'sensor.beem_spa_production_du_mois',    c: '#38bdf8' },
+      { l: w.m3_label || 'Production du mois - IBC',    e: w.m3_entity || 'sensor.ibc_production_du_mois',         c: '#22c55e' },
+    ];
+    const toKwh = (eid) => {
+      const st = this.hass?.states[eid];
+      if (!st || ['unavailable','unknown'].includes(st.state)) return null;
+      const v = parseFloat(st.state);
+      if (isNaN(v)) return null;
+      const un = st.attributes.unit_of_measurement || 'kWh';
+      return /^wh$/i.test(un) ? v / 1000 : v;
+    };
+    const monthTotal = monthDefs.reduce((acc, d) => {
+      const v = toKwh(d.e);
+      return v == null ? acc : (acc == null ? v : acc + v);
+    }, null);
+    const stripTile = (label, val, colr) => html`
+      <div style="background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);
+                  border-radius:10px;padding:10px 12px;text-align:center;min-width:0;">
+        <div style="font-size:13px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
+        <div style="font-size:22px;font-weight:800;color:#f1f5f9;margin-top:3px;line-height:1.1;">
+          ${val == null ? '--' : val.toLocaleString('fr-FR',{maximumFractionDigits:3})}<span style="font-size:13px;font-weight:600;color:${colr};"> kWh</span>
+        </div>
+      </div>`;
+    const monthStrip = fixedTab === 0 ? html`
+      <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 4px 0;">
+        ${monthDefs.map(d => stripTile(d.l, toKwh(d.e), d.c))}
+        ${stripTile(w.mt_label || 'Production du mois - Total', monthTotal, '#a78bfa')}
+      </div>` : html``;
+
     const dayStrip = fixedTab === 0 ? html`
       <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 4px 2px;">
         ${dayDefs.map(d => {
@@ -2307,6 +2338,7 @@ class ResidentEvilCard extends LitElement {
             .config="${{...cfg, _active_tab: tabNames[fixedTab], _hide_tabs: true}}">
           </solar-master-card>
         </div>
+        ${monthStrip}
         ${dayStrip}
       </div>`;
   }
