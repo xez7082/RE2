@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v112 (version RICHE : widgets)
+   RESIDENT EVIL CARD v113 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -424,14 +424,17 @@ class ResidentEvilCard extends LitElement {
       if (!ifr) return;
       const natW = parseFloat(fit.dataset.natw) || 1400;
       let   natH = parseFloat(fit.dataset.nath) || 760;
-      // Même origine (/local/…) : mesurer la hauteur réelle du contenu de la page
-      try {
-        const d = ifr.contentDocument;
-        if (d && d.body) {
-          const realH = Math.max(d.documentElement.scrollHeight, d.body.scrollHeight);
-          if (realH > 100) { natH = realH; ifr.style.height = realH + 'px'; }
-        }
-      } catch (_e) {}
+      // iframe_height du YAML prioritaire ; sinon, mesure du contenu (même origine)
+      if (fit.dataset.hfixed !== '1') {
+        try {
+          const d = ifr.contentDocument;
+          if (d && d.body) {
+            const realH = Math.max(d.documentElement.scrollHeight, d.body.scrollHeight);
+            if (realH > 100) { natH = realH; }
+          }
+        } catch (_e) {}
+      }
+      ifr.style.height = natH + 'px';
       const rect = fit.getBoundingClientRect();
       if (rect.width < 10 || rect.height < 10) return;
       const sx = rect.width / natW;
@@ -449,9 +452,10 @@ class ResidentEvilCard extends LitElement {
     if (iframeUrl) {
       const natW = parseInt(item.iframe_width)  || 1400;
       const natH = parseInt(item.iframe_height) || 760;
+      const hFixed = item.iframe_height ? '1' : '';
       return html`
         <div class="re-iframe-wrapper" style="position:relative;">
-          <div class="re-iframe-fit" data-natw="${natW}" data-nath="${natH}"
+          <div class="re-iframe-fit" data-natw="${natW}" data-nath="${natH}" data-hfixed="${hFixed}"
                style="position:absolute;inset:0;overflow:hidden;">
             <iframe class="re-iframe" src="${iframeUrl}" scrolling="no"
                     @load="${() => { this.requestUpdate(); setTimeout(() => this.requestUpdate(), 400); }}"
@@ -2664,6 +2668,11 @@ class ResidentEvilCard extends LitElement {
       .re-boot-bar div { height: 100%; width: 0; background: linear-gradient(90deg,#22d3ee,#ef4444);
         animation: re-boot-fill 1.3s ease forwards; box-shadow: 0 0 10px #22d3ee; }
       .re-boot-dots { animation: batt-flash 0.6s infinite alternate; }
+      .re-nav, .re-sidebar, .re-content-scroll, .re-sensor-grid, .design-grid {
+        scrollbar-width: none; -ms-overflow-style: none; }
+      .re-nav::-webkit-scrollbar, .re-sidebar::-webkit-scrollbar,
+      .re-content-scroll::-webkit-scrollbar, .re-sensor-grid::-webkit-scrollbar,
+      .design-grid::-webkit-scrollbar { display: none; width: 0; height: 0; }
       @keyframes re-boot-fill { to { width: 100%; } }
       @keyframes re-boot-out  { to { opacity: 0; visibility: hidden; } }
       .re-sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
