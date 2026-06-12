@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v106 (version RICHE : widgets)
+   RESIDENT EVIL CARD v107 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2390,9 +2390,11 @@ class ResidentEvilCard extends LitElement {
           t.fs_name     ? '--ec-fs-name:'+parseInt(t.fs_name)+'px;' : '',
           t.fs_value    ? '--ec-fs-value:'+parseInt(t.fs_value)+'px;' : '',
           t.sidebar_width ? '--ec-sidebar-w:'+parseInt(t.sidebar_width)+'px;' : '',
+          t.hud         ? '--ec-hud:'+t.hud+';--ec-hud-border:'+t.hud+'4d;' : '',
         ].join('');
       })()}">
         <div class="re-header">
+          <span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
           <div class="re-logo">
             <div class="re-umbrella">
               <img src="${this.config.logo || '/local/images/umbrella.png'}" class="re-umbrella-icon" onerror="this.style.display='none'"/>
@@ -2410,7 +2412,7 @@ class ResidentEvilCard extends LitElement {
           </div>
         </div>
 
-        <div class="re-nav">
+        <div class="re-nav"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
           ${categories.map((cat, index) => {
             const catIcons = {
               'MÉTÉO':'🌤','ZONES DU COMPLEXE':'🏠','VIDÉO-SURVEILLANCE':'📷',
@@ -2427,7 +2429,7 @@ class ResidentEvilCard extends LitElement {
         </div>
 
         <div class="re-body">
-          <div class="re-sidebar">
+          <div class="re-sidebar"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
             ${activeCategory.submenus ? activeCategory.submenus.map((sub, index) => html`
               <button class="submenu-btn ${this._activeSubMenu === index ? 'active' : ''}"
                       @click="${() => { this._activeSubMenu = index; this._activeFilter = null; this.requestUpdate(); }}">
@@ -2436,7 +2438,7 @@ class ResidentEvilCard extends LitElement {
               </button>
             `) : html``}
           </div>
-          <div class="re-content-container">
+          <div class="re-content-container"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
             ${!hasIframe && !isSpaMode && !isDesignMode && sensorsRaw.length > 0 && subsubmenus.length > 0 ? html`
               <div class="re-filter-bar">
                 ${subsubmenus.map(subsub => html`
@@ -2502,6 +2504,37 @@ class ResidentEvilCard extends LitElement {
       .re-content-scroll::-webkit-scrollbar { display: none; }
       .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
       .no-scrollbar::-webkit-scrollbar { display: none; }
+
+      /* ═══ LOGO UMBRELLA EN ROTATION ═══ */
+      .re-umbrella-icon { animation: re-logo-spin 12s linear infinite; transform-origin: 50% 50%; }
+      .re-umbrella:hover .re-umbrella-icon { animation-duration: 2s; }
+      @keyframes re-logo-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+      /* ═══ CADRES HUD SCI-FI (coins coupés + équerres) ═══ */
+      .re-header, .re-nav, .re-sidebar, .re-content-container {
+        position: relative;
+        border-radius: 2px;
+        border: 1px solid var(--ec-hud-border, rgba(34,211,238,.30));
+        clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+        box-shadow: inset 0 0 26px rgba(34,211,238,.05);
+      }
+      /* Équerres lumineuses sur les coins droits */
+      .re-header::before, .re-nav::before, .re-sidebar::before, .re-content-container::before {
+        content: ''; position: absolute; top: 0; right: 0; width: 26px; height: 26px;
+        border-top: 2px solid var(--ec-hud, #22d3ee); border-right: 2px solid var(--ec-hud, #22d3ee);
+        pointer-events: none; z-index: 10; filter: drop-shadow(0 0 4px var(--ec-hud, #22d3ee));
+      }
+      .re-header::after, .re-nav::after, .re-sidebar::after, .re-content-container::after {
+        content: ''; position: absolute; bottom: 0; left: 0; width: 26px; height: 26px;
+        border-bottom: 2px solid var(--ec-hud, #22d3ee); border-left: 2px solid var(--ec-hud, #22d3ee);
+        pointer-events: none; z-index: 10; filter: drop-shadow(0 0 4px var(--ec-hud, #22d3ee));
+      }
+      /* Traits d'angle sur les coins coupés */
+      .re-hud-cut-tl, .re-hud-cut-br { position: absolute; width: 24px; height: 2px;
+        background: var(--ec-hud, #22d3ee); pointer-events: none; z-index: 10;
+        filter: drop-shadow(0 0 4px var(--ec-hud, #22d3ee)); }
+      .re-hud-cut-tl { top: 7px; left: -4px; transform: rotate(-45deg); }
+      .re-hud-cut-br { bottom: 7px; right: -4px; transform: rotate(-45deg); }
       .re-sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
       .design-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; width: 100%; }
       .dw-card { background: #0a0a0a; cursor: pointer; position: relative; transition: border-color 0.2s, box-shadow 0.2s; overflow: hidden; box-sizing: border-box; flex-shrink: 0; min-height: 60px; border: 1px solid #1e1e1e; }
@@ -2648,6 +2681,7 @@ class ResidentEvilCardEditor extends LitElement {
             ${colorRow('Barre latérale', 'side_bg', '#060b12')}
             ${colorRow('Texte principal', 'text', '#e2e8f0')}
             ${colorRow('Texte secondaire', 'text_dim', '#475569')}
+            ${colorRow('Cadres HUD (équerres)', 'hud', '#22d3ee')}
           </div>
         </div>
         <div>
