@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v110 (version RICHE : widgets)
+   RESIDENT EVIL CARD v111 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -426,9 +426,10 @@ class ResidentEvilCard extends LitElement {
       const natH = parseFloat(fit.dataset.nath) || 760;
       const rect = fit.getBoundingClientRect();
       if (rect.width < 10 || rect.height < 10) return;
-      const scale = Math.min(rect.width / natW, rect.height / natH);
-      ifr.style.transform = 'scale(' + scale + ')';
-      ifr.style.marginLeft = Math.max(0, (rect.width - natW * scale) / 2) + 'px';
+      const sx = rect.width / natW;
+      const sy = rect.height / natH;
+      ifr.style.transform = 'scale(' + sx + ', ' + sy + ')';
+      ifr.style.marginLeft = '0px';
     });
   }
 
@@ -2776,6 +2777,23 @@ class ResidentEvilCardEditor extends LitElement {
       ],
       solar:   [ {k:'active_tab',l:'Onglet (0=Sol 1=Météo 2=Batt 3=Éco)',t:S,o:['0','1','2','3']} ],
       appliance: [ {k:'view',l:'Catégorie figée (0/1/2)',t:S,o:['0','1','2']} ],
+      gauge: [
+        {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},
+        {k:'min',l:'Min',t:N},{k:'max',l:'Max',t:N},
+      ],
+      sparkline: [
+        {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},
+      ],
+      badge: [
+        {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},{k:'icon',l:'Icône (mdi:…)',t:T},
+        {k:'decimals',l:'Décimales',t:N},{k:'fontSize',l:'Taille valeur (px)',t:N},
+        {k:'iconSize',l:'Taille icône (px)',t:N},{k:'iconPos',l:'Position icône',t:S,o:['left','top','right']},
+      ],
+      shape: [
+        {k:'label',l:'Libellé',t:T},{k:'shape',l:'Forme',t:S,o:['circle','square','triangle','hexagon']},
+        {k:'size',l:'Taille (px)',t:N},{k:'filled',l:'Remplie',t:'bool'},
+      ],
+      health: [],
       energie: [
         {k:'energie_config.title',l:'Titre',t:T},{k:'energie_config.solar',l:'Production solaire',t:E},
         {k:'energie_config.linky',l:'Réseau (Linky)',t:E},{k:'energie_config.talon',l:'Talon (W)',t:N},
@@ -2810,6 +2828,11 @@ class ResidentEvilCardEditor extends LitElement {
           </select>
         </div>`;
       if (f.t === 'number') return html`<div>${this._lbl(f.l)}${this._num(cur, v=>this._wgSet(ci,si,wi,f.k,v), 0, 100000)}</div>`;
+      if (f.t === 'color')  return html`<div>${this._lbl(f.l)}${this._color(cur, f.d || '#00ff00', v=>this._wgSet(ci,si,wi,f.k,v))}</div>`;
+      if (f.t === 'bool')   return html`<div>${this._lbl(f.l)}
+        <select style="${selStyle}" @change="${e=>this._wgSet(ci,si,wi,f.k, e.target.value==='oui')}">
+          <option value="non" ?selected="${!cur}">non</option><option value="oui" ?selected="${!!cur}">oui</option>
+        </select></div>`;
       return html`<div>${this._lbl(f.l)}${this._txt(cur, v=>this._wgSet(ci,si,wi,f.k,v), '', f.t==='entity'?'re2ents':'')}</div>`;
     };
 
@@ -2838,6 +2861,12 @@ class ResidentEvilCardEditor extends LitElement {
 
     return html`
       <div style="margin-top:8px;background:#0b121d;border:1px solid #2a3a52;border-radius:8px;padding:10px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:${schema.length?'8px':'0'};">
+          ${field({k:'widthPct',l:'Largeur (%)',t:'number'})}
+          ${field({k:'heightPx',l:'Hauteur (px)',t:'number'})}
+          ${field({k:'color',l:'Couleur',t:'color',d:'#00ff00'})}
+          ${field({k:'noBorder',l:'Sans bordure',t:'bool'})}
+        </div>
         ${schema.length ? html`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${schema.map(f=>field(f))}</div>` : html``}
         ${wg.type==='plant' ? html`
           <div style="margin-top:8px;">${this._lbl('Capteurs de la plante')}
@@ -3064,10 +3093,24 @@ class ResidentEvilCardEditor extends LitElement {
                 </div>`)}
               <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
                 <select id="re2-add-wtype" style="${selStyle}">
-                  ${['spa_temp','tank','server','plant','health','solar','energie','appliance','tracker','map','gauge','badge'].map(t=>html`<option value="${t}">${t}</option>`)}
+                  ${[
+                    {v:'gauge',l:'Jauge circulaire'},{v:'sparkline',l:'Graphique sparkline'},
+                    {v:'badge',l:'Badge valeur'},{v:'shape',l:'Forme / cadre coloré'},
+                    {v:'spa_temp',l:'Spa'},{v:'tank',l:'Cuve / jardin'},{v:'server',l:'Serveur'},
+                    {v:'plant',l:'Plante'},{v:'health',l:'Santé'},{v:'solar',l:'Solaire'},
+                    {v:'energie',l:'Consommation'},{v:'appliance',l:'Équipements'},
+                    {v:'tracker',l:'Radar présence'},{v:'map',l:'Carte présence'},
+                  ].map(t=>html`<option value="${t.v}">${t.l}</option>`)}
                 </select>
                 ${this._btn('＋ Ajouter un widget', ()=>{ const sel=this.shadowRoot.querySelector('#re2-add-wtype'); const t=sel?sel.value:'badge';
-                  this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.widgets=s.widgets||[]; s.widgets.push({type:t,widthPct:100,noBorder:true}); }); }, '#22c55e')}
+                  const defs = {
+                    gauge:{type:'gauge',widthPct:24,heightPx:140,min:0,max:100,color:'#00ff88',label:'Jauge'},
+                    sparkline:{type:'sparkline',widthPct:32,heightPx:140,color:'#22d3ee',label:'Tendance'},
+                    badge:{type:'badge',widthPct:24,heightPx:110,icon:'mdi:flash',color:'#f59e0b',label:'Valeur'},
+                    shape:{type:'shape',widthPct:15,heightPx:120,shape:'hexagon',size:64,filled:true,color:'#ef4444',label:'Statut'},
+                  };
+                  this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.widgets=s.widgets||[];
+                    s.widgets.push(defs[t] ? JSON.parse(JSON.stringify(defs[t])) : {type:t,widthPct:100,noBorder:true}); }); }, '#22c55e')}
               </div>` : html``}
           ` : html``}
         </div>` : html``}
