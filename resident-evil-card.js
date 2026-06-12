@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v101 (version RICHE : widgets)
+   RESIDENT EVIL CARD v102 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2274,26 +2274,25 @@ class ResidentEvilCard extends LitElement {
     clickTab();
 
     const dayDefs = [
-      { l: 'MAISON',     e: w.d1_entity || 'sensor.beem_maison_production_aujourd_hui', c: '#f59e0b' },
-      { l: 'SPA',        e: w.d2_entity || 'sensor.beem_spa_production_aujourd_hui',    c: '#06b6d4' },
-      { l: 'IBC',        e: w.d3_entity || 'sensor.ibc_production_aujourd_hui',         c: '#22c55e' },
-      { l: 'TOTAL JOUR', e: w.dt_entity || 'sensor.production_totale_beem_jour',        c: '#818cf8' },
+      { l: w.d1_label || 'Production du jour - Maison', e: w.d1_entity || 'sensor.beem_maison_production_aujourd_hui', c: '#f59e0b' },
+      { l: w.d2_label || 'Production du jour - Spa',    e: w.d2_entity || 'sensor.beem_spa_production_aujourd_hui',    c: '#38bdf8' },
+      { l: w.d3_label || 'Production du jour - IBC',    e: w.d3_entity || 'sensor.ibc_production_aujourd_hui',         c: '#22c55e' },
+      { l: w.dt_label || 'Production du jour - Total',  e: w.dt_entity || 'sensor.production_totale_beem_jour',        c: '#a78bfa' },
     ];
     const dayStrip = fixedTab === 0 ? html`
-      <div style="flex-shrink:0;display:flex;gap:8px;padding:0 0 8px;">
+      <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 4px 2px;">
         ${dayDefs.map(d => {
           const dst = this.hass?.states[d.e];
           if (!dst || ['unavailable','unknown'].includes(dst.state)) return html``;
-          const v  = parseFloat(dst.state);
-          const un = dst.attributes.unit_of_measurement || 'kWh';
+          let v  = parseFloat(dst.state);
+          let un = dst.attributes.unit_of_measurement || 'kWh';
+          if (!isNaN(v) && /^wh$/i.test(un) && Math.abs(v) >= 1000) { v = v / 1000; un = 'kWh'; }
           return html`
-            <div style="flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid ${d.c}33;
-                        border-left:4px solid ${d.c};border-radius:10px;padding:8px 12px;">
-              <div style="font-size:12px;font-weight:700;color:#94a3b8;letter-spacing:.5px;white-space:nowrap;
-                          overflow:hidden;text-overflow:ellipsis;">☀ ${d.l}</div>
-              <div style="font-size:20px;font-weight:800;color:${d.c};line-height:1.2;">
-                ${isNaN(v) ? dst.state : v.toLocaleString('fr-FR',{maximumFractionDigits:2})}
-                <span style="font-size:13px;color:#64748b;font-weight:600;">${un}</span>
+            <div style="background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);
+                        border-radius:10px;padding:10px 12px;text-align:center;min-width:0;">
+              <div style="font-size:13px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.l}</div>
+              <div style="font-size:22px;font-weight:800;color:#f1f5f9;margin-top:3px;line-height:1.1;">
+                ${isNaN(v) ? dst.state : v.toLocaleString('fr-FR',{maximumFractionDigits:3})}<span style="font-size:13px;font-weight:600;color:${d.c};"> ${un}</span>
               </div>
             </div>`;
         })}
@@ -2301,7 +2300,6 @@ class ResidentEvilCard extends LitElement {
 
     return html`
       <div style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;${sizeStyle}">
-        ${dayStrip}
         <div style="flex:1;min-height:0;overflow:hidden;">
           <solar-master-card
             style="display:block;width:100%;height:100%;"
@@ -2309,6 +2307,7 @@ class ResidentEvilCard extends LitElement {
             .config="${{...cfg, _active_tab: tabNames[fixedTab], _hide_tabs: true}}">
           </solar-master-card>
         </div>
+        ${dayStrip}
       </div>`;
   }
 
