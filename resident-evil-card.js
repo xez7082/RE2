@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v105 (version RICHE : widgets)
+   RESIDENT EVIL CARD v106 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -807,9 +807,10 @@ class ResidentEvilCard extends LitElement {
       if (eid) switches.push({ eid, name });
     }
     const toggleSw = (eid) => {
-      const domain = eid.split('.')[0];
-      const svc    = (domain==='light') ? 'light' : 'switch';
-      this.hass.callService(svc,'toggle',{entity_id:eid});
+      if (!this.hass) return;
+      if (!this.hass.states[eid]) { console.warn('[RE-card] entité introuvable :', eid); return; }
+      // Service universel : couvre switch, light, input_boolean, fan…
+      this.hass.callService('homeassistant','toggle',{entity_id:eid});
     };
 
     const camId   = w.cameraEntity;
@@ -954,8 +955,8 @@ class ResidentEvilCard extends LitElement {
                         background:${swOn?'rgba(16,185,129,.1)':'rgba(255,255,255,.04)'};
                         border:1px solid ${swOn?'rgba(16,185,129,.3)':'rgba(255,255,255,.08)'};
                         border-radius:10px;padding:7px 10px;cursor:pointer;transition:.2s;"
-                 @click="${(e)=>{e.stopPropagation();toggleSw(eid);}}">
-              <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                 @click="${(e)=>{e.stopPropagation();const t=e.currentTarget;t.style.transform='scale(.96)';setTimeout(()=>{t.style.transform='';},150);toggleSw(eid);}}">
+              <div style="display:flex;align-items:center;gap:6px;min-width:0;pointer-events:none;">
                 <ha-icon icon="${icon}"
                   style="--mdc-icon-size:16px;flex-shrink:0;color:${swOn?'#10b981':'rgba(255,255,255,.5)'};">
                 </ha-icon>
@@ -964,7 +965,7 @@ class ResidentEvilCard extends LitElement {
               </div>
               <div style="flex-shrink:0;width:32px;height:18px;border-radius:9px;
                           background:${swOn?'#10b981':'rgba(255,255,255,.15)'};
-                          position:relative;transition:.25s;">
+                          position:relative;transition:.25s;pointer-events:none;">
                 <div style="position:absolute;top:2px;left:${swOn?'14px':'2px'};
                             width:14px;height:14px;border-radius:50%;background:#fff;
                             box-shadow:0 1px 3px rgba(0,0,0,.3);transition:.25s;"></div>
