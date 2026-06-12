@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v98 (version RICHE : widgets)
+   RESIDENT EVIL CARD v99 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1052,6 +1052,37 @@ class ResidentEvilCard extends LitElement {
               </div>
             </div>
           ` : html``}
+
+          <!-- ACTIONS : programmation auto + chauffe immédiate -->
+          <div style="display:grid;grid-template-columns:${w.progEnableEntity ? '1fr 1fr' : '1fr'};gap:8px;flex-shrink:0;">
+            ${w.progEnableEntity ? (() => {
+              const pe  = this.hass?.states[w.progEnableEntity];
+              const pOn = pe?.state === 'on';
+              return html`
+                <button style="border:2px solid ${pOn?'#10b981':'rgba(255,255,255,.18)'};
+                               background:${pOn?'rgba(16,185,129,.15)':'rgba(255,255,255,.05)'};
+                               border-radius:12px;padding:12px 8px;cursor:pointer;font-family:inherit;
+                               display:flex;flex-direction:column;align-items:center;gap:4px;transition:.2s;"
+                  @click="${(e)=>{e.stopPropagation();this.hass.callService('input_boolean','toggle',{entity_id:w.progEnableEntity});}}">
+                  <span style="font-size:13px;font-weight:800;letter-spacing:1px;color:${pOn?'#10b981':'rgba(255,255,255,.5)'};">
+                    ⏰ PROGRAMMATION ${pOn?'ACTIVE':'INACTIVE'}
+                  </span>
+                  <span style="font-size:12px;color:rgba(255,255,255,.45);">
+                    ${pOn ? 'chauffe auto à ' + startStr : 'toucher pour activer'}
+                  </span>
+                </button>`;
+            })() : html``}
+            <button style="border:2px solid ${isOn?'#ff9900':'#ef4444'};
+                           background:${isOn?'rgba(255,153,0,.15)':'rgba(239,68,68,.12)'};
+                           border-radius:12px;padding:12px 8px;cursor:pointer;font-family:inherit;
+                           display:flex;flex-direction:column;align-items:center;gap:4px;transition:.2s;"
+              @click="${(e)=>{e.stopPropagation();if(tid)this.hass.callService('climate','set_hvac_mode',{entity_id:tid,hvac_mode:isOn?'off':'heat'});}}">
+              <span style="font-size:13px;font-weight:800;letter-spacing:1px;color:${isOn?'#ff9900':'#ef4444'};">
+                ${isOn ? '■ ARRÊTER LA CHAUFFE' : '🔥 CHAUFFER MAINTENANT'}
+              </span>
+              <span style="font-size:12px;color:rgba(255,255,255,.45);">${isOn ? 'chauffe en cours' : 'démarrage immédiat'}</span>
+            </button>
+          </div>
         </div>`;
     };
 
@@ -2222,8 +2253,35 @@ class ResidentEvilCard extends LitElement {
     };
     clickTab();
 
+    const dayDefs = [
+      { l: 'MAISON',     e: w.d1_entity || 'sensor.beem_maison_production_aujourd_hui', c: '#f59e0b' },
+      { l: 'SPA',        e: w.d2_entity || 'sensor.beem_spa_production_aujourd_hui',    c: '#06b6d4' },
+      { l: 'IBC',        e: w.d3_entity || 'sensor.ibc_production_aujourd_hui',         c: '#22c55e' },
+      { l: 'TOTAL JOUR', e: w.dt_entity || 'sensor.production_totale_beem_jour',        c: '#818cf8' },
+    ];
+    const dayStrip = fixedTab === 0 ? html`
+      <div style="flex-shrink:0;display:flex;gap:8px;padding:0 0 8px;">
+        ${dayDefs.map(d => {
+          const dst = this.hass?.states[d.e];
+          if (!dst || ['unavailable','unknown'].includes(dst.state)) return html``;
+          const v  = parseFloat(dst.state);
+          const un = dst.attributes.unit_of_measurement || 'kWh';
+          return html`
+            <div style="flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid ${d.c}33;
+                        border-left:4px solid ${d.c};border-radius:10px;padding:8px 12px;">
+              <div style="font-size:12px;font-weight:700;color:#94a3b8;letter-spacing:.5px;white-space:nowrap;
+                          overflow:hidden;text-overflow:ellipsis;">☀ ${d.l}</div>
+              <div style="font-size:20px;font-weight:800;color:${d.c};line-height:1.2;">
+                ${isNaN(v) ? dst.state : v.toLocaleString('fr-FR',{maximumFractionDigits:2})}
+                <span style="font-size:13px;color:#64748b;font-weight:600;">${un}</span>
+              </div>
+            </div>`;
+        })}
+      </div>` : html``;
+
     return html`
       <div style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;${sizeStyle}">
+        ${dayStrip}
         <div style="flex:1;min-height:0;overflow:hidden;">
           <solar-master-card
             style="display:block;width:100%;height:100%;"
