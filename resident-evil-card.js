@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v107 (version RICHE : widgets)
+   RESIDENT EVIL CARD v110 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -43,7 +43,8 @@ const cardStyles = css`
     --re-text-gray: #8a8a8a;
   }
 
-  .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; width: 100%; }
+  .sensors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; width: 100%; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; align-content: start; }
+  .sensors-grid::-webkit-scrollbar { display: none; }
 
   .re-iframe-wrapper { flex: 1; width: 100%; height: 100%; display: flex; margin: 0; padding: 0; overflow: hidden; min-height: 0; }
   .re-iframe { width: 100%; height: 100%; border: none; background: transparent; display: block; min-height: 0; }
@@ -265,6 +266,8 @@ class ResidentEvilCard extends LitElement {
     this._activeMainMenu = 0;
     this._activeSubMenu = 0;
     this._activeFilter = null;
+    this._booted = false;
+    setTimeout(() => { this._booted = true; this.requestUpdate(); }, 1600);
     this._timeString = "";
     this._timeUpdater = null;
     this._sparkHistory = {};
@@ -369,13 +372,83 @@ class ResidentEvilCard extends LitElement {
     `;
   }
 
+  firstUpdated() {
+    this._decryptTitle();
+  }
+
+  _beep(freq = 880) {
+    const th = this.config?.theme || {};
+    if (th.sounds === false) return;
+    try {
+      if (!window.__reAudio) window.__reAudio = new (window.AudioContext || window.webkitAudioContext)();
+      const a = window.__reAudio;
+      if (a.state === 'suspended') a.resume();
+      const o = a.createOscillator(); const g = a.createGain();
+      o.type = 'square'; o.frequency.value = freq;
+      g.gain.value = 0.02; o.connect(g); g.connect(a.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.06);
+      o.stop(a.currentTime + 0.07);
+    } catch (_e) {}
+  }
+
+  _triggerGlitch() {
+    this._glitch = true; this.requestUpdate();
+    clearTimeout(this._glitchT);
+    this._glitchT = setTimeout(() => { this._glitch = false; this.requestUpdate(); }, 280);
+    this._decryptTitle();
+  }
+
+  _decryptTitle() {
+    const el = this.shadowRoot?.querySelector('.re-title');
+    if (!el) return;
+    const finalTxt = this.config?.title || el.textContent || '';
+    const chars = '!<>-_\\/[]{}=+*^?#@%&';
+    let frame = 0;
+    clearInterval(this._decT);
+    this._decT = setInterval(() => {
+      frame++;
+      const reveal = Math.floor(finalTxt.length * frame / 9);
+      el.textContent = finalTxt.slice(0, reveal) +
+        finalTxt.slice(reveal).split('').map(c => c === ' ' ? ' ' : chars[Math.floor(Math.random()*chars.length)]).join('');
+      if (frame >= 9) { clearInterval(this._decT); el.textContent = finalTxt; }
+    }, 35);
+  }
+
+  updated(changedProps) {
+    if (super.updated) super.updated(changedProps);
+    // Mise à l'échelle des iframes : plus aucun scroll interne
+    const fits = this.shadowRoot ? this.shadowRoot.querySelectorAll('.re-iframe-fit') : [];
+    fits.forEach(fit => {
+      const ifr  = fit.querySelector('iframe');
+      if (!ifr) return;
+      const natW = parseFloat(fit.dataset.natw) || 1400;
+      const natH = parseFloat(fit.dataset.nath) || 760;
+      const rect = fit.getBoundingClientRect();
+      if (rect.width < 10 || rect.height < 10) return;
+      const scale = Math.min(rect.width / natW, rect.height / natH);
+      ifr.style.transform = 'scale(' + scale + ')';
+      ifr.style.marginLeft = Math.max(0, (rect.width - natW * scale) / 2) + 'px';
+    });
+  }
+
   renderEntity(item) {
     const entityId = typeof item === 'object' ? item.entity : item;
     const customIcon = typeof item === 'object' ? item.icon : null;
     const iframeUrl = typeof item === 'object' ? item.url : null;
 
     if (iframeUrl) {
-      return html`<div class="re-iframe-wrapper"><iframe class="re-iframe" src="${iframeUrl}" style="width:100%;height:100%;border:none;display:block;"></iframe></div>`;
+      const natW = parseInt(item.iframe_width)  || 1400;
+      const natH = parseInt(item.iframe_height) || 760;
+      return html`
+        <div class="re-iframe-wrapper" style="position:relative;">
+          <div class="re-iframe-fit" data-natw="${natW}" data-nath="${natH}"
+               style="position:absolute;inset:0;overflow:hidden;">
+            <iframe class="re-iframe" src="${iframeUrl}" scrolling="no"
+                    style="width:${natW}px;height:${natH}px;border:none;display:block;
+                           transform-origin:top left;"></iframe>
+          </div>
+        </div>`;
     }
     if (!entityId) return html``;
     if (entityId.startsWith('iframe:')) {
@@ -2374,7 +2447,7 @@ class ResidentEvilCard extends LitElement {
     const statusColor    = statusOk ? '#22c55e' : '#ef4444';
 
     return html`
-      <div class="re-container" style="height:${parseInt(this.config.card_height) || 550}px;${(() => {
+      <div class="re-container ${(this.config.biohazard_entities||[]).some(e=>this.hass?.states[e]?.state==='on') ? 're-biohazard' : ''}" style="height:${parseInt(this.config.card_height) || 550}px;${(() => {
         const t = this.config.theme || {};
         return [
           t.accent      ? '--ec-accent:'+t.accent+';' : '',
@@ -2393,8 +2466,25 @@ class ResidentEvilCard extends LitElement {
           t.hud         ? '--ec-hud:'+t.hud+';--ec-hud-border:'+t.hud+'4d;' : '',
         ].join('');
       })()}">
+        ${!this._booted ? html`
+          <div class="re-boot">
+            <img src="${this.config.logo || '/local/Umbrella.png'}" class="re-umbrella-icon" style="width:64px;height:64px;" />
+            <div style="font-size:18px;font-weight:800;letter-spacing:3px;color:#e2e8f0;">UMBRELLA CORP. SECURE TERMINAL</div>
+            <div style="font-size:13px;color:#22d3ee;letter-spacing:2px;">AUTHENTICATING<span class="re-boot-dots">...</span></div>
+            <div class="re-boot-bar"><div></div></div>
+          </div>` : html``}
         <div class="re-header">
           <span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
+          ${(() => {
+            const bios = (this.config.biohazard_entities||[]).filter(e => this.hass?.states[e]?.state === 'on');
+            if (!bios.length) return html``;
+            const names = bios.map(e => this.hass.states[e].attributes.friendly_name || e).join(' · ');
+            return html`
+              <div class="re-bio-banner" title="${names}">
+                <ha-icon icon="mdi:biohazard" style="--mdc-icon-size:18px;"></ha-icon>
+                CONTAINMENT BREACH — ${names}
+              </div>`;
+          })()}
           <div class="re-logo">
             <div class="re-umbrella">
               <img src="${this.config.logo || '/local/images/umbrella.png'}" class="re-umbrella-icon" onerror="this.style.display='none'"/>
@@ -2422,7 +2512,7 @@ class ResidentEvilCard extends LitElement {
             const emoji = catIcons[cat.name] || '▸';
             return html`
               <div class="main-nav-item ${this._activeMainMenu === index ? 'active' : ''}"
-                   @click="${() => { this._activeMainMenu = index; this._activeSubMenu = 0; this._activeFilter = null; this.requestUpdate(); }}">
+                   @click="${() => { this._activeMainMenu = index; this._activeSubMenu = 0; this._activeFilter = null; this._beep(880); this._triggerGlitch(); this.requestUpdate(); }}">
                 <span style="margin-right:4px;font-size:12px;">${emoji}</span>${cat.name}
               </div>`;
           })}
@@ -2432,13 +2522,13 @@ class ResidentEvilCard extends LitElement {
           <div class="re-sidebar"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
             ${activeCategory.submenus ? activeCategory.submenus.map((sub, index) => html`
               <button class="submenu-btn ${this._activeSubMenu === index ? 'active' : ''}"
-                      @click="${() => { this._activeSubMenu = index; this._activeFilter = null; this.requestUpdate(); }}">
+                      @click="${() => { this._activeSubMenu = index; this._activeFilter = null; this._beep(660); this.requestUpdate(); }}">
                 <ha-icon icon="${sub.icon || 'mdi:chevron-right'}"></ha-icon>
                 <span>${sub.name}</span>
               </button>
             `) : html``}
           </div>
-          <div class="re-content-container"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
+          <div class="re-content-container ${this._glitch ? 're-glitch' : ''}"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span><div class="re-scanlines"></div>
             ${!hasIframe && !isSpaMode && !isDesignMode && sensorsRaw.length > 0 && subsubmenus.length > 0 ? html`
               <div class="re-filter-bar">
                 ${subsubmenus.map(subsub => html`
@@ -2499,7 +2589,7 @@ class ResidentEvilCard extends LitElement {
       .filter-item { padding: 4px 12px; border-radius: 20px; border: 1px solid #1e2d3d; background: transparent; color: var(--ec-text-dim, #475569); font-family: inherit; font-size: var(--ec-fs-filter, 12px); font-weight: 600; cursor: pointer; letter-spacing: .5px; transition: all .15s; }
       .filter-item:hover { color: #94a3b8; }
       .filter-item.active { color: #06b6d4; border-color: rgba(6,182,212,.4); background: rgba(6,182,212,.08); }
-      .re-content-scroll { flex: 1; overflow-y: auto; padding: 12px; }
+      .re-content-scroll { flex: 1; overflow-y: hidden; padding: 12px; min-height: 0; display: flex; flex-direction: column; }
       .re-content-scroll { scrollbar-width: none; -ms-overflow-style: none; }
       .re-content-scroll::-webkit-scrollbar { display: none; }
       .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -2535,6 +2625,37 @@ class ResidentEvilCard extends LitElement {
         filter: drop-shadow(0 0 4px var(--ec-hud, #22d3ee)); }
       .re-hud-cut-tl { top: 7px; left: -4px; transform: rotate(-45deg); }
       .re-hud-cut-br { bottom: 7px; right: -4px; transform: rotate(-45deg); }
+
+      /* ═══ AMBIANCE RESIDENT EVIL ═══ */
+      .re-container { cursor: crosshair; position: relative; }
+      .re-scanlines { position: absolute; inset: 0; pointer-events: none; z-index: 9;
+        background:
+          repeating-linear-gradient(0deg, rgba(255,255,255,.028) 0 1px, transparent 1px 3px),
+          radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.38) 100%); }
+      .re-glitch { animation: re-glitch-fx .28s steps(2, end) 1; }
+      @keyframes re-glitch-fx {
+        0%   { filter: hue-rotate(70deg) saturate(3); transform: translateX(2px) skewX(.4deg); }
+        25%  { transform: translateX(-3px); clip-path: inset(8% 0 55% 0); }
+        50%  { clip-path: inset(55% 0 6% 0); transform: translateX(3px); filter: hue-rotate(-50deg); }
+        75%  { clip-path: none; transform: translateX(-1px); }
+        100% { filter: none; transform: none; clip-path: none; }
+      }
+      .re-bio-banner { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 6px;
+        border: 2px solid #ef4444; background: rgba(239,68,68,.12); color: #ef4444;
+        font-size: 13px; font-weight: 800; letter-spacing: 1.5px; max-width: 46%;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        animation: batt-flash 0.9s infinite alternate; }
+      .re-biohazard { --ec-hud: #ef4444; --ec-hud-border: rgba(239,68,68,.45); }
+      .re-biohazard .re-umbrella-icon { animation-duration: 1.4s; }
+      .re-boot { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 14px; background: #05080f;
+        animation: re-boot-out .4s ease 1.25s forwards; }
+      .re-boot-bar { width: 260px; height: 8px; border: 1px solid #22d3ee55; border-radius: 4px; overflow: hidden; }
+      .re-boot-bar div { height: 100%; width: 0; background: linear-gradient(90deg,#22d3ee,#ef4444);
+        animation: re-boot-fill 1.3s ease forwards; box-shadow: 0 0 10px #22d3ee; }
+      .re-boot-dots { animation: batt-flash 0.6s infinite alternate; }
+      @keyframes re-boot-fill { to { width: 100%; } }
+      @keyframes re-boot-out  { to { opacity: 0; visibility: hidden; } }
       .re-sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
       .design-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; width: 100%; }
       .dw-card { background: #0a0a0a; cursor: pointer; position: relative; transition: border-color 0.2s, box-shadow 0.2s; overflow: hidden; box-sizing: border-box; flex-shrink: 0; min-height: 60px; border: 1px solid #1e1e1e; }
@@ -2625,6 +2746,113 @@ class ResidentEvilCardEditor extends LitElement {
       </div>`;
   }
 
+  static get WIDGET_SCHEMAS() {
+    const E='entity', T='text', N='number', S='select';
+    return {
+      spa_temp: [
+        {k:'view',l:'Vue',t:S,o:['home','chem','sw','prog','cam']},
+        {k:'entity',l:'Température eau',t:E},{k:'targetEntity',l:'Thermostat (climate)',t:E},
+        {k:'bgImage',l:'Image de fond',t:T},{k:'color',l:'Couleur',t:T},
+        {k:'cameraEntity',l:'Caméra',t:E},{k:'scheduleEntity',l:'Heure cible',t:E},
+        {k:'progEnableEntity',l:'Bool. programmation',t:E},
+      ],
+      tank: [
+        {k:'tank_title',l:'Titre',t:T},{k:'subtitle',l:'Sous-titre',t:T},{k:'capacity',l:'Capacité (L)',t:N},
+        {k:'tank_level_entity',l:'Niveau (%)',t:E},{k:'tank_volume_entity',l:'Volume (L)',t:E},
+        {k:'alert_entity',l:'Alerte',t:E},{k:'depth_entity',l:'Profondeur',t:E},
+        {k:'sensor_state_entity',l:'État capteur',t:E},{k:'inflow_entity',l:'Pluie directe',t:E},
+        {k:'rain_entity',l:'Précipitations',t:E},{k:'temp_entity',l:'Temp. ext.',t:E},
+        {k:'temp_cabane_entity',l:'Temp. cabane',t:E},{k:'temp_min_entity',l:'Min annuel',t:E},{k:'temp_max_entity',l:'Max annuel',t:E},
+      ],
+      server: [
+        {k:'server_name',l:'Nom',t:T},{k:'server_os',l:'OS',t:T},{k:'server_icon',l:'Icône',t:T},
+        {k:'cpu_entity',l:'CPU',t:E},{k:'ram_entity',l:'RAM',t:E},{k:'hdd_entity',l:'Disque',t:E},
+        {k:'status_entity',l:'Statut',t:E},{k:'uptime_entity',l:'Uptime',t:E},
+        {k:'restart_entity',l:'Bouton redémarrer',t:E},{k:'process_entity',l:'Processus',t:E},
+      ],
+      plant: [
+        {k:'plant_name',l:'Nom',t:T},{k:'latin_name',l:'Nom latin',t:T},
+        {k:'plant_image',l:'Image',t:T},{k:'battery_sensor',l:'Batterie',t:E},
+      ],
+      solar:   [ {k:'active_tab',l:'Onglet (0=Sol 1=Météo 2=Batt 3=Éco)',t:S,o:['0','1','2','3']} ],
+      appliance: [ {k:'view',l:'Catégorie figée (0/1/2)',t:S,o:['0','1','2']} ],
+      energie: [
+        {k:'energie_config.title',l:'Titre',t:T},{k:'energie_config.solar',l:'Production solaire',t:E},
+        {k:'energie_config.linky',l:'Réseau (Linky)',t:E},{k:'energie_config.talon',l:'Talon (W)',t:N},
+        {k:'energie_config.kwh_price',l:'Prix kWh (€)',t:N},
+      ],
+    };
+  }
+
+  _wgGet(wg, key) {
+    return key.split('.').reduce((o,k)=>o?.[k], wg);
+  }
+  _wgSet(ci, si, wi, key, val) {
+    this._mutate(c => {
+      let o = c.categories[ci].submenus[si].widgets[wi];
+      const parts = key.split('.');
+      for (let i=0;i<parts.length-1;i++) { if(!o[parts[i]]) o[parts[i]]={}; o=o[parts[i]]; }
+      const last = parts[parts.length-1];
+      if (val === undefined || val === '') delete o[last]; else o[last] = val;
+    });
+  }
+
+  // Éditeur générique d'un widget : champs du schéma + listes spécifiques
+  _renderWidgetEditor(ci, si, wi, wg) {
+    const schema = (this.constructor.WIDGET_SCHEMAS[wg.type] || []);
+    const selStyle = 'width:100%;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;';
+    const field = (f) => {
+      const cur = this._wgGet(wg, f.k);
+      if (f.t === 'select') return html`
+        <div>${this._lbl(f.l)}
+          <select style="${selStyle}" @change="${e=>this._wgSet(ci,si,wi,f.k, isNaN(parseInt(e.target.value)) ? e.target.value : (f.k==='view'||f.k==='active_tab'?parseInt(e.target.value):e.target.value))}">
+            ${f.o.map(o=>html`<option value="${o}" ?selected="${String(cur)===String(o)}">${o}</option>`)}
+          </select>
+        </div>`;
+      if (f.t === 'number') return html`<div>${this._lbl(f.l)}${this._num(cur, v=>this._wgSet(ci,si,wi,f.k,v), 0, 100000)}</div>`;
+      return html`<div>${this._lbl(f.l)}${this._txt(cur, v=>this._wgSet(ci,si,wi,f.k,v), '', f.t==='entity'?'re2ents':'')}</div>`;
+    };
+
+    // Listes spécifiques : capteurs de plante / personnes de tracker-map / capteurs santé
+    const listRows = (path, cols, mk) => {
+      const arr = this._wgGet(wg, path) || [];
+      return html`
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+          ${arr.map((row, ri) => html`
+            <div style="display:flex;gap:6px;align-items:center;">
+              ${cols.map(cdef => html`
+                <div style="flex:${cdef.flex||1};min-width:0;">
+                  ${this._txt(row[cdef.k], v=>this._mutate(c=>{ this._wgGet(c.categories[ci].submenus[si].widgets[wi], path)[ri][cdef.k]=v; }), cdef.l, cdef.e?'re2ents':'')}
+                </div>`)}
+              ${this._btn('🗑', ()=>this._mutate(c=>{ this._wgGet(c.categories[ci].submenus[si].widgets[wi], path).splice(ri,1); }), '#ef4444')}
+            </div>`)}
+          ${this._btn('＋ Ajouter', ()=>this._mutate(c=>{
+            let o = c.categories[ci].submenus[si].widgets[wi];
+            const parts = path.split('.');
+            for (let i=0;i<parts.length-1;i++){ if(!o[parts[i]]) o[parts[i]]={}; o=o[parts[i]]; }
+            if (!o[parts[parts.length-1]]) o[parts[parts.length-1]] = [];
+            o[parts[parts.length-1]].push(mk());
+          }), '#22c55e')}
+        </div>`;
+    };
+
+    return html`
+      <div style="margin-top:8px;background:#0b121d;border:1px solid #2a3a52;border-radius:8px;padding:10px;">
+        ${schema.length ? html`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${schema.map(f=>field(f))}</div>` : html``}
+        ${wg.type==='plant' ? html`
+          <div style="margin-top:8px;">${this._lbl('Capteurs de la plante')}
+            ${listRows('sensors', [{k:'name',l:'Nom'},{k:'entity',l:'Entité',e:true,flex:1.4}], ()=>({name:'',entity:''}))}
+          </div>` : html``}
+        ${(wg.type==='tracker'||wg.type==='map') ? html`
+          <div style="margin-top:8px;">${this._lbl('Personnes')}
+            ${listRows('persons', [
+              {k:'name',l:'Nom'},{k:'person',l:'person.…',e:true,flex:1.3},
+              {k:'geocoded_entity',l:'Lieu géocodé',e:true,flex:1.3},{k:'distance_entity',l:'Distance',e:true,flex:1.3},
+            ], ()=>({name:'',person:''}))}
+          </div>` : html``}
+      </div>`;
+  }
+
   _setTheme(key, val) {
     this._mutate(c => { if (!c.theme) c.theme = {}; if (val === undefined || val === '') delete c.theme[key]; else c.theme[key] = val; if (Object.keys(c.theme).length === 0) delete c.theme; });
   }
@@ -2672,6 +2900,23 @@ class ResidentEvilCardEditor extends LitElement {
       </div>`;
     const renderTheme = () => html`
       <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="border:1px solid #1e2d3d;border-radius:10px;padding:10px;background:${th.bg||'#080d14'};display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:${parseInt(th.fs_title)||18}px;font-weight:800;color:${th.text||'#e2e8f0'};">APERÇU — ${this._config.title||'TITRE'}</div>
+          <div style="display:flex;gap:6px;">
+            <span style="font-size:${parseInt(th.fs_nav)||12}px;font-weight:700;color:${th.accent||'#ef4444'};border-bottom:2px solid ${th.accent||'#ef4444'};padding:4px 8px;">MENU ACTIF</span>
+            <span style="font-size:${parseInt(th.fs_nav)||12}px;font-weight:700;color:${th.text_dim||'#475569'};padding:4px 8px;">MENU</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <div style="width:${parseInt(th.sidebar_width)||200}px;max-width:40%;background:${th.side_bg||'#060b12'};border:1px solid ${ (th.hud||'#22d3ee')}55;border-radius:6px;padding:6px;">
+              <div style="font-size:${parseInt(th.fs_side)||12}px;font-weight:700;color:${th.active||'#22c55e'};">▸ SOUS-MENU ACTIF</div>
+              <div style="font-size:${parseInt(th.fs_side)||12}px;color:${th.text_dim||'#475569'};">▸ Sous-menu</div>
+            </div>
+            <div style="flex:1;border:1px solid ${(th.hud||'#22d3ee')}55;border-radius:6px;padding:6px;background:rgba(255,255,255,.02);">
+              <div style="font-size:${parseInt(th.fs_name)||12}px;color:${th.text_dim||'#475569'};">Capteur</div>
+              <div style="font-size:${parseInt(th.fs_value)||18}px;font-weight:800;color:${th.text||'#e2e8f0'};">21.5 °C</div>
+            </div>
+          </div>
+        </div>
         <div>
           ${this._lbl('🎨 COULEURS')}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -2682,6 +2927,13 @@ class ResidentEvilCardEditor extends LitElement {
             ${colorRow('Texte principal', 'text', '#e2e8f0')}
             ${colorRow('Texte secondaire', 'text_dim', '#475569')}
             ${colorRow('Cadres HUD (équerres)', 'hud', '#22d3ee')}
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#101826;
+                        border:1px solid #1e2d3d;border-radius:8px;padding:8px 12px;">
+              <span style="font-size:14px;color:#cbd5e1;font-weight:600;">Sons d'interface</span>
+              <div style="display:flex;gap:6px;">
+                ${this._btn(th.sounds === false ? 'Activer' : '🔊 Actifs', ()=>this._setTheme('sounds', th.sounds === false ? undefined : false), th.sounds === false ? '#334155' : '#22c55e')}
+              </div>
+            </div>
           </div>
         </div>
         <div>
@@ -2728,9 +2980,34 @@ class ResidentEvilCardEditor extends LitElement {
             ${this._btn('＋', ()=>this._mutate(c=>{ c.categories = c.categories||[]; c.categories.push({name:'NOUVELLE CATÉGORIE',submenus:[]}); this._ci = c.categories.length-1; this._si = 0; }), '#22c55e', 'Ajouter une catégorie')}
             ${this._btn('◀', ()=>moveItem(c=>c.categories, ci, -1, j=>this._ci=j), '#334155', 'Déplacer à gauche')}
             ${this._btn('▶', ()=>moveItem(c=>c.categories, ci, +1, j=>this._ci=j), '#334155', 'Déplacer à droite')}
+            ${this._btn('⧉', ()=>this._mutate(c=>{ c.categories.splice(ci+1,0,JSON.parse(JSON.stringify(c.categories[ci]))); c.categories[ci+1].name += ' (copie)'; this._ci=ci+1; }), '#06b6d4', 'Dupliquer la catégorie')}
             ${this._btn('🗑', ()=>{ if(!cat) return; if(!confirm('Supprimer la catégorie « '+(cat.name||'')+' » et tout son contenu ?')) return; this._mutate(c=>{ c.categories.splice(ci,1); this._ci = 0; this._si = 0; }); }, '#ef4444', 'Supprimer la catégorie')}
           </div>
           ${cat ? this._txt(cat.name, v=>this._mutate(c=>c.categories[ci].name=v), 'Nom de la catégorie') : html``}
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            ${this._btn('⭳ Exporter la catégorie', ()=>{ if(!cat) return;
+              const json = JSON.stringify(cat, null, 2);
+              if (navigator.clipboard) navigator.clipboard.writeText(json).then(()=>alert('Catégorie copiée dans le presse-papier (JSON).'));
+              else prompt('Copie ce JSON :', json); }, '#06b6d4')}
+            ${this._btn(this._impOpen ? '✕ Fermer' : '⭱ Importer une catégorie', ()=>{ this._impOpen=!this._impOpen; this.requestUpdate(); }, '#f59e0b')}
+          </div>
+          ${this._impOpen ? html`
+            <div style="margin-top:8px;">
+              <textarea id="re2-imp" rows="5" placeholder='Colle ici le JSON d&apos;une catégorie exportée'
+                style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;
+                       padding:9px 10px;font-size:13px;border-radius:6px;font-family:'Courier New',monospace;"></textarea>
+              <div style="margin-top:6px;">
+                ${this._btn('Importer', ()=>{
+                  const ta = this.shadowRoot.querySelector('#re2-imp');
+                  try {
+                    const obj = JSON.parse(ta.value);
+                    if (!obj || !obj.name) { alert('JSON invalide : il faut un objet catégorie avec "name".'); return; }
+                    this._mutate(c=>{ c.categories.push(obj); this._ci=c.categories.length-1; this._si=0; });
+                    ta.value=''; this._impOpen=false; this.requestUpdate();
+                  } catch(e) { alert('JSON invalide : ' + e.message); }
+                }, '#22c55e')}
+              </div>
+            </div>` : html``}
         </div>
 
         ${cat ? html`
@@ -2744,6 +3021,7 @@ class ResidentEvilCardEditor extends LitElement {
             ${this._btn('＋', ()=>this._mutate(c=>{ const cc=c.categories[ci]; cc.submenus=cc.submenus||[]; cc.submenus.push({name:'NOUVEAU SOUS-MENU',icon:'mdi:folder',mode:'grid',subsubmenus:[{id:'all',name:'TOUT'}],sensors:[]}); this._si=cc.submenus.length-1; }), '#22c55e', 'Ajouter un sous-menu')}
             ${this._btn('▲', ()=>moveItem(c=>c.categories[ci].submenus, si, -1, j=>this._si=j), '#334155', 'Monter')}
             ${this._btn('▼', ()=>moveItem(c=>c.categories[ci].submenus, si, +1, j=>this._si=j), '#334155', 'Descendre')}
+            ${this._btn('⧉', ()=>this._mutate(c=>{ const a=c.categories[ci].submenus; a.splice(si+1,0,JSON.parse(JSON.stringify(a[si]))); a[si+1].name += ' (copie)'; this._si=si+1; }), '#06b6d4', 'Dupliquer le sous-menu')}
             ${this._btn('🗑', ()=>{ if(!sub) return; if(!confirm('Supprimer le sous-menu « '+(sub.name||'')+' » ?')) return; this._mutate(c=>{ c.categories[ci].submenus.splice(si,1); this._si=0; }); }, '#ef4444', 'Supprimer le sous-menu')}
           </div>
           ${sub ? html`
@@ -2771,11 +3049,26 @@ class ResidentEvilCardEditor extends LitElement {
                 ${this._txt(sub.sensors?.[0]?.url, v=>this._mutate(c=>{ c.categories[ci].submenus[si].sensors=[{url:v}]; }), '/local/page.html')}
               </div>` : html``}
             ${mode==='design' ? html`
-              <div style="margin-top:8px;font-size:13px;color:#94a3b8;background:#0d1117;border:1px solid #1e2d3d;border-radius:6px;padding:9px 12px;">
-                ${(sub.widgets||[]).length} widget(s) : ${(sub.widgets||[]).map(x=>x.type).join(', ')||'aucun'} —
-                configuration détaillée via l'éditeur YAML.
-              </div>
-              ${(sub.widgets||[]).map((wg,wi)=> wg.type==='energie' ? this._renderEnergieDevicesEditor(ci,si,wi,wg) : html``)}` : html``}
+              <div style="margin-top:10px;">${this._lbl('WIDGETS ('+(sub.widgets||[]).length+')')}</div>
+              ${(sub.widgets||[]).map((wg,wi)=> html`
+                <div style="margin-top:6px;background:#101826;border:1px solid #818cf833;border-radius:10px;padding:10px;">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="flex:1;font-size:14px;font-weight:800;color:#a5b4fc;letter-spacing:1px;">▣ ${(wg.type||'?').toUpperCase()}</span>
+                    ${this._btn('▲', ()=>this._mutate(c=>{ const a=c.categories[ci].submenus[si].widgets; if(wi<1)return; [a[wi-1],a[wi]]=[a[wi],a[wi-1]]; }), '#334155')}
+                    ${this._btn('▼', ()=>this._mutate(c=>{ const a=c.categories[ci].submenus[si].widgets; if(wi>=a.length-1)return; [a[wi+1],a[wi]]=[a[wi],a[wi+1]]; }), '#334155')}
+                    ${this._btn('⧉', ()=>this._mutate(c=>{ const a=c.categories[ci].submenus[si].widgets; a.splice(wi+1,0,JSON.parse(JSON.stringify(a[wi]))); }), '#06b6d4', 'Dupliquer')}
+                    ${this._btn('🗑', ()=>{ if(confirm('Supprimer ce widget ?')) this._mutate(c=>c.categories[ci].submenus[si].widgets.splice(wi,1)); }, '#ef4444')}
+                  </div>
+                  ${this._renderWidgetEditor(ci,si,wi,wg)}
+                  ${wg.type==='energie' ? this._renderEnergieDevicesEditor(ci,si,wi,wg) : html``}
+                </div>`)}
+              <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
+                <select id="re2-add-wtype" style="${selStyle}">
+                  ${['spa_temp','tank','server','plant','health','solar','energie','appliance','tracker','map','gauge','badge'].map(t=>html`<option value="${t}">${t}</option>`)}
+                </select>
+                ${this._btn('＋ Ajouter un widget', ()=>{ const sel=this.shadowRoot.querySelector('#re2-add-wtype'); const t=sel?sel.value:'badge';
+                  this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.widgets=s.widgets||[]; s.widgets.push({type:t,widthPct:100,noBorder:true}); }); }, '#22c55e')}
+              </div>` : html``}
           ` : html``}
         </div>` : html``}
 
@@ -2803,9 +3096,11 @@ class ResidentEvilCardEditor extends LitElement {
             ${sensors.map((s,xi)=>html`
               <div style="background:#0b121d;border:1px solid #1e2d3d;border-radius:8px;padding:9px;display:flex;flex-direction:column;gap:6px;">
                 <div style="display:flex;gap:6px;align-items:center;">
-                  <div style="flex:1;">${this._txt(s.entity, v=>this._mutate(c=>c.categories[ci].submenus[si].sensors[xi].entity=v), 'entité', 're2ents')}</div>
+                  <div style="flex:1;">${this._txt(s.entity, v=>this._mutate(c=>c.categories[ci].submenus[si].sensors[xi].entity=v), 'entité',
+                    ({lights:'re2sw',switches:'re2sw',binarys:'re2bin',security:'re2bin',climates:'re2sensor'})[s.type] || 're2ents')}</div>
                   ${this._btn('▲', ()=>moveItem(c=>c.categories[ci].submenus[si].sensors, xi, -1), '#334155')}
                   ${this._btn('▼', ()=>moveItem(c=>c.categories[ci].submenus[si].sensors, xi, +1), '#334155')}
+                  ${this._btn('⧉', ()=>this._mutate(c=>{ const a=c.categories[ci].submenus[si].sensors; a.splice(xi+1,0,JSON.parse(JSON.stringify(a[xi]))); }), '#06b6d4')}
                   ${this._btn('🗑', ()=>this._mutate(c=>c.categories[ci].submenus[si].sensors.splice(xi,1)), '#ef4444')}
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
@@ -2818,15 +3113,39 @@ class ResidentEvilCardEditor extends LitElement {
                 </div>
               </div>`)}
           </div>
-          <div style="margin-top:8px;">
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
             ${this._btn('＋ Ajouter un capteur', ()=>this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.sensors=s.sensors||[]; s.sensors.push({entity:''}); }), '#22c55e')}
+            ${this._btn(this._bulkOpen ? '✕ Fermer' : '⇪ Ajout en masse', ()=>{ this._bulkOpen=!this._bulkOpen; this.requestUpdate(); }, '#06b6d4')}
           </div>
+          ${this._bulkOpen ? html`
+            <div style="margin-top:8px;background:#0b121d;border:1px solid #06b6d433;border-radius:8px;padding:10px;">
+              ${this._lbl('Une entité par ligne — les noms HA sont repris automatiquement')}
+              <textarea id="re2-bulk" rows="5" placeholder="sensor.exemple_1&#10;switch.exemple_2"
+                style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;
+                       padding:9px 10px;font-size:13px;border-radius:6px;font-family:'Courier New',monospace;"></textarea>
+              <div style="margin-top:6px;">
+                ${this._btn('Importer ces entités', ()=>{
+                  const ta = this.shadowRoot.querySelector('#re2-bulk');
+                  if (!ta) return;
+                  const ids = ta.value.split('\n').map(x=>x.trim()).filter(x=>x.includes('.'));
+                  if (!ids.length) return;
+                  this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.sensors=s.sensors||[];
+                    ids.forEach(id=>{ const st=this.hass?.states[id];
+                      s.sensors.push({entity:id, ...(st?.attributes?.friendly_name?{name:st.attributes.friendly_name}:{})}); }); });
+                  ta.value=''; this._bulkOpen=false; this.requestUpdate();
+                }, '#22c55e')}
+              </div>
+            </div>` : html``}
         </div>` : html``}
       </div>`;
 
     return html`
       <div style="font-family:'Roboto','Segoe UI',sans-serif;background:#080d14;border-radius:10px;overflow:hidden;border:1px solid #1a2744;">
         <datalist id="re2ents">${entOptions.map(e=>html`<option value="${e}"></option>`)}</datalist>
+        <datalist id="re2sw">${entOptions.filter(e=>/^(switch|light|input_boolean)\./.test(e)).map(e=>html`<option value="${e}"></option>`)}</datalist>
+        <datalist id="re2bin">${entOptions.filter(e=>e.startsWith('binary_sensor.')).map(e=>html`<option value="${e}"></option>`)}</datalist>
+        <datalist id="re2sensor">${entOptions.filter(e=>e.startsWith('sensor.')).map(e=>html`<option value="${e}"></option>`)}</datalist>
+        <datalist id="re2cam">${entOptions.filter(e=>e.startsWith('camera.')).map(e=>html`<option value="${e}"></option>`)}</datalist>
         <div style="background:#0d1b2e;border-bottom:1px solid #1a2744;padding:12px;">
           <div style="font-size:16px;font-weight:800;color:#ef4444;letter-spacing:2px;margin-bottom:10px;">
             ☣ RESIDENT EVIL CARD — ÉDITEUR
