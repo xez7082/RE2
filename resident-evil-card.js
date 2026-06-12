@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v100 (version RICHE : widgets)
+   RESIDENT EVIL CARD v101 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2525,6 +2525,41 @@ class ResidentEvilCardEditor extends LitElement {
       @click="${cb}">${label}</button>`;
   }
 
+  // Édition des capteurs du widget "energie" : devices[] et custom_names
+  // (une ligne par appareil) sont modifiés ensemble pour rester alignés.
+  _renderEnergieDevicesEditor(ci, si, wi, wg) {
+    const ec    = wg.energie_config || {};
+    const devs  = ec.devices || [];
+    const names = (ec.custom_names || '').split('\n');
+    const edit  = (fn) => this._mutate(c => {
+      const w = c.categories[ci].submenus[si].widgets[wi];
+      w.energie_config = w.energie_config || {};
+      const e = w.energie_config;
+      e.devices = e.devices || [];
+      const n = (e.custom_names || '').split('\n');
+      while (n.length < e.devices.length) n.push('');
+      fn(e, n);
+      e.custom_names = n.join('\n');
+    });
+    return html`
+      <div style="margin-top:10px;background:#101826;border:1px solid #00f9f933;border-radius:10px;padding:12px;">
+        ${this._lbl('⚡ CAPTEURS DE CONSOMMATION (' + devs.length + ')')}
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:380px;overflow-y:auto;padding-right:4px;">
+          ${devs.map((d, di) => html`
+            <div style="display:flex;gap:6px;align-items:center;">
+              <div style="flex:1.4;min-width:0;">${this._txt(d, v => edit((e,n)=>{ e.devices[di]=v; }), 'sensor.…_power', 're2ents')}</div>
+              <div style="flex:1;min-width:0;">${this._txt(names[di], v => edit((e,n)=>{ n[di]=v; }), 'Nom affiché')}</div>
+              ${this._btn('▲', () => edit((e,n)=>{ if(di<1)return; [e.devices[di-1],e.devices[di]]=[e.devices[di],e.devices[di-1]]; [n[di-1],n[di]]=[n[di],n[di-1]]; }), '#334155')}
+              ${this._btn('▼', () => edit((e,n)=>{ if(di>=e.devices.length-1)return; [e.devices[di+1],e.devices[di]]=[e.devices[di],e.devices[di+1]]; [n[di+1],n[di]]=[n[di],n[di+1]]; }), '#334155')}
+              ${this._btn('🗑', () => edit((e,n)=>{ e.devices.splice(di,1); n.splice(di,1); }), '#ef4444')}
+            </div>`)}
+        </div>
+        <div style="margin-top:8px;">
+          ${this._btn('＋ Ajouter un capteur', () => edit((e,n)=>{ e.devices.push(''); n.push(''); }), '#22c55e')}
+        </div>
+      </div>`;
+  }
+
   _setTheme(key, val) {
     this._mutate(c => { if (!c.theme) c.theme = {}; if (val === undefined || val === '') delete c.theme[key]; else c.theme[key] = val; if (Object.keys(c.theme).length === 0) delete c.theme; });
   }
@@ -2673,7 +2708,8 @@ class ResidentEvilCardEditor extends LitElement {
               <div style="margin-top:8px;font-size:13px;color:#94a3b8;background:#0d1117;border:1px solid #1e2d3d;border-radius:6px;padding:9px 12px;">
                 ${(sub.widgets||[]).length} widget(s) : ${(sub.widgets||[]).map(x=>x.type).join(', ')||'aucun'} —
                 configuration détaillée via l'éditeur YAML.
-              </div>` : html``}
+              </div>
+              ${(sub.widgets||[]).map((wg,wi)=> wg.type==='energie' ? this._renderEnergieDevicesEditor(ci,si,wi,wg) : html``)}` : html``}
           ` : html``}
         </div>` : html``}
 
