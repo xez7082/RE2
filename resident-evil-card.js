@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v111 (version RICHE : widgets)
+   RESIDENT EVIL CARD v112 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -423,7 +423,15 @@ class ResidentEvilCard extends LitElement {
       const ifr  = fit.querySelector('iframe');
       if (!ifr) return;
       const natW = parseFloat(fit.dataset.natw) || 1400;
-      const natH = parseFloat(fit.dataset.nath) || 760;
+      let   natH = parseFloat(fit.dataset.nath) || 760;
+      // Même origine (/local/…) : mesurer la hauteur réelle du contenu de la page
+      try {
+        const d = ifr.contentDocument;
+        if (d && d.body) {
+          const realH = Math.max(d.documentElement.scrollHeight, d.body.scrollHeight);
+          if (realH > 100) { natH = realH; ifr.style.height = realH + 'px'; }
+        }
+      } catch (_e) {}
       const rect = fit.getBoundingClientRect();
       if (rect.width < 10 || rect.height < 10) return;
       const sx = rect.width / natW;
@@ -446,6 +454,7 @@ class ResidentEvilCard extends LitElement {
           <div class="re-iframe-fit" data-natw="${natW}" data-nath="${natH}"
                style="position:absolute;inset:0;overflow:hidden;">
             <iframe class="re-iframe" src="${iframeUrl}" scrolling="no"
+                    @load="${() => { this.requestUpdate(); setTimeout(() => this.requestUpdate(), 400); }}"
                     style="width:${natW}px;height:${natH}px;border:none;display:block;
                            transform-origin:top left;"></iframe>
           </div>
