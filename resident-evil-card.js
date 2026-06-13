@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v118 (version RICHE : widgets)
+   RESIDENT EVIL CARD v119 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -376,6 +376,28 @@ class ResidentEvilCard extends LitElement {
 
   firstUpdated() {
     this._decryptTitle();
+    this._preloadIframes();
+  }
+
+  _preloadIframes() {
+    if (this._preloaded || !this.shadowRoot) return;
+    const urls = [];
+    (this._config?.categories || this.config?.categories || []).forEach(c =>
+      (c.submenus || []).forEach(s => {
+        if (s.iframe && Array.isArray(s.sensors)) s.sensors.forEach(x => { if (x && x.url) urls.push(x.url); });
+      }));
+    if (!urls.length) return;
+    this._preloaded = true;
+    const host = document.createElement('div');
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText = 'position:absolute;left:-99999px;top:-99999px;width:1200px;height:800px;opacity:0;pointer-events:none;overflow:hidden;';
+    [...new Set(urls)].forEach(u => {
+      const f = document.createElement('iframe');
+      f.src = u; f.width = '1200'; f.height = '800';
+      f.setAttribute('loading', 'eager');
+      host.appendChild(f);
+    });
+    this.shadowRoot.appendChild(host);
   }
 
   _beep(freq = 880) {
@@ -473,7 +495,7 @@ class ResidentEvilCard extends LitElement {
         <div class="re-iframe-wrapper" style="position:relative;">
           <div class="re-iframe-fit" data-natw="${natW}" data-nath="${natH}" data-hfixed="${hFixed}"
                style="position:absolute;inset:0;overflow:hidden;">
-            <iframe class="re-iframe" src="${iframeUrl}" scrolling="no"
+            <iframe class="re-iframe" src="${iframeUrl}" scrolling="no" loading="eager"
                     @load="${() => { this.requestUpdate(); setTimeout(() => this.requestUpdate(), 400); }}"
                     style="width:${natW}px;height:${natH}px;border:none;display:block;
                            transform-origin:top left;"></iframe>
