@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v128 (version RICHE : widgets)
+   RESIDENT EVIL CARD v129 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2682,122 +2682,277 @@ class ResidentEvilCard extends LitElement {
       </div>`;
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  WIDGET SOLAIRE NATIF (4 onglets, sans carte externe)
+  //  Onglet figé par w.active_tab : 0 Solaire · 1 Météo · 2 Batteries · 3 Économies
+  // ═══════════════════════════════════════════════════════════
   _renderSolarWidget(w, sizeStyle, noBorder=false) {
-    const fixedTab  = w.active_tab != null ? parseInt(w.active_tab) : 0;
-    const tabNames  = ['solar','meteo','batt','eco'];
-    const cfg       = w.solar_config || {};
+    const fixedTab = w.active_tab != null ? parseInt(w.active_tab) : 0;
+    const c = w.solar_config || {};
+    const Sx = (id) => id && this.hass?.states[id] ? this.hass.states[id] : null;
+    const stt = (id) => { const s = Sx(id); return s ? s.state : null; };
+    const num = (id) => { const s = Sx(id); if (!s) return null; const v = parseFloat(s.state); return isNaN(v) ? null : v; };
+    const uni = (id) => Sx(id)?.attributes?.unit_of_measurement || '';
+    const att = (id, a) => Sx(id)?.attributes?.[a];
+    const toKwh = (id) => { const s = Sx(id); if (!s || ['unavailable','unknown'].includes(s.state)) return null; const v = parseFloat(s.state); if (isNaN(v)) return null; return /^wh$/i.test(s.attributes.unit_of_measurement||'kWh') ? v/1000 : v; };
+    const fmt = (v, d=1) => v == null ? '--' : v.toLocaleString('fr-FR', {maximumFractionDigits: d});
 
-    if (!customElements.get('solar-master-card')) {
-      return html`
-        <div class="dw-card ${noBorder?'no-border':''}"
-             style="${sizeStyle} display:flex;align-items:center;justify-content:center;text-align:center;color:#f59e0b;font-size:13px;padding:20px;">
-          ⚠ Carte « solar-master-card » non installée.<br>Ajoute sa ressource pour afficher l'onglet « ${tabNames[fixedTab]} ».
-        </div>`;
-    }
-
-    const clickTab = () => {
-      setTimeout(() => {
-        const cards = this.shadowRoot ? this.shadowRoot.querySelectorAll('solar-master-card') : [];
-        cards.forEach(el => {
-          const sr = el.shadowRoot;
-          if (!sr) return;
-          if (!sr.querySelector('#re2-hide-tabs')) {
-            const st = document.createElement('style');
-            st.id = 're2-hide-tabs';
-            st.textContent = [
-              '.tab-bar','.tabs','.nav-tabs','.bottom-nav',
-              '[class*="tab-nav"]','[class*="bottom-tab"]',
-              '[class*="footer"]','[class*="tab-strip"]',
-            ].join(',') + '{display:none!important}';
-            sr.appendChild(st);
-          }
-          const tabBtns = sr.querySelectorAll(
-            '.tab-btn, .nav-btn, [class*="tab-item"], [class*="nav-item"], ' +
-            '.tab-button, button[data-tab], [role="tab"]'
-          );
-          if (tabBtns.length > fixedTab) {
-            tabBtns[fixedTab].click();
-          } else {
-            const byData = sr.querySelector(
-              '[data-tab="'+tabNames[fixedTab]+'"], [data-index="'+fixedTab+'"], [data-id="'+tabNames[fixedTab]+'"]'
-            );
-            if (byData) byData.click();
-          }
-        });
-      }, 300);
-    };
-    clickTab();
-
-    const dayDefs = [
-      { l: w.d1_label || 'Production du jour - Maison', e: w.d1_entity || 'sensor.beem_maison_production_aujourd_hui', c: '#f59e0b' },
-      { l: w.d2_label || 'Production du jour - Spa',    e: w.d2_entity || 'sensor.beem_spa_production_aujourd_hui',    c: '#38bdf8' },
-      { l: w.d3_label || 'Production du jour - IBC',    e: w.d3_entity || 'sensor.ibc_production_aujourd_hui',         c: '#22c55e' },
-      { l: w.dt_label || 'Production du jour - Total',  e: w.dt_entity || 'sensor.production_totale_beem_jour',        c: '#a78bfa' },
-    ];
-    const monthDefs = [
-      { l: w.m1_label || 'Production du mois - Maison', e: w.m1_entity || 'sensor.beem_maison_production_du_mois', c: '#f59e0b' },
-      { l: w.m2_label || 'Production du mois - Spa',    e: w.m2_entity || 'sensor.beem_spa_production_du_mois',    c: '#38bdf8' },
-      { l: w.m3_label || 'Production du mois - IBC',    e: w.m3_entity || 'sensor.ibc_production_du_mois',         c: '#22c55e' },
-    ];
-    const toKwh = (eid) => {
-      const st = this.hass?.states[eid];
-      if (!st || ['unavailable','unknown'].includes(st.state)) return null;
-      const v = parseFloat(st.state);
-      if (isNaN(v)) return null;
-      const un = st.attributes.unit_of_measurement || 'kWh';
-      return /^wh$/i.test(un) ? v / 1000 : v;
-    };
-    const monthTotal = monthDefs.reduce((acc, d) => {
-      const v = toKwh(d.e);
-      return v == null ? acc : (acc == null ? v : acc + v);
-    }, null);
-    const stripTile = (label, val, colr) => html`
-      <div style="background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);
-                  border-radius:10px;padding:10px 12px;text-align:center;min-width:0;">
-        <div style="font-size:13px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
-        <div style="font-size:22px;font-weight:800;color:#f1f5f9;margin-top:3px;line-height:1.1;">
-          ${val == null ? '--' : val.toLocaleString('fr-FR',{maximumFractionDigits:3})}<span style="font-size:13px;font-weight:600;color:${colr};"> kWh</span>
+    // ── Tuile générique HUD ──
+    const tile = (label, value, unit, col, icon) => html`
+      <div style="flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
+                  border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:3px;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#94a3b8;font-weight:600;">
+          ${icon ? html`<ha-icon icon="${icon}" style="--mdc-icon-size:15px;color:${col};"></ha-icon>` : html``}
+          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</span>
+        </div>
+        <div style="font-size:22px;font-weight:800;color:#f1f5f9;line-height:1.1;">
+          ${value}<span style="font-size:13px;font-weight:600;color:${col};"> ${unit||''}</span>
         </div>
       </div>`;
-    const monthStrip = fixedTab === 0 ? html`
-      <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 4px 0;">
-        ${monthDefs.map(d => stripTile(d.l, toKwh(d.e), d.c))}
-        ${stripTile(w.mt_label || 'Production du mois - Total', monthTotal, '#a78bfa')}
-      </div>` : html``;
 
-    const dayStrip = fixedTab === 0 ? html`
-      <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 4px 2px;">
-        ${dayDefs.map(d => {
-          const dst = this.hass?.states[d.e];
-          if (!dst || ['unavailable','unknown'].includes(dst.state)) return html``;
-          let v  = parseFloat(dst.state);
-          let un = dst.attributes.unit_of_measurement || 'kWh';
-          if (!isNaN(v) && /^wh$/i.test(un) && Math.abs(v) >= 1000) { v = v / 1000; un = 'kWh'; }
-          return html`
-            <div style="background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);
-                        border-radius:10px;padding:10px 12px;text-align:center;min-width:0;">
-              <div style="font-size:13px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.l}</div>
-              <div style="font-size:22px;font-weight:800;color:#f1f5f9;margin-top:3px;line-height:1.1;">
-                ${isNaN(v) ? dst.state : v.toLocaleString('fr-FR',{maximumFractionDigits:3})}<span style="font-size:13px;font-weight:600;color:${d.c};"> ${un}</span>
+    // ── Bandeaux jour / mois (onglet Solaire) ──
+    const dayDefs = [
+      { l: w.d1_label || 'Jour - Maison', e: w.d1_entity || c.beem_m_d || 'sensor.beem_maison_production_aujourd_hui', col:'#f59e0b' },
+      { l: w.d2_label || 'Jour - Spa',    e: w.d2_entity || c.beem_s_d || 'sensor.beem_spa_production_aujourd_hui',    col:'#38bdf8' },
+      { l: w.d3_label || 'Jour - IBC',    e: w.d3_entity || c.beem_i_d || 'sensor.ibc_production_aujourd_hui',         col:'#22c55e' },
+      { l: w.dt_label || 'Jour - Total',  e: w.dt_entity || c.solar_daily_kwh || 'sensor.production_totale_beem_jour', col:'#a78bfa' },
+    ];
+    const monthDefs = [
+      { l: w.m1_label || 'Mois - Maison', e: w.m1_entity || c.beem_m_m || 'sensor.beem_maison_production_du_mois', col:'#f59e0b' },
+      { l: w.m2_label || 'Mois - Spa',    e: w.m2_entity || c.beem_s_m || 'sensor.beem_spa_production_du_mois',    col:'#38bdf8' },
+      { l: w.m3_label || 'Mois - IBC',    e: w.m3_entity || c.beem_i_m || 'sensor.ibc_production_du_mois',         col:'#22c55e' },
+    ];
+    const monthTotal = monthDefs.reduce((a,d)=>{ const v=toKwh(d.e); return v==null?a:(a==null?v:a+v); }, null);
+    const stripTile = (label, val, col, forceKwh) => html`
+      <div style="flex:1;min-width:0;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);
+                  border-radius:10px;padding:9px 11px;text-align:center;">
+        <div style="font-size:12px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
+        <div style="font-size:20px;font-weight:800;color:#f1f5f9;margin-top:2px;line-height:1.1;">
+          ${val==null?'--':fmt(val,3)}<span style="font-size:12px;font-weight:600;color:${col};"> kWh</span>
+        </div>
+      </div>`;
+
+    // ════ ONGLET 0 — SOLAIRE ════
+    const renderSolar = () => {
+      const totalNow = num(c.total_now) != null ? num(c.total_now)
+        : [c.p1_w||c.beem_m_w, c.p2_w||c.beem_s_w, c.p3_w||c.beem_i_w].reduce((a,e)=>{const v=num(e);return v==null?a:a+v;},0);
+      const panels = [
+        { n: c.p1_name||'Maison', w: c.p1_w||c.beem_m_w, d: c.p1_d||c.beem_m_d, col:'#f59e0b' },
+        { n: c.p2_name||'Spa',    w: c.p2_w||c.beem_s_w, d: c.p2_d||c.beem_s_d, col:'#38bdf8' },
+        { n: c.p3_name||'IBC',    w: c.p3_w||c.beem_i_w, d: c.p3_d||c.beem_i_d, col:'#22c55e' },
+      ];
+      const auto = num(c.autoconso_pct);
+      return html`
+        <div style="display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
+          <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:14px;
+                      background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:14px;padding:14px 18px;">
+            <div>
+              <div style="font-size:13px;color:#94a3b8;font-weight:600;letter-spacing:1px;">PRODUCTION INSTANTANÉE</div>
+              <div style="font-size:38px;font-weight:900;color:#f59e0b;line-height:1.05;text-shadow:0 0 18px rgba(245,158,11,.4);">
+                ${fmt(totalNow,0)}<span style="font-size:16px;color:#94a3b8;font-weight:700;"> W</span>
               </div>
-            </div>`;
-        })}
-      </div>` : html``;
+            </div>
+            ${auto!=null ? html`
+              <div style="text-align:center;">
+                <div style="font-size:30px;font-weight:900;color:#22c55e;line-height:1;">${fmt(auto,0)}%</div>
+                <div style="font-size:12px;color:#94a3b8;font-weight:600;">AUTOCONSO</div>
+              </div>` : html``}
+          </div>
+          <div style="flex-shrink:0;display:flex;gap:10px;">
+            ${panels.map(p => html`
+              <div style="flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid ${p.col}33;border-radius:12px;padding:11px;text-align:center;">
+                <div style="font-size:13px;color:#94a3b8;font-weight:600;">${p.n}</div>
+                <div style="font-size:24px;font-weight:800;color:${p.col};line-height:1.1;margin-top:2px;">${fmt(num(p.w),0)}<span style="font-size:12px;"> W</span></div>
+                ${num(p.d)!=null ? html`<div style="font-size:12px;color:#64748b;margin-top:2px;">${fmt(toKwh(p.d),2)} kWh aujourd'hui</div>` : html``}
+              </div>`)}
+          </div>
+          <div style="flex-shrink:0;display:flex;gap:10px;">
+            ${num(c.grid_flow)!=null ? tile('Réseau', fmt(num(c.grid_flow),0), uni(c.grid_flow)||'W', '#ef4444', 'mdi:transmission-tower') : html``}
+            ${num(c.main_cons)!=null ? tile('Consommation', fmt(num(c.main_cons),0), uni(c.main_cons)||'W', '#f97316', 'mdi:home-lightning-bolt') : html``}
+            ${num(c.autoconso_nuit)!=null ? tile('Autoconso nuit', fmt(toKwh(c.autoconso_nuit),2), 'kWh', '#818cf8', 'mdi:weather-night') : html``}
+          </div>
+          <div style="flex-shrink:0;display:flex;gap:8px;">${monthDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}${stripTile(w.mt_label||'Mois - Total', monthTotal, '#a78bfa')}</div>
+          <div style="flex-shrink:0;display:flex;gap:8px;">${dayDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}</div>
+        </div>`;
+    };
+
+    // ════ ONGLET 1 — MÉTÉO ════
+    const renderMeteo = () => {
+      const wxId = c.weather_entity || c.entity_weather;
+      const wx = Sx(wxId), wa = wx ? wx.attributes : {};
+      const wItems = [
+        { e:c.w1_e, l:c.w1_l||'Condition',  i:c.w1_i||'mdi:weather-partly-cloudy' },
+        { e:c.w2_e, l:c.w2_l||'Vent',       i:c.w2_i||'mdi:weather-windy' },
+        { e:c.w3_e, l:c.w3_l||'Azimut',     i:c.w3_i||'mdi:sun-angle' },
+        { e:c.w4_e, l:c.w4_l||'Élévation',  i:c.w4_i||'mdi:compass-outline' },
+        { e:c.w5_e, l:c.w5_l||'Pic du jour',i:c.w5_i||'mdi:solar-power-variant' },
+        { e:c.w6_e, l:c.w6_l||'Prévision',  i:c.w6_i||'mdi:chart-line' },
+      ].filter(x => x.e && Sx(x.e));
+      return html`
+        <div style="display:flex;flex-direction:column;gap:10px;height:100%;overflow-y:auto;">
+          <div style="flex-shrink:0;display:flex;gap:10px;">
+            ${num(c.temp_ext)!=null ? tile('Température', fmt(num(c.temp_ext),1), '°C', '#f97316', 'mdi:thermometer') : html``}
+            ${num(c.hum_ext)!=null ? tile('Humidité', fmt(num(c.hum_ext),0), '%', '#38bdf8', 'mdi:water-percent') : html``}
+            ${stt(c.moon_entity) ? tile('Lune', stt(c.moon_entity), '', '#a78bfa', 'mdi:moon-waning-crescent') : html``}
+          </div>
+          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start;">
+            ${wItems.map(x => {
+              const s = Sx(x.e);
+              const v = parseFloat(s.state);
+              return tile(x.l, isNaN(v)?s.state:fmt(v,1), s.attributes.unit_of_measurement||'', '#22d3ee', x.i);
+            })}
+            ${wItems.length===0 ? html`<div style="grid-column:span 2;text-align:center;color:#64748b;font-size:13px;padding:20px;">Aucune entité météo configurée</div>` : html``}
+          </div>
+        </div>`;
+    };
+
+    // ════ ONGLET 2 — BATTERIES ════
+    const renderBatt = () => {
+      const batts = [
+        { n:c.b1_n||'Batterie 1', s:c.b1_s||c.bat1_soc, t:c.b1_t||c.b1_temp, cap:c.b1_cap, out:c.b1_out||c.b1_v, conn:c.b1_conn },
+        { n:c.b2_n||'Batterie 2', s:c.b2_s||c.bat2_soc, t:c.b2_t||c.b2_temp, cap:c.b2_cap, out:c.b2_out||c.b2_v, conn:c.b2_conn },
+        { n:c.b3_n||'Batterie 3', s:c.b3_s||c.bat3_soc, t:c.b3_t||c.b3_temp, cap:c.b3_cap, out:c.b3_out||c.b3_v, conn:c.b3_conn },
+      ].filter(b => b.s && Sx(b.s));
+      const battCard = (b) => {
+        const soc = num(b.s);
+        const socCol = soc==null?'#475569':soc<=20?'#ef4444':soc<=50?'#f59e0b':'#22c55e';
+        const connState = stt(b.conn);
+        const online = connState ? ['on','connected','online','true','connecté'].includes(String(connState).toLowerCase()) : null;
+        return html`
+          <div style="flex:1;min-width:200px;background:rgba(255,255,255,.04);border:1px solid ${socCol}33;border-radius:14px;padding:13px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:15px;font-weight:700;color:#f1f5f9;">${b.n}</span>
+              ${online!=null ? html`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:${online?'rgba(34,197,94,.12)':'rgba(239,68,68,.12)'};color:${online?'#22c55e':'#ef4444'};">${online?'EN LIGNE':'HORS LIGNE'}</span>` : html``}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="font-size:34px;font-weight:900;color:${socCol};line-height:1;">${fmt(soc,0)}<span style="font-size:15px;"> %</span></div>
+              <div style="flex:1;height:10px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden;">
+                <div style="height:100%;width:${Math.min(100,Math.max(0,soc||0))}%;background:${socCol};box-shadow:0 0 8px ${socCol}88;border-radius:5px;transition:width .6s;"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:12px;color:#94a3b8;">
+              ${num(b.t)!=null ? html`<span style="background:rgba(255,255,255,.05);border-radius:6px;padding:3px 8px;">🌡 ${fmt(num(b.t),1)}°C</span>` : html``}
+              ${num(b.cap)!=null ? html`<span style="background:rgba(255,255,255,.05);border-radius:6px;padding:3px 8px;">⚡ ${fmt(num(b.cap),2)} ${uni(b.cap)}</span>` : html``}
+              ${num(b.out)!=null ? html`<span style="background:rgba(255,255,255,.05);border-radius:6px;padding:3px 8px;">↔ ${fmt(num(b.out),0)} ${uni(b.out)||'W'}</span>` : html``}
+            </div>
+          </div>`;
+      };
+      return html`
+        <div style="display:flex;flex-direction:column;gap:10px;height:100%;overflow-y:auto;">
+          ${num(c.batt_total_power)!=null ? html`
+            <div style="flex-shrink:0;background:rgba(129,140,248,.06);border:1px solid rgba(129,140,248,.2);border-radius:14px;padding:12px 16px;text-align:center;">
+              <div style="font-size:13px;color:#94a3b8;font-weight:600;letter-spacing:1px;">PUISSANCE BATTERIE TOTALE</div>
+              <div style="font-size:30px;font-weight:900;color:#818cf8;line-height:1.1;">${fmt(num(c.batt_total_power),0)}<span style="font-size:14px;color:#94a3b8;"> ${uni(c.batt_total_power)||'W'}</span></div>
+            </div>` : html``}
+          <div style="flex:1;display:flex;flex-wrap:wrap;gap:10px;align-content:start;">
+            ${batts.map(b => battCard(b))}
+            ${batts.length===0 ? html`<div style="width:100%;text-align:center;color:#64748b;font-size:13px;padding:20px;">Aucune batterie configurée</div>` : html``}
+          </div>
+        </div>`;
+    };
+
+    // ════ ONGLET 3 — ÉCONOMIES ════
+    const renderEco = () => {
+      const objPct = num(c.total_obj_pct || c.prod_obj_pct || c.solar_pct_entity);
+      const objKwh = num(c.total_obj_kwh || c.obj_kwh_target || c.solar_target);
+      const euro = (v) => v==null?'--':v.toLocaleString('fr-FR',{maximumFractionDigits:2})+' €';
+      return html`
+        <div style="display:flex;flex-direction:column;gap:10px;height:100%;overflow-y:auto;">
+          ${num(c.eco_money)!=null ? html`
+            <div style="flex-shrink:0;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:14px 18px;text-align:center;">
+              <div style="font-size:13px;color:#94a3b8;font-weight:600;letter-spacing:1px;">${(c.eco_money_label||'ÉCONOMIES RÉALISÉES')}</div>
+              <div style="font-size:38px;font-weight:900;color:#22c55e;line-height:1.05;text-shadow:0 0 18px rgba(34,197,94,.4);">${euro(num(c.eco_money))}</div>
+            </div>` : html``}
+          <div style="flex-shrink:0;display:flex;gap:10px;">
+            ${num(c.eco_day_euro)!=null ? tile(c.eco_day_label||'Gain / jour', euro(num(c.eco_day_euro)), '', '#22c55e', 'mdi:cash') : html``}
+            ${num(c.e2_e)!=null ? tile(c.e2_l||'Gain / mois', euro(num(c.e2_e)), '', '#22c55e', 'mdi:calendar-month') : html``}
+            ${num(c.eco_year_euro||c.e3_e)!=null ? tile(c.eco_year_label||c.e3_l||'Gain / an', euro(num(c.eco_year_euro||c.e3_e)), '', '#22c55e', 'mdi:calendar') : html``}
+          </div>
+          <div style="flex-shrink:0;display:flex;gap:10px;">
+            ${num(c.kwh_price)!=null ? tile(c.e1_l||'Tarif kWh', fmt(num(c.kwh_price),3), uni(c.kwh_price)||'€', '#f59e0b', 'mdi:currency-eur') : html``}
+            ${num(c.e1_e)!=null && c.e1_e!==c.kwh_price ? tile(c.e1_l||'Tarif EDF', fmt(num(c.e1_e),3), uni(c.e1_e)||'€', '#f59e0b', 'mdi:flash') : html``}
+          </div>
+          ${objPct!=null ? html`
+            <div style="flex-shrink:0;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:13px 16px;">
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:7px;">
+                <span style="color:#94a3b8;">Objectif mensuel</span>
+                <span style="color:#22c55e;">${fmt(objPct,0)}%${objKwh!=null?` · ${fmt(objKwh,0)} kWh`:''}</span>
+              </div>
+              <div style="height:10px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden;">
+                <div style="height:100%;width:${Math.min(100,Math.max(0,objPct))}%;background:linear-gradient(90deg,#22c55e,#86efac);box-shadow:0 0 8px rgba(34,197,94,.5);border-radius:5px;transition:width .8s;"></div>
+              </div>
+            </div>` : html``}
+        </div>`;
+    };
+
+    const body = fixedTab===1 ? renderMeteo() : fixedTab===2 ? renderBatt() : fixedTab===3 ? renderEco() : renderSolar();
 
     return html`
-      <div style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;${sizeStyle}">
-        <div style="flex:1;min-height:0;overflow:hidden;">
-          <solar-master-card
-            style="display:block;width:100%;height:100%;"
-            .hass="${this.hass}"
-            .config="${{...cfg, _active_tab: tabNames[fixedTab], _hide_tabs: true}}">
-          </solar-master-card>
-        </div>
-        ${monthStrip}
-        ${dayStrip}
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} background:#0a0c14;border-color:rgba(245,158,11,.2);overflow:hidden;display:flex;flex-direction:column;padding:14px;">
+        ${body}
       </div>`;
   }
 
+  // Éditeur des entités du widget solaire, groupées par onglet
+  _renderSolarConfigEditor(ci, si, wi, wg) {
+    const groups = [
+      ['☀️ Production (onglet Solaire)', [
+        ['total_now','Prod. instantanée totale'],['autoconso_pct','Autoconsommation %'],['autoconso_nuit','Autoconso nuit'],
+        ['grid_flow','Flux réseau'],['main_cons','Consommation maison'],
+        ['p1_name','Panneau 1 — nom'],['p1_w','Panneau 1 — puissance'],['p1_d','Panneau 1 — jour'],
+        ['p2_name','Panneau 2 — nom'],['p2_w','Panneau 2 — puissance'],['p2_d','Panneau 2 — jour'],
+        ['p3_name','Panneau 3 — nom'],['p3_w','Panneau 3 — puissance'],['p3_d','Panneau 3 — jour'],
+        ['beem_m_m','Maison — mois'],['beem_s_m','Spa — mois'],['beem_i_m','IBC — mois'],
+      ]],
+      ['🌤 Météo (onglet Météo)', [
+        ['weather_entity','Entité weather'],['temp_ext','Température ext.'],['hum_ext','Humidité ext.'],['moon_entity','Lune'],
+        ['w1_e','Météo 1 — entité'],['w1_l','Météo 1 — libellé'],
+        ['w2_e','Météo 2 — entité'],['w2_l','Météo 2 — libellé'],
+        ['w3_e','Météo 3 — entité'],['w3_l','Météo 3 — libellé'],
+        ['w4_e','Météo 4 — entité'],['w4_l','Météo 4 — libellé'],
+        ['w5_e','Météo 5 — entité'],['w5_l','Météo 5 — libellé'],
+        ['w6_e','Météo 6 — entité'],['w6_l','Météo 6 — libellé'],
+      ]],
+      ['🔋 Batteries (onglet Batteries)', [
+        ['batt_total_power','Puissance batterie totale'],
+        ['b1_n','Bat 1 — nom'],['b1_s','Bat 1 — SOC'],['b1_t','Bat 1 — température'],['b1_cap','Bat 1 — capacité'],['b1_out','Bat 1 — puissance'],['b1_conn','Bat 1 — connexion'],
+        ['b2_n','Bat 2 — nom'],['b2_s','Bat 2 — SOC'],['b2_t','Bat 2 — température'],['b2_cap','Bat 2 — capacité'],['b2_out','Bat 2 — puissance'],['b2_conn','Bat 2 — connexion'],
+        ['b3_n','Bat 3 — nom'],['b3_s','Bat 3 — SOC'],['b3_t','Bat 3 — température'],['b3_cap','Bat 3 — capacité'],['b3_out','Bat 3 — puissance'],['b3_conn','Bat 3 — connexion'],
+      ]],
+      ['💰 Économies (onglet Économies)', [
+        ['eco_money','Économies réalisées'],['eco_day_euro','Gain / jour'],['e2_e','Gain / mois'],['eco_year_euro','Gain / an'],
+        ['kwh_price','Tarif kWh'],['e1_e','Tarif EDF'],
+        ['total_obj_pct','Objectif — %'],['total_obj_kwh','Objectif — kWh'],
+      ]],
+      ['🗓 Bandeaux jour / mois', [
+        ['__d1_entity','Jour 1 — entité'],['__d2_entity','Jour 2 — entité'],['__d3_entity','Jour 3 — entité'],['__dt_entity','Jour total — entité'],
+        ['__m1_entity','Mois 1 — entité'],['__m2_entity','Mois 2 — entité'],['__m3_entity','Mois 3 — entité'],
+      ]],
+    ];
+    const isLabel = (k) => /_(l|name|label)$/.test(k) || k.endsWith('_n');
+    return html`
+      <div style="margin-top:10px;background:#101826;border:1px solid #f59e0b33;border-radius:10px;padding:12px;">
+        ${this._lbl('☀️ ENTITÉS DU WIDGET SOLAIRE')}
+        <div style="display:flex;flex-direction:column;gap:12px;max-height:460px;overflow-y:auto;padding-right:4px;">
+          ${groups.map(([title, rows]) => html`
+            <div>
+              <div style="font-size:12px;font-weight:800;color:#fbbf24;letter-spacing:.5px;margin-bottom:6px;">${title}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                ${rows.map(([key, label]) => {
+                  // Les bandeaux jour/mois sont des clés directes du widget (préfixe __), pas dans solar_config
+                  const onWidget = key.startsWith('__');
+                  const realKey = onWidget ? key.slice(2) : ('solar_config.' + key);
+                  const cur = onWidget ? wg[key.slice(2)] : (wg.solar_config||{})[key];
+                  return html`<div>
+                    <div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">${label}</div>
+                    ${this._txt(cur, v=>this._wgSet(ci,si,wi,realKey,v), '', isLabel(key)?'':'re2ents')}
+                  </div>`;
+                })}
+              </div>
+            </div>`)}
+        </div>
+      </div>`;
+  }
   render() {
     if (!this.hass || !this.config) return html``;
     const title          = this.config.title || 'UMBRELLA CORP. TERMINAL';
@@ -3663,6 +3818,7 @@ class ResidentEvilCardEditor extends LitElement {
                   </div>
                   ${this._renderWidgetEditor(ci,si,wi,wg)}
                   ${wg.type==='energie' ? this._renderEnergieDevicesEditor(ci,si,wi,wg) : html``}
+                  ${wg.type==='solar' ? this._renderSolarConfigEditor(ci,si,wi,wg) : html``}
                 </div>`)}
               <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
                 <select id="re2-add-wtype" style="${selStyle}">
