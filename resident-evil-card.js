@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v133 (version RICHE : widgets)
+   RESIDENT EVIL CARD v134 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2739,12 +2739,12 @@ class ResidentEvilCard extends LitElement {
     // ── Tuile générique HUD ──
     const tile = (label, value, unit, col, icon) => html`
       <div style="flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
-                  border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:3px;">
+                  border-radius:12px;padding:8px 11px;display:flex;flex-direction:column;gap:2px;">
         <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#94a3b8;font-weight:600;">
           ${icon ? html`<ha-icon icon="${icon}" style="--mdc-icon-size:15px;color:${col};"></ha-icon>` : html``}
           <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</span>
         </div>
-        <div style="font-size:22px;font-weight:800;color:#f1f5f9;line-height:1.1;">
+        <div style="font-size:18px;font-weight:800;color:#f1f5f9;line-height:1.1;">
           ${value}<span style="font-size:13px;font-weight:600;color:${col};"> ${unit||''}</span>
         </div>
       </div>`;
@@ -2766,7 +2766,7 @@ class ResidentEvilCard extends LitElement {
       <div style="flex:1;min-width:0;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);
                   border-radius:10px;padding:9px 11px;text-align:center;">
         <div style="font-size:12px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
-        <div style="font-size:20px;font-weight:800;color:#f1f5f9;margin-top:2px;line-height:1.1;">
+        <div style="font-size:17px;font-weight:800;color:#f1f5f9;margin-top:1px;line-height:1.1;">
           ${val==null?'--':fmt(val,3)}<span style="font-size:12px;font-weight:600;color:${col};"> kWh</span>
         </div>
       </div>`;
@@ -2782,36 +2782,36 @@ class ResidentEvilCard extends LitElement {
       ];
       const auto = num(c.autoconso_pct);
       return html`
-        <div style="display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
+        <div style="display:flex;flex-direction:column;gap:7px;height:100%;overflow:hidden;">
           <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:14px;
-                      background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:14px;padding:14px 18px;">
+                      background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:14px;padding:9px 14px;">
             <div>
               <div style="font-size:13px;color:#94a3b8;font-weight:600;letter-spacing:1px;">PRODUCTION INSTANTANÉE</div>
-              <div style="font-size:38px;font-weight:900;color:#f59e0b;line-height:1.05;text-shadow:0 0 18px rgba(245,158,11,.4);">
-                ${fmt(totalNow,0)}<span style="font-size:16px;color:#94a3b8;font-weight:700;"> W</span>
+              <div style="font-size:27px;font-weight:900;color:#f59e0b;line-height:1.05;text-shadow:0 0 14px rgba(245,158,11,.4);">
+                ${fmt(totalNow,0)}<span style="font-size:14px;color:#94a3b8;font-weight:700;"> W</span>
               </div>
             </div>
             ${auto!=null ? html`
               <div style="text-align:center;">
-                <div style="font-size:30px;font-weight:900;color:#22c55e;line-height:1;">${fmt(auto,0)}%</div>
+                <div style="font-size:23px;font-weight:900;color:#22c55e;line-height:1;">${fmt(auto,0)}%</div>
                 <div style="font-size:12px;color:#94a3b8;font-weight:600;">AUTOCONSO</div>
               </div>` : html``}
           </div>
-          <div style="flex-shrink:0;display:flex;gap:10px;">
+          <div style="flex-shrink:0;display:flex;gap:7px;">
             ${panels.map(p => html`
-              <div style="flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid ${p.col}33;border-radius:12px;padding:11px;text-align:center;">
+              <div style="flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid ${p.col}33;border-radius:12px;padding:8px;text-align:center;">
                 <div style="font-size:13px;color:#94a3b8;font-weight:600;">${p.n}</div>
-                <div style="font-size:24px;font-weight:800;color:${p.col};line-height:1.1;margin-top:2px;">${fmt(num(p.w),0)}<span style="font-size:12px;"> W</span></div>
+                <div style="font-size:19px;font-weight:800;color:${p.col};line-height:1.1;margin-top:1px;">${fmt(num(p.w),0)}<span style="font-size:12px;"> W</span></div>
                 ${num(p.d)!=null ? html`<div style="font-size:12px;color:#64748b;margin-top:2px;">${fmt(toKwh(p.d),2)} kWh aujourd'hui</div>` : html``}
               </div>`)}
           </div>
-          <div style="flex-shrink:0;display:flex;gap:10px;">
+          <div style="flex-shrink:0;display:flex;gap:7px;">
             ${num(c.grid_flow)!=null ? tile('Réseau', fmt(num(c.grid_flow),0), uni(c.grid_flow)||'W', '#ef4444', 'mdi:transmission-tower') : html``}
             ${num(c.main_cons)!=null ? tile('Consommation', fmt(num(c.main_cons),0), uni(c.main_cons)||'W', '#f97316', 'mdi:home-lightning-bolt') : html``}
             ${num(c.autoconso_nuit)!=null ? tile('Autoconso nuit', fmt(toKwh(c.autoconso_nuit),2), 'kWh', '#818cf8', 'mdi:weather-night') : html``}
           </div>
-          <div style="flex-shrink:0;display:flex;gap:8px;">${monthDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}${stripTile(w.mt_label||'Mois - Total', monthTotal, '#a78bfa')}</div>
-          <div style="flex-shrink:0;display:flex;gap:8px;">${dayDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}</div>
+          <div style="flex-shrink:0;display:flex;gap:6px;">${monthDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}${stripTile(w.mt_label||'Mois - Total', monthTotal, '#a78bfa')}</div>
+          <div style="flex-shrink:0;display:flex;gap:6px;">${dayDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}</div>
         </div>`;
     };
 
@@ -2927,7 +2927,7 @@ class ResidentEvilCard extends LitElement {
     const body = fixedTab===1 ? renderMeteo() : fixedTab===2 ? renderBatt() : fixedTab===3 ? renderEco() : renderSolar();
 
     return html`
-      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} background:#0a0c14;border-color:rgba(245,158,11,.2);overflow:hidden;display:flex;flex-direction:column;padding:14px;">
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} background:#0a0c14;border-color:rgba(245,158,11,.2);overflow:hidden;display:flex;flex-direction:column;padding:10px;">
         ${body}
       </div>`;
   }
