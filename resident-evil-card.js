@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v129 (version RICHE : widgets)
+   RESIDENT EVIL CARD v130 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3513,6 +3513,11 @@ class ResidentEvilCardEditor extends LitElement {
   }
 
   // Éditeur générique d'un widget : champs du schéma + listes spécifiques
+  _safeWidgetEditor(ci, si, wi, wg) {
+    try { return this._renderWidgetEditor(ci, si, wi, wg); }
+    catch (e) { return html`<div style="color:#ef4444;font-size:12px;padding:8px;">Éditeur indisponible pour ce widget : ${e.message}</div>`; }
+  }
+
   _renderWidgetEditor(ci, si, wi, wg) {
     const schema = (this.constructor.WIDGET_SCHEMAS[wg.type] || []);
     const selStyle = 'width:100%;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;';
@@ -3707,7 +3712,7 @@ class ResidentEvilCardEditor extends LitElement {
         <div style="background:#101826;border:1px solid #ef444433;border-radius:10px;padding:12px;">
           ${this._lbl('1️⃣ MENU PRINCIPAL (titres)')}
           <div style="display:flex;gap:6px;margin-bottom:8px;">
-            <select style="${selStyle}" @change="${e=>{ this._ci = parseInt(e.target.value); this._si = 0; this.requestUpdate(); }}">
+            <select style="${selStyle}" .value="${String(ci)}" @change="${e=>{ this._ci = parseInt(e.target.value); this._si = 0; this._expOpen=false; this._impOpen=false; this._bulkOpen=false; this.requestUpdate(); }}">
               ${cats.map((c,i)=>html`<option value="${i}" ?selected="${ci===i}">${c.name||('Catégorie '+i)}</option>`)}
             </select>
             ${this._btn('＋', ()=>this._mutate(c=>{ c.categories = c.categories||[]; c.categories.push({name:'NOUVELLE CATÉGORIE',submenus:[]}); this._ci = c.categories.length-1; this._si = 0; }), '#22c55e', 'Ajouter une catégorie')}
@@ -3772,7 +3777,7 @@ class ResidentEvilCardEditor extends LitElement {
         <div style="background:#101826;border:1px solid #22c55e33;border-radius:10px;padding:12px;">
           ${this._lbl('2️⃣ SOUS-MENUS (sous-titres, barre latérale)')}
           <div style="display:flex;gap:6px;margin-bottom:8px;">
-            <select style="${selStyle}" @change="${e=>{ this._si = parseInt(e.target.value); this.requestUpdate(); }}">
+            <select style="${selStyle}" .value="${String(si)}" @change="${e=>{ this._si = parseInt(e.target.value); this.requestUpdate(); }}">
               ${subs.map((s,i)=>html`<option value="${i}" ?selected="${si===i}">${s.name||('Sous-menu '+i)}</option>`)}
             </select>
             ${this._btn('＋', ()=>this._mutate(c=>{ const cc=c.categories[ci]; cc.submenus=cc.submenus||[]; cc.submenus.push({name:'NOUVEAU SOUS-MENU',icon:'mdi:folder',mode:'grid',subsubmenus:[{id:'all',name:'TOUT'}],sensors:[]}); this._si=cc.submenus.length-1; }), '#22c55e', 'Ajouter un sous-menu')}
@@ -3816,7 +3821,7 @@ class ResidentEvilCardEditor extends LitElement {
                     ${this._btn('⧉', ()=>this._mutate(c=>{ const a=c.categories[ci].submenus[si].widgets; a.splice(wi+1,0,JSON.parse(JSON.stringify(a[wi]))); }), '#06b6d4', 'Dupliquer')}
                     ${this._btn('🗑', ()=>{ if(confirm('Supprimer ce widget ?')) this._mutate(c=>c.categories[ci].submenus[si].widgets.splice(wi,1)); }, '#ef4444')}
                   </div>
-                  ${this._renderWidgetEditor(ci,si,wi,wg)}
+                  ${this._safeWidgetEditor(ci,si,wi,wg)}
                   ${wg.type==='energie' ? this._renderEnergieDevicesEditor(ci,si,wi,wg) : html``}
                   ${wg.type==='solar' ? this._renderSolarConfigEditor(ci,si,wi,wg) : html``}
                 </div>`)}
