@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v121 (version RICHE : widgets)
+   RESIDENT EVIL CARD v122 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -116,7 +116,7 @@ const cardStyles = css`
   @keyframes alert-card-pulse { 0% { background: #0d0d0d; box-shadow: none; } 100% { background: #210505; box-shadow: 0 0 12px var(--re-red-glow); } }
   @keyframes alert-icon-shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } 100% { transform: rotate(0deg); } }
 
-  .sensor-card.type-climate, .sensor-card.type-temp-visual { grid-column: span 2; min-height: 150px; background: #09090b; border: 1px solid #1f1f23; }
+  .sensor-card.type-climate, .sensor-card.type-temp-visual { grid-column: span 3; min-height: 150px; background: #09090b; border: 1px solid #1f1f23; }
   .sensor-name-block { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .sensor-room-name { font-size: 15px; font-weight: 800; color: #f1f5f9; text-transform: uppercase;
     letter-spacing: .5px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
