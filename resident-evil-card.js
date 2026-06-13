@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v122 (version RICHE : widgets)
+   RESIDENT EVIL CARD v123 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2881,7 +2881,7 @@ class ResidentEvilCardEditor extends LitElement {
   constructor() { super(); this._tab = 0; this._ci = 0; this._si = 0; }
   setConfig(config) { this._config = JSON.parse(JSON.stringify(config)); }
   _fire() { this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true })); }
-  _mutate(fn) { const c = JSON.parse(JSON.stringify(this._config)); fn(c); this._config = c; this._fire(); this.requestUpdate(); }
+  _mutate(fn) { const c = JSON.parse(JSON.stringify(this._config)); fn(c); this._config = c; this._fire(); }
 
   // ─── petits helpers UI ───
   _lbl(t) { return html`<div style="font-size:13px;color:#7dd3fc;font-weight:700;letter-spacing:.5px;margin:2px 0 4px;">${t}</div>`; }
@@ -2889,12 +2889,14 @@ class ResidentEvilCardEditor extends LitElement {
     return html`<input type="text" list="${list}" placeholder="${ph}" .value="${val ?? ''}"
       style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;
              padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;"
+      @input="${(e)=>cb(e.target.value)}"
       @change="${(e)=>cb(e.target.value)}" />`;
   }
   _num(val, cb, min=8, max=60) {
     return html`<input type="number" min="${min}" max="${max}" .value="${val ?? ''}"
       style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;
              padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;"
+      @input="${(e)=>cb(e.target.value === '' ? undefined : parseInt(e.target.value))}"
       @change="${(e)=>cb(e.target.value === '' ? undefined : parseInt(e.target.value))}" />`;
   }
   _color(val, def, cb) {
