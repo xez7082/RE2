@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v131 (version RICHE : widgets)
+   RESIDENT EVIL CARD v132 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -756,6 +756,7 @@ class ResidentEvilCard extends LitElement {
       case 'tracker':   return this._renderTrackerWidget(w, sizeStyle, noBorder);
       case 'map':       return this._renderMapWidget(w, sizeStyle, noBorder);
       case 'appliance': return this._renderApplianceWidget(w, sizeStyle, noBorder);
+      case 'progress':   return this._renderProgressWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
       default:          return html``;
@@ -2511,6 +2512,44 @@ class ResidentEvilCard extends LitElement {
     return controller;
   }
 
+  _renderProgressWidget(w, sizeStyle, noBorder=false) {
+    const s = w.entity && this.hass?.states[w.entity] ? this.hass.states[w.entity] : null;
+    const raw = s ? parseFloat(s.state) : null;
+    const val = (raw == null || isNaN(raw)) ? null : raw;
+    const min = w.min != null ? parseFloat(w.min) : 0;
+    const max = w.max != null ? parseFloat(w.max) : 100;
+    const unit = w.unit != null ? w.unit : (s?.attributes?.unit_of_measurement || '%');
+    const label = w.label || (s?.attributes?.friendly_name) || w.entity || 'Progression';
+    const decimals = w.decimals != null ? parseInt(w.decimals) : 0;
+    const col = w.color || '#22c55e';
+    const pct = val == null ? 0 : Math.min(100, Math.max(0, (val - min) / (max - min) * 100));
+    const disp = val == null ? '--' : val.toLocaleString('fr-FR', {maximumFractionDigits: decimals});
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}"
+           style="${sizeStyle} background:#0a0c14;border-color:${col}33;overflow:hidden;
+                  display:flex;flex-direction:column;justify-content:center;gap:8px;padding:14px 16px;box-sizing:border-box;"
+           @click="${() => w.entity && this._handleAction(w.entity)}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <span style="font-size:14px;font-weight:700;color:#e2e8f0;letter-spacing:.3px;
+                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</span>
+          <span style="font-size:18px;font-weight:800;color:${col};white-space:nowrap;">
+            ${disp}<span style="font-size:13px;color:#94a3b8;font-weight:600;"> ${unit}</span>
+          </span>
+        </div>
+        <div style="width:100%;height:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+                    border-radius:9px;overflow:hidden;box-sizing:border-box;">
+          <div style="height:100%;width:${pct.toFixed(1)}%;border-radius:9px;transition:width .8s cubic-bezier(.2,.8,.3,1);
+                      background:linear-gradient(90deg,${col}aa,${col});box-shadow:0 0 10px ${col}88;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;font-weight:600;">
+          <span>${min.toLocaleString('fr-FR')} ${unit}</span>
+          <span style="color:${col};">${pct.toFixed(0)}%</span>
+          <span>${max.toLocaleString('fr-FR')} ${unit}</span>
+        </div>
+      </div>`;
+  }
+
   _renderWeatherWidget(w, sizeStyle, noBorder=false) {
     const cfg = w.weather_config || {};
     const E = (k, def) => cfg[k] || def;
@@ -3492,6 +3531,11 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'weather_config.no',l:'Niveau olivier',t:E},{k:'weather_config.co',l:'Conc. olivier',t:E},
         {k:'weather_config.qp',l:'Qualité pollen',t:E},{k:'weather_config.qa',l:'Qualité air',t:E},
       ],
+      progress: [
+        {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},
+        {k:'min',l:'Min',t:N},{k:'max',l:'Max',t:N},
+        {k:'unit',l:'Unité',t:T},{k:'decimals',l:'Décimales',t:N},
+      ],
       health: [],
       energie: [
         {k:'energie_config.title',l:'Titre',t:T},{k:'energie_config.solar',l:'Production solaire',t:E},
@@ -3831,7 +3875,7 @@ class ResidentEvilCardEditor extends LitElement {
                 <select id="re2-add-wtype" style="${selStyle}">
                   ${[
                     {v:'gauge',l:'Jauge circulaire'},{v:'sparkline',l:'Graphique sparkline'},
-                    {v:'badge',l:'Badge valeur'},{v:'shape',l:'Forme / cadre coloré'},
+                    {v:'badge',l:'Badge valeur'},{v:'progress',l:'Barre de progression'},{v:'shape',l:'Forme / cadre coloré'},
                     {v:'spa_temp',l:'Spa'},{v:'tank',l:'Cuve / jardin'},{v:'server',l:'Serveur'},
                     {v:'plant',l:'Plante'},{v:'health',l:'Santé'},{v:'solar',l:'Solaire'},{v:'weather',l:'Météo'},
                     {v:'energie',l:'Consommation'},{v:'appliance',l:'Équipements'},
@@ -3843,6 +3887,7 @@ class ResidentEvilCardEditor extends LitElement {
                     gauge:{type:'gauge',widthPct:24,heightPx:140,min:0,max:100,color:'#00ff88',label:'Jauge'},
                     sparkline:{type:'sparkline',widthPct:32,heightPx:140,color:'#22d3ee',label:'Tendance'},
                     badge:{type:'badge',widthPct:24,heightPx:110,icon:'mdi:flash',color:'#f59e0b',label:'Valeur'},
+                    progress:{type:'progress',widthPct:100,heightPx:90,min:0,max:100,unit:'%',decimals:0,color:'#22c55e',label:'Progression'},
                     shape:{type:'shape',widthPct:15,heightPx:120,shape:'hexagon',size:64,filled:true,color:'#ef4444',label:'Statut'},
                     weather:{type:'weather',widthPct:100,heightPx:530,noBorder:true,animated:true,weather_config:{weather:'weather.sainte_croix_en_plaine'}},
                   };
