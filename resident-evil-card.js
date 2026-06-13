@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v114 (version RICHE : widgets)
+   RESIDENT EVIL CARD v118 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -88,6 +88,8 @@ const cardStyles = css`
   .sensor-icon { --mdc-icon-size: 20px; color: var(--re-text-gray); transition: all 0.25s ease; }
   .sensor-value { font-size: var(--ec-fs-value, 18px); color: #cccccc; font-weight: bold; margin-top: 8px; }
   .sensor-value .unit { font-size: 12px; color: #888; font-weight: normal; }
+  .re-stale-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#f59e0b;
+    margin-right:6px; vertical-align:middle; box-shadow:0 0 5px #f59e0b; animation: batt-flash 1.1s infinite alternate; }
 
   .sensor-card.type-server {
     grid-column: span 1;
@@ -444,6 +446,20 @@ class ResidentEvilCard extends LitElement {
     });
   }
 
+  // Âge depuis la dernière mise à jour ; renvoie une pastille si > seuil (déf. 30 min)
+  _staleDot(stateObj) {
+    try {
+      const thr = (parseInt(this.config.stale_minutes) || 30) * 60000;
+      const last = new Date(stateObj.last_updated || stateObj.last_changed).getTime();
+      const age = Date.now() - last;
+      if (isNaN(age) || age < thr) return html``;
+      const mins = Math.floor(age / 60000);
+      const lbl = mins >= 1440 ? Math.floor(mins/1440)+'j'
+                : mins >= 60 ? Math.floor(mins/60)+'h' : mins+'min';
+      return html`<span class="re-stale-dot" title="Pas de mise à jour depuis ${lbl}"></span>`;
+    } catch(_e) { return html``; }
+  }
+
   renderEntity(item) {
     const entityId = typeof item === 'object' ? item.entity : item;
     const customIcon = typeof item === 'object' ? item.icon : null;
@@ -606,7 +622,7 @@ class ResidentEvilCard extends LitElement {
 
     return html`
       <div class="sensor-card ${effectClass} ${isActive ? 'state-active' : ''}" @click="${() => this._handleAction(entityId)}">
-        <div class="sensor-card-header"><div class="sensor-name">${name}</div><ha-icon class="sensor-icon" icon="${iconToRender}"></ha-icon></div>
+        <div class="sensor-card-header"><div class="sensor-name">${this._staleDot(stateObj)}${name}</div><ha-icon class="sensor-icon" icon="${iconToRender}"></ha-icon></div>
         <div class="sensor-value">
           ${domain === 'light' || domain === 'switch' || domain === 'binary_sensor' ? (isActive ? 'ACTIF' : 'INACTIF') : displayState}
           <span class="unit">${stateObj.attributes.unit_of_measurement || ""}</span>
@@ -2457,11 +2473,17 @@ class ResidentEvilCard extends LitElement {
     const statusEntity   = this.config.status_entity;
     const statusState    = statusEntity && this.hass.states[statusEntity] ? this.hass.states[statusEntity].state : null;
     const statusOk       = !statusState || statusState === 'on' || statusState === 'home' || statusState === 'active';
-    const statusText     = statusState ? (statusOk ? 'FINE' : 'ALERTE') : 'FINE';
-    const statusColor    = statusOk ? '#22c55e' : '#ef4444';
+    // Niveau de menace : DANGER si biohazard actif, sinon CAUTION si statut KO, sinon FINE
+    const bioActive      = (this.config.biohazard_entities||[]).filter(e => this.hass?.states[e]?.state === 'on');
+    let statusText, statusColor, threatLevel;
+    if (bioActive.length)      { statusText = 'DANGER';  statusColor = '#ef4444'; threatLevel = 3; }
+    else if (!statusOk)        { statusText = 'CAUTION'; statusColor = '#f59e0b'; threatLevel = 2; }
+    else                       { statusText = 'FINE';    statusColor = '#22c55e'; threatLevel = 1; }
+    // ECG : plus le niveau est haut, plus le tracé s'emballe
+    const ecgClass = threatLevel === 3 ? 're-ecg-danger' : (threatLevel === 2 ? 're-ecg-caution' : '');
 
     return html`
-      <div class="re-container ${(this.config.biohazard_entities||[]).some(e=>this.hass?.states[e]?.state==='on') ? 're-biohazard' : ''}" style="height:${parseInt(this.config.card_height) || 550}px;${(() => {
+      <div class="re-container ${(this.config.biohazard_entities||[]).some(e=>this.hass?.states[e]?.state==='on') ? 're-biohazard' : ''} ${(this.config.theme||{}).high_contrast ? 're-hc' : ''}" style="height:${parseInt(this.config.card_height) || 550}px;${(() => {
         const t = this.config.theme || {};
         return [
           t.accent      ? '--ec-accent:'+t.accent+';' : '',
@@ -2480,6 +2502,47 @@ class ResidentEvilCard extends LitElement {
           t.hud         ? '--ec-hud:'+t.hud+';--ec-hud-border:'+t.hud+'4d;' : '',
         ].join('');
       })()}">
+        ${this._searchOpen ? (() => {
+          const q = (this._searchQuery || '').toLowerCase().trim();
+          const results = [];
+          (categories||[]).forEach((cat, ci) => (cat.submenus||[]).forEach((sub, si) => {
+            (sub.sensors||[]).forEach(s => {
+              const eid = typeof s === 'object' ? s.entity : s;
+              if (!eid) return;
+              const st = this.hass?.states[eid];
+              const fn = (st?.attributes?.friendly_name || (typeof s==='object'?s.name:'') || eid);
+              const hay = (eid + ' ' + fn + ' ' + cat.name + ' ' + sub.name).toLowerCase();
+              if (q && hay.includes(q)) results.push({ eid, fn, cat:cat.name, sub:sub.name, ci, si });
+            });
+          }));
+          return html`
+            <div class="re-search-overlay">
+              <div class="re-search-head">
+                <ha-icon icon="mdi:magnify" style="--mdc-icon-size:22px;color:var(--ec-hud,#22d3ee);"></ha-icon>
+                <input id="re-search-input" class="re-search-input" placeholder="Rechercher une entité, une zone…"
+                       .value="${this._searchQuery||''}"
+                       @input="${e=>{ this._searchQuery=e.target.value; this.requestUpdate(); }}" />
+                <button class="re-search-close" @click="${()=>{ this._searchOpen=false; this._searchQuery=''; this.requestUpdate(); }}">✕</button>
+              </div>
+              <div class="re-search-results">
+                ${!q ? html`<div class="re-search-hint">Tape au moins un mot — recherche dans toutes les zones du complexe.</div>`
+                  : results.length===0 ? html`<div class="re-search-hint">Aucun résultat pour « ${this._searchQuery} ».</div>`
+                  : results.slice(0,60).map(r => {
+                    const st = this.hass?.states[r.eid];
+                    const val = st ? (st.state + (st.attributes.unit_of_measurement||'')) : 'N/A';
+                    return html`
+                      <div class="re-search-row" @click="${()=>{ this._activeMainMenu=r.ci; this._activeSubMenu=r.si; this._activeFilter=null; this._searchOpen=false; this._searchQuery=''; this._handleAction(r.eid); this.requestUpdate(); }}">
+                        <div style="flex:1;min-width:0;">
+                          <div class="re-search-name">${r.fn}</div>
+                          <div class="re-search-path">${r.cat} › ${r.sub}</div>
+                        </div>
+                        <div class="re-search-val">${val}</div>
+                      </div>`;
+                  })}
+                ${results.length>60 ? html`<div class="re-search-hint">… et ${results.length-60} autres. Affine ta recherche.</div>` : html``}
+              </div>
+            </div>`;
+        })() : html``}
         ${!this._booted ? html`
           <div class="re-boot">
             <img src="${this.config.logo || '/local/Umbrella.png'}" class="re-umbrella-icon" style="width:64px;height:64px;" />
@@ -2509,8 +2572,13 @@ class ResidentEvilCard extends LitElement {
             </div>
           </div>
           <div class="re-status">
+            <button class="re-search-btn" title="Recherche globale"
+                    @click="${()=>{ this._searchOpen=!this._searchOpen; this.requestUpdate();
+                      if(this._searchOpen) setTimeout(()=>this.shadowRoot.querySelector('#re-search-input')?.focus(),60); }}">
+              <ha-icon icon="mdi:magnify"></ha-icon>
+            </button>
             <span class="re-status-text" style="color:${statusColor};">STATUS: ${statusText}</span>
-            <svg class="re-ecg" viewBox="0 0 80 24" preserveAspectRatio="none">
+            <svg class="re-ecg ${ecgClass}" viewBox="0 0 80 24" preserveAspectRatio="none">
               <polyline points="0,12 20,12 25,2 30,22 35,12 55,12 60,6 65,18 70,12 80,12" stroke="${statusColor}" fill="none" stroke-width="1.5"/>
             </svg>
           </div>
@@ -2586,7 +2654,34 @@ class ResidentEvilCard extends LitElement {
       .re-title { font-size: var(--ec-fs-title, 18px); font-weight: 800; color: var(--ec-text, #e2e8f0); letter-spacing: 2px; line-height: 1.2; }
       .re-subtitle { font-size: 12px; color: #475569; letter-spacing: 3px; }
       .re-status { display: flex; align-items: center; gap: 8px; }
+      .re-search-btn { background: transparent; border: 1px solid var(--ec-hud,#22d3ee); border-radius: 6px;
+        color: var(--ec-hud,#22d3ee); cursor: pointer; padding: 3px 7px; display: flex; align-items: center; }
+      .re-search-btn:hover { background: rgba(34,211,238,.12); }
+      .re-search-btn ha-icon { --mdc-icon-size: 18px; }
+      .re-search-overlay { position: absolute; inset: 0; z-index: 70; background: rgba(5,8,15,.97);
+        display: flex; flex-direction: column; padding: 16px; backdrop-filter: blur(3px); }
+      .re-search-head { display: flex; align-items: center; gap: 10px; border: 1px solid var(--ec-hud,#22d3ee);
+        border-radius: 10px; padding: 10px 14px; background: #0b121d; }
+      .re-search-input { flex: 1; background: transparent; border: none; outline: none; color: #f1f5f9;
+        font-size: 18px; font-family: inherit; }
+      .re-search-close { background: transparent; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
+      .re-search-close:hover { color: #ef4444; }
+      .re-search-results { flex: 1; overflow-y: auto; margin-top: 12px; display: flex; flex-direction: column; gap: 6px;
+        scrollbar-width: none; }
+      .re-search-results::-webkit-scrollbar { display: none; }
+      .re-search-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px;
+        background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); cursor: pointer; transition: .15s; }
+      .re-search-row:hover { background: rgba(34,211,238,.1); border-color: var(--ec-hud,#22d3ee); transform: translateX(3px); }
+      .re-search-name { font-size: 15px; font-weight: 700; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .re-search-path { font-size: 12px; color: #64748b; margin-top: 2px; }
+      .re-search-val { font-size: 15px; font-weight: 800; color: var(--ec-hud,#22d3ee); white-space: nowrap; }
+      .re-search-hint { font-size: 14px; color: #64748b; text-align: center; padding: 24px; }
       .re-status-text { font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+      .re-ecg-caution { animation: re-ecg-pulse 1.2s ease-in-out infinite; }
+      .re-ecg-danger  { animation: re-ecg-pulse 0.45s ease-in-out infinite; }
+      @keyframes re-ecg-pulse { 0%,100% { opacity:1; transform:scaleY(1); } 50% { opacity:.55; transform:scaleY(1.4); } }
+      .re-status-text { animation: none; }
+      .re-biohazard .re-status-text { animation: batt-flash 0.7s infinite alternate; }
       .re-ecg { width: 80px; height: 24px; flex-shrink: 0; }
       .re-nav { display: flex; gap: 0; border: 1px solid #1a2744; border-radius: 10px; background: var(--ec-side-bg, #060b12); flex-shrink: 0; overflow-x: auto; box-shadow: 0 4px 16px rgba(0,0,0,.45); }
       .main-nav-item { padding: 10px 14px; font-size: var(--ec-fs-nav, 12px); font-weight: 700; color: var(--ec-text-dim, #475569); cursor: pointer; letter-spacing: 1px; white-space: nowrap; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; transition: all .2s; }
@@ -2668,6 +2763,15 @@ class ResidentEvilCard extends LitElement {
       .re-boot-bar div { height: 100%; width: 0; background: linear-gradient(90deg,#22d3ee,#ef4444);
         animation: re-boot-fill 1.3s ease forwards; box-shadow: 0 0 10px #22d3ee; }
       .re-boot-dots { animation: batt-flash 0.6s infinite alternate; }
+      /* ═══ MODE CONTRASTE RENFORCÉ (accessibilité) ═══ */
+      .re-hc .re-header, .re-hc .re-nav, .re-hc .re-sidebar, .re-hc .re-content-container { background: #000 !important; border-width: 2px !important; border-color: #38e0ff !important; }
+      .re-hc .re-title { color: #ffffff !important; font-size: calc(var(--ec-fs-title, 18px) + 2px) !important; }
+      .re-hc .main-nav-item { color: #cbd5e1 !important; font-size: calc(var(--ec-fs-nav, 12px) + 2px) !important; }
+      .re-hc .main-nav-item.active { color: #ffffff !important; background: rgba(56,224,255,.12) !important; }
+      .re-hc .submenu-btn { color: #e2e8f0 !important; font-size: calc(var(--ec-fs-side, 12px) + 2px) !important; }
+      .re-hc .sensor-name, .re-hc .filter-tab { color: #e2e8f0 !important; }
+      .re-hc .sensor-value { color: #ffffff !important; font-size: calc(var(--ec-fs-value, 18px) + 2px) !important; }
+      .re-hc .sensor-card { border-width: 2px !important; }
       .re-nav, .re-sidebar, .re-content-scroll, .re-sensor-grid, .design-grid {
         scrollbar-width: none; -ms-overflow-style: none; }
       .re-nav::-webkit-scrollbar, .re-sidebar::-webkit-scrollbar,
@@ -2979,6 +3083,13 @@ class ResidentEvilCardEditor extends LitElement {
               <span style="font-size:14px;color:#cbd5e1;font-weight:600;">Sons d'interface</span>
               <div style="display:flex;gap:6px;">
                 ${this._btn(th.sounds === false ? 'Activer' : '🔊 Actifs', ()=>this._setTheme('sounds', th.sounds === false ? undefined : false), th.sounds === false ? '#334155' : '#22c55e')}
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#101826;
+                        border:1px solid #1e2d3d;border-radius:8px;padding:8px 12px;">
+              <span style="font-size:14px;color:#cbd5e1;font-weight:600;">Contraste renforcé (accessibilité)</span>
+              <div style="display:flex;gap:6px;">
+                ${this._btn(th.high_contrast ? '◑ Activé' : 'Activer', ()=>this._setTheme('high_contrast', th.high_contrast ? undefined : true), th.high_contrast ? '#38e0ff' : '#334155')}
               </div>
             </div>
           </div>
