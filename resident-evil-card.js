@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v126 (version RICHE : widgets)
+   RESIDENT EVIL CARD v128 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -937,8 +937,9 @@ class ResidentEvilCard extends LitElement {
     const atTemp = wTemp!=null && tTemp!=null && wTemp >= tTemp-0.5;
     const tc     = wTemp==null ? '#888' : wTemp<30 ? '#00ccff' : wTemp<36 ? '#00ff88' : wTemp<40 ? '#ff9900' : '#ff3333';
 
-    const bg   = w.bgImage ? `url('${w.bgImage}')` : 'linear-gradient(135deg,#1a1a2e,#0f3460)';
-    const blur = w.bgBlur!=null ? w.bgBlur : 5;
+    const hasBg = !!w.bgImage;
+    const bg   = hasBg ? `url('${w.bgImage}')` : '#0a0a0a';
+    const blur = hasBg ? (w.bgBlur!=null ? w.bgBlur : 5) : 0;
 
     const filterAge  = ex(w.filterEntity)   ? parseFloat(st(w.filterEntity))   : null;
     const chloreAge  = ex(w.chlorineEntity) ? parseFloat(st(w.chlorineEntity)) : null;
@@ -1300,8 +1301,8 @@ class ResidentEvilCard extends LitElement {
     return html`
       <div class="dw-card ${noBorder?'no-border':''}"
            style="${sizeStyle} border-color:${color}22; overflow:hidden; position:relative;">
-        <div style="position:absolute;inset:0;background:${bg};background-size:cover;background-position:center;filter:blur(${blur}px);transform:scale(1.05);"></div>
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.38);"></div>
+        <div style="position:absolute;inset:0;background:${bg};background-size:cover;background-position:center;${blur?`filter:blur(${blur}px);transform:scale(1.05);`:''}"></div>
+        ${hasBg ? html`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.38);"></div>` : html``}
         <div style="position:relative;z-index:1;height:100%;display:flex;flex-direction:column;overflow:hidden;">
           <div style="flex:1;overflow:hidden;padding:8px 10px;display:flex;flex-direction:column;">
             ${tab==='home' ? renderHome() : html``}
@@ -3563,25 +3564,34 @@ class ResidentEvilCardEditor extends LitElement {
           ${cat ? this._txt(cat.name, v=>this._mutate(c=>c.categories[ci].name=v), 'Nom de la catégorie') : html``}
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
             ${this._btn(this._expOpen ? '✕ Fermer export' : '⭳ Exporter la catégorie', ()=>{ if(!cat) return;
-              this._expOpen = !this._expOpen; this.requestUpdate();
-              if (this._expOpen) setTimeout(()=>{
-                const ta = this.shadowRoot.querySelector('#re2-exp');
-                if (!ta) return;
-                ta.value = JSON.stringify(cat, null, 2);
-                ta.focus(); ta.select();
+              if (this._expOpen) { this._expOpen=false; this._expJson=''; this.requestUpdate(); return; }
+              this._expJson = JSON.stringify(cat, null, 2);
+              this._expOpen = true; this.requestUpdate();
+              setTimeout(()=>{ const ta=this.shadowRoot.querySelector('#re2-exp'); if(ta){ ta.focus(); ta.select();
                 try { document.execCommand('copy'); } catch(_e) {}
-                try { if (navigator.clipboard) navigator.clipboard.writeText(ta.value).catch(()=>{}); } catch(_e) {}
-              }, 50);
+                try { if (navigator.clipboard) navigator.clipboard.writeText(this._expJson).catch(()=>{}); } catch(_e) {} } }, 80);
             }, '#06b6d4')}
             ${this._btn(this._impOpen ? '✕ Fermer import' : '⭱ Importer une catégorie', ()=>{ this._impOpen=!this._impOpen; this.requestUpdate(); }, '#f59e0b')}
           </div>
           ${this._expOpen ? html`
             <div style="margin-top:8px;">
-              ${this._lbl('JSON de la catégorie — sélectionné et copié ; sinon Ctrl+C')}
-              <textarea id="re2-exp" rows="6" readonly
+              ${this._lbl('JSON de la catégorie ('+(this._expJson||'').length+' caractères) — sélectionné et copié ; sinon Ctrl+C')}
+              <textarea id="re2-exp" rows="12" readonly .value="${this._expJson||''}"
                 @focus="${e=>e.target.select()}"
                 style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #06b6d4;color:#7dd3fc;
-                       padding:9px 10px;font-size:12px;border-radius:6px;font-family:'Courier New',monospace;"></textarea>
+                       padding:9px 10px;font-size:12px;border-radius:6px;font-family:'Courier New',monospace;white-space:pre;overflow:auto;"></textarea>
+              <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+                ${this._btn('📋 Re-sélectionner', ()=>{ const ta=this.shadowRoot.querySelector('#re2-exp'); if(ta){ ta.focus(); ta.select(); try{document.execCommand('copy');}catch(_e){} } }, '#06b6d4')}
+                ${this._btn('⭳ Télécharger .json', ()=>{
+                  try {
+                    const blob = new Blob([this._expJson||''], {type:'application/json'});
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = ((cat&&cat.name)||'categorie').replace(/[^\w-]+/g,'_') + '.json';
+                    a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+                  } catch(e) { alert('Téléchargement impossible : '+e.message); }
+                }, '#22c55e')}
+              </div>
             </div>` : html``}
           ${this._impOpen ? html`
             <div style="margin-top:8px;">
