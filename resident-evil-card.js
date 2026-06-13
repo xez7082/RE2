@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v130 (version RICHE : widgets)
+   RESIDENT EVIL CARD v131 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2893,66 +2893,6 @@ class ResidentEvilCard extends LitElement {
       </div>`;
   }
 
-  // Éditeur des entités du widget solaire, groupées par onglet
-  _renderSolarConfigEditor(ci, si, wi, wg) {
-    const groups = [
-      ['☀️ Production (onglet Solaire)', [
-        ['total_now','Prod. instantanée totale'],['autoconso_pct','Autoconsommation %'],['autoconso_nuit','Autoconso nuit'],
-        ['grid_flow','Flux réseau'],['main_cons','Consommation maison'],
-        ['p1_name','Panneau 1 — nom'],['p1_w','Panneau 1 — puissance'],['p1_d','Panneau 1 — jour'],
-        ['p2_name','Panneau 2 — nom'],['p2_w','Panneau 2 — puissance'],['p2_d','Panneau 2 — jour'],
-        ['p3_name','Panneau 3 — nom'],['p3_w','Panneau 3 — puissance'],['p3_d','Panneau 3 — jour'],
-        ['beem_m_m','Maison — mois'],['beem_s_m','Spa — mois'],['beem_i_m','IBC — mois'],
-      ]],
-      ['🌤 Météo (onglet Météo)', [
-        ['weather_entity','Entité weather'],['temp_ext','Température ext.'],['hum_ext','Humidité ext.'],['moon_entity','Lune'],
-        ['w1_e','Météo 1 — entité'],['w1_l','Météo 1 — libellé'],
-        ['w2_e','Météo 2 — entité'],['w2_l','Météo 2 — libellé'],
-        ['w3_e','Météo 3 — entité'],['w3_l','Météo 3 — libellé'],
-        ['w4_e','Météo 4 — entité'],['w4_l','Météo 4 — libellé'],
-        ['w5_e','Météo 5 — entité'],['w5_l','Météo 5 — libellé'],
-        ['w6_e','Météo 6 — entité'],['w6_l','Météo 6 — libellé'],
-      ]],
-      ['🔋 Batteries (onglet Batteries)', [
-        ['batt_total_power','Puissance batterie totale'],
-        ['b1_n','Bat 1 — nom'],['b1_s','Bat 1 — SOC'],['b1_t','Bat 1 — température'],['b1_cap','Bat 1 — capacité'],['b1_out','Bat 1 — puissance'],['b1_conn','Bat 1 — connexion'],
-        ['b2_n','Bat 2 — nom'],['b2_s','Bat 2 — SOC'],['b2_t','Bat 2 — température'],['b2_cap','Bat 2 — capacité'],['b2_out','Bat 2 — puissance'],['b2_conn','Bat 2 — connexion'],
-        ['b3_n','Bat 3 — nom'],['b3_s','Bat 3 — SOC'],['b3_t','Bat 3 — température'],['b3_cap','Bat 3 — capacité'],['b3_out','Bat 3 — puissance'],['b3_conn','Bat 3 — connexion'],
-      ]],
-      ['💰 Économies (onglet Économies)', [
-        ['eco_money','Économies réalisées'],['eco_day_euro','Gain / jour'],['e2_e','Gain / mois'],['eco_year_euro','Gain / an'],
-        ['kwh_price','Tarif kWh'],['e1_e','Tarif EDF'],
-        ['total_obj_pct','Objectif — %'],['total_obj_kwh','Objectif — kWh'],
-      ]],
-      ['🗓 Bandeaux jour / mois', [
-        ['__d1_entity','Jour 1 — entité'],['__d2_entity','Jour 2 — entité'],['__d3_entity','Jour 3 — entité'],['__dt_entity','Jour total — entité'],
-        ['__m1_entity','Mois 1 — entité'],['__m2_entity','Mois 2 — entité'],['__m3_entity','Mois 3 — entité'],
-      ]],
-    ];
-    const isLabel = (k) => /_(l|name|label)$/.test(k) || k.endsWith('_n');
-    return html`
-      <div style="margin-top:10px;background:#101826;border:1px solid #f59e0b33;border-radius:10px;padding:12px;">
-        ${this._lbl('☀️ ENTITÉS DU WIDGET SOLAIRE')}
-        <div style="display:flex;flex-direction:column;gap:12px;max-height:460px;overflow-y:auto;padding-right:4px;">
-          ${groups.map(([title, rows]) => html`
-            <div>
-              <div style="font-size:12px;font-weight:800;color:#fbbf24;letter-spacing:.5px;margin-bottom:6px;">${title}</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                ${rows.map(([key, label]) => {
-                  // Les bandeaux jour/mois sont des clés directes du widget (préfixe __), pas dans solar_config
-                  const onWidget = key.startsWith('__');
-                  const realKey = onWidget ? key.slice(2) : ('solar_config.' + key);
-                  const cur = onWidget ? wg[key.slice(2)] : (wg.solar_config||{})[key];
-                  return html`<div>
-                    <div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">${label}</div>
-                    ${this._txt(cur, v=>this._wgSet(ci,si,wi,realKey,v), '', isLabel(key)?'':'re2ents')}
-                  </div>`;
-                })}
-              </div>
-            </div>`)}
-        </div>
-      </div>`;
-  }
   render() {
     if (!this.hass || !this.config) return html``;
     const title          = this.config.title || 'UMBRELLA CORP. TERMINAL';
@@ -3425,6 +3365,68 @@ class ResidentEvilCardEditor extends LitElement {
         </div>
       </div>`;
   }
+
+  // Éditeur des entités du widget solaire, groupées par onglet
+  _renderSolarConfigEditor(ci, si, wi, wg) {
+    const groups = [
+      ['☀️ Production (onglet Solaire)', [
+        ['total_now','Prod. instantanée totale'],['autoconso_pct','Autoconsommation %'],['autoconso_nuit','Autoconso nuit'],
+        ['grid_flow','Flux réseau'],['main_cons','Consommation maison'],
+        ['p1_name','Panneau 1 — nom'],['p1_w','Panneau 1 — puissance'],['p1_d','Panneau 1 — jour'],
+        ['p2_name','Panneau 2 — nom'],['p2_w','Panneau 2 — puissance'],['p2_d','Panneau 2 — jour'],
+        ['p3_name','Panneau 3 — nom'],['p3_w','Panneau 3 — puissance'],['p3_d','Panneau 3 — jour'],
+        ['beem_m_m','Maison — mois'],['beem_s_m','Spa — mois'],['beem_i_m','IBC — mois'],
+      ]],
+      ['🌤 Météo (onglet Météo)', [
+        ['weather_entity','Entité weather'],['temp_ext','Température ext.'],['hum_ext','Humidité ext.'],['moon_entity','Lune'],
+        ['w1_e','Météo 1 — entité'],['w1_l','Météo 1 — libellé'],
+        ['w2_e','Météo 2 — entité'],['w2_l','Météo 2 — libellé'],
+        ['w3_e','Météo 3 — entité'],['w3_l','Météo 3 — libellé'],
+        ['w4_e','Météo 4 — entité'],['w4_l','Météo 4 — libellé'],
+        ['w5_e','Météo 5 — entité'],['w5_l','Météo 5 — libellé'],
+        ['w6_e','Météo 6 — entité'],['w6_l','Météo 6 — libellé'],
+      ]],
+      ['🔋 Batteries (onglet Batteries)', [
+        ['batt_total_power','Puissance batterie totale'],
+        ['b1_n','Bat 1 — nom'],['b1_s','Bat 1 — SOC'],['b1_t','Bat 1 — température'],['b1_cap','Bat 1 — capacité'],['b1_out','Bat 1 — puissance'],['b1_conn','Bat 1 — connexion'],
+        ['b2_n','Bat 2 — nom'],['b2_s','Bat 2 — SOC'],['b2_t','Bat 2 — température'],['b2_cap','Bat 2 — capacité'],['b2_out','Bat 2 — puissance'],['b2_conn','Bat 2 — connexion'],
+        ['b3_n','Bat 3 — nom'],['b3_s','Bat 3 — SOC'],['b3_t','Bat 3 — température'],['b3_cap','Bat 3 — capacité'],['b3_out','Bat 3 — puissance'],['b3_conn','Bat 3 — connexion'],
+      ]],
+      ['💰 Économies (onglet Économies)', [
+        ['eco_money','Économies réalisées'],['eco_day_euro','Gain / jour'],['e2_e','Gain / mois'],['eco_year_euro','Gain / an'],
+        ['kwh_price','Tarif kWh'],['e1_e','Tarif EDF'],
+        ['total_obj_pct','Objectif — %'],['total_obj_kwh','Objectif — kWh'],
+      ]],
+      ['🗓 Bandeaux jour / mois', [
+        ['__d1_entity','Jour 1 — entité'],['__d2_entity','Jour 2 — entité'],['__d3_entity','Jour 3 — entité'],['__dt_entity','Jour total — entité'],
+        ['__m1_entity','Mois 1 — entité'],['__m2_entity','Mois 2 — entité'],['__m3_entity','Mois 3 — entité'],
+      ]],
+    ];
+    const isLabel = (k) => /_(l|name|label)$/.test(k) || k.endsWith('_n');
+    return html`
+      <div style="margin-top:10px;background:#101826;border:1px solid #f59e0b33;border-radius:10px;padding:12px;">
+        ${this._lbl('☀️ ENTITÉS DU WIDGET SOLAIRE')}
+        <div style="display:flex;flex-direction:column;gap:12px;max-height:460px;overflow-y:auto;padding-right:4px;">
+          ${groups.map(([title, rows]) => html`
+            <div>
+              <div style="font-size:12px;font-weight:800;color:#fbbf24;letter-spacing:.5px;margin-bottom:6px;">${title}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                ${rows.map(([key, label]) => {
+                  // Les bandeaux jour/mois sont des clés directes du widget (préfixe __), pas dans solar_config
+                  const onWidget = key.startsWith('__');
+                  const realKey = onWidget ? key.slice(2) : ('solar_config.' + key);
+                  const cur = onWidget ? wg[key.slice(2)] : (wg.solar_config||{})[key];
+                  return html`<div>
+                    <div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">${label}</div>
+                    ${this._txt(cur, v=>this._wgSet(ci,si,wi,realKey,v), '', isLabel(key)?'':'re2ents')}
+                  </div>`;
+                })}
+              </div>
+            </div>`)}
+        </div>
+      </div>`;
+  }
+
 
   static get WIDGET_SCHEMAS() {
     const E='entity', T='text', N='number', S='select';
