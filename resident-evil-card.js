@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v132 (version RICHE : widgets)
+   RESIDENT EVIL CARD v133 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3108,7 +3108,7 @@ class ResidentEvilCard extends LitElement {
               ${hasIframe
                 ? sensorsRaw.map(id => this.renderEntity(id))
                 : isDesignMode
-                  ? html`<div class="design-grid" style="height:100%;">${(activeSubMenu.widgets || []).map(w => this._renderDesignWidget(w, (activeSubMenu.widgets || []).length === 1))}</div>`
+                  ? html`<div class="design-grid" style="${(activeSubMenu.widgets || []).length === 1 ? 'height:100%;' : ''}">${(activeSubMenu.widgets || []).map(w => this._renderDesignWidget(w, (activeSubMenu.widgets || []).length === 1))}</div>`
                   : html`
                       <div class="re-section-head">
                         <span class="re-section-bar"></span>
@@ -3188,7 +3188,7 @@ class ResidentEvilCard extends LitElement {
       .filter-item { padding: 4px 12px; border-radius: 20px; border: 1px solid #1e2d3d; background: transparent; color: var(--ec-text-dim, #475569); font-family: inherit; font-size: var(--ec-fs-filter, 12px); font-weight: 600; cursor: pointer; letter-spacing: .5px; transition: all .15s; }
       .filter-item:hover { color: #94a3b8; }
       .filter-item.active { color: #06b6d4; border-color: rgba(6,182,212,.4); background: rgba(6,182,212,.08); }
-      .re-content-scroll { flex: 1; overflow-y: hidden; padding: 12px; min-height: 0; display: flex; flex-direction: column; }
+      .re-content-scroll { flex: 1; overflow-y: auto; padding: 12px; min-height: 0; display: flex; flex-direction: column; }
       .re-content-scroll { scrollbar-width: none; -ms-overflow-style: none; }
       .re-content-scroll::-webkit-scrollbar { display: none; }
       .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -3309,7 +3309,7 @@ class ResidentEvilCard extends LitElement {
       @keyframes re-boot-fill { to { width: 100%; } }
       @keyframes re-boot-out  { to { opacity: 0; visibility: hidden; } }
       .re-sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-      .design-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; width: 100%; }
+      .design-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; width: 100%; flex: 0 0 auto; }
       .dw-card { background: #0a0a0a; cursor: pointer; position: relative; transition: border-color 0.2s, box-shadow 0.2s; overflow: hidden; box-sizing: border-box; flex-shrink: 0; min-height: 60px; border: 1px solid #1e1e1e; }
       .dw-card.no-border { border-color: transparent !important; background: transparent; }
       .dw-card.no-border:hover { border-color: #222 !important; }
