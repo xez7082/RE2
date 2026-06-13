@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v123 (version RICHE : widgets)
+   RESIDENT EVIL CARD v125 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -256,6 +256,46 @@ const cardStyles = css`
   .dw-badge-label { font-size: 12px; font-weight: bold; letter-spacing: 1px; }
   .dw-badge-value { font-size: 22px; font-weight: bold; line-height: 1; }
   .dw-badge-unit  { font-size: 12px; opacity: 0.7; font-weight: normal; }
+
+  /* ═══ WIDGET MÉTÉO NATIF ═══ */
+  .re-wx { font-family: monospace; }
+  .re-wx-sky { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+  .re-wx-card { position: absolute; inset: 8px; z-index: 5; background: rgba(0,0,0,.38);
+    border: 1.5px solid rgba(0,212,255,.5); border-radius: 15px; box-shadow: 0 0 25px rgba(0,212,255,.2);
+    padding: 12px 15px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; color: #fff; }
+  .re-wx-hdr { display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,.12); padding-bottom: 7px; flex-shrink: 0; gap: 8px; }
+  .re-wx-hdr-txt { flex: 1; font-size: 12px; color: rgba(255,255,255,.9); }
+  .re-wx-hdr-txt b { color: #7dd3fc; }
+  .re-wx-meteo { display: grid; grid-template-columns: 1fr 1fr; font-size: 13px; line-height: 1.78; flex-shrink: 0; }
+  .re-wx-meteo b { color: #fff; }
+  .re-wx-mc2 { border-left: 1px solid rgba(255,255,255,.1); padding-left: 12px; }
+  .re-wx-fc { display: flex; gap: 5px; flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+  .re-wx-fc::-webkit-scrollbar { display: none; }
+  .re-wx-day { flex: 1; min-width: 90px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 10px; padding: 9px 5px; text-align: center; }
+  .re-wx-day.today { background: rgba(125,211,252,.12); border-color: rgba(125,211,252,.3); }
+  .re-wx-dd { font-size: 15px; font-weight: 700; color: rgba(255,255,255,.88); margin-bottom: 3px; }
+  .re-wx-di { font-size: 28px; display: block; margin: 4px 0; }
+  .re-wx-dh { font-size: 16px; font-weight: 700; color: #fff; }
+  .re-wx-dl { font-size: 14px; color: rgba(255,255,255,.5); }
+  .re-wx-stl { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.55); margin-bottom: 6px; }
+  .re-wx-pol { display: grid; grid-template-columns: repeat(6,1fr); gap: 6px; }
+  .re-wx-pi { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 9px 6px; text-align: center; }
+  .re-wx-pn { font-size: 17px; font-weight: 700; color: rgba(255,255,255,.92); margin-bottom: 5px; line-height: 1.3; }
+  .re-wx-pb { font-size: 13px; font-weight: 700; border-radius: 6px; padding: 4px 10px; display: inline-block; }
+  .re-wx-pbar { height: 3px; background: rgba(255,255,255,.1); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .re-wx-pbf { height: 100%; border-radius: 2px; transition: width 1.2s ease; }
+  .re-wx-pc { font-size: 12px; color: rgba(255,255,255,.5); display: block; margin-top: 4px; }
+  .re-wx-alt { display: flex; flex-direction: column; gap: 3px; }
+  .re-wx-ai { border-radius: 7px; padding: 5px 9px; display: flex; align-items: center; gap: 6px; border: 1px solid; font-size: 12px; }
+  .re-wx-ai.ag { background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.25); }
+  .re-wx-ai.ay { background: rgba(234,179,8,.1); border-color: rgba(234,179,8,.3); }
+  .re-wx-ai.ao { background: rgba(249,115,22,.1); border-color: rgba(249,115,22,.3); }
+  .re-wx-ai.ar { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.3); }
+  .re-wx-adot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .re-wx-adot.dg { background: #4ade80; } .re-wx-adot.dy { background: #fbbf24; }
+  .re-wx-adot.do { background: #fb923c; } .re-wx-adot.dr { background: #f87171; }
 `;
 
 class ResidentEvilCard extends LitElement {
@@ -293,6 +333,7 @@ class ResidentEvilCard extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     if (this._timeUpdater) clearInterval(this._timeUpdater);
+    if (this._wxUnsub) { try { this._wxUnsub(); } catch(_e) {} this._wxUnsub = null; this._wxSubEntity = null; }
   }
 
   setConfig(config) { this.config = config; }
@@ -448,6 +489,12 @@ class ResidentEvilCard extends LitElement {
 
   updated(changedProps) {
     if (super.updated) super.updated(changedProps);
+    // Ciel animé du widget météo natif
+    const wxCanvas = this.shadowRoot ? this.shadowRoot.querySelector('.re-wx-sky') : null;
+    if (wxCanvas) {
+      const ctrl = this._initWeatherSky(wxCanvas, this._wxAnimated !== false);
+      if (ctrl && this._wxScene) ctrl.setScene(this._wxScene);
+    }
     // Mise à l'échelle des iframes : plus aucun scroll interne
     const fits = this.shadowRoot ? this.shadowRoot.querySelectorAll('.re-iframe-fit') : [];
     fits.forEach(fit => {
@@ -709,6 +756,7 @@ class ResidentEvilCard extends LitElement {
       case 'tracker':   return this._renderTrackerWidget(w, sizeStyle, noBorder);
       case 'map':       return this._renderMapWidget(w, sizeStyle, noBorder);
       case 'appliance': return this._renderApplianceWidget(w, sizeStyle, noBorder);
+      case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
       default:          return html``;
     }
@@ -2347,6 +2395,273 @@ class ResidentEvilCard extends LitElement {
       </div>`;
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  WIDGET MÉTÉO NATIF (porté depuis meteo_ha_ws.html)
+  //  Données en direct via this.hass — pas de WebSocket ni token.
+  // ═══════════════════════════════════════════════════════════
+  _subscribeForecast(entityId) {
+    if (!entityId || !this.hass || !this.hass.connection) return;
+    if (this._wxSubEntity === entityId && this._wxUnsub) return;
+    if (this._wxUnsub) { try { this._wxUnsub(); } catch (_e) {} this._wxUnsub = null; }
+    this._wxSubEntity = entityId;
+    this.hass.connection.subscribeMessage(
+      (evt) => { this._wxForecast = (evt && evt.forecast) || []; this.requestUpdate(); },
+      { type: 'weather/subscribe_forecast', forecast_type: 'daily', entity_id: entityId }
+    ).then(unsub => { this._wxUnsub = unsub; }).catch(() => {});
+  }
+
+  _initWeatherSky(canvas, animated) {
+    if (!canvas) return null;
+    if (canvas.__sky) return canvas.__sky;
+    const ctx = canvas.getContext('2d');
+    const S = { W: 680, H: 500, scene: 'cloud', tick: 0, drops: [], flakes: [], sparkles: [], clouds: [], stars: [], raf: null, animated: animated !== false, half: 0 };
+
+    function resize() { S.W = canvas.width = canvas.offsetWidth || 680; S.H = canvas.height = canvas.offsetHeight || 500; }
+
+    function drawBg(s) {
+      let g = ctx.createLinearGradient(0, 0, 0, S.H);
+      const stops = {
+        sun:    [[0,'#0a4a9e'],[.35,'#1565c8'],[.65,'#2e86e8'],[.85,'#64b5f6'],[1,'#b3dff5']],
+        cloud:  [[0,'#1a3a6e'],[.4,'#2a5298'],[.7,'#4a7cc4'],[1,'#8fa5c8']],
+        over:   [[0,'#1a202e'],[.4,'#252e42'],[.7,'#334060'],[1,'#6a7e9e']],
+        rain:   [[0,'#080e1a'],[.4,'#0e1830'],[.7,'#1a3050'],[1,'#3a5878']],
+        storm:  [[0,'#040208'],[.4,'#0c0820'],[.7,'#160e38'],[1,'#261848']],
+        snow:   [[0,'#1a2a48'],[.4,'#2a3e6a'],[.7,'#6688be'],[1,'#c8dcea']],
+        fog:    [[0,'#1a2028'],[.4,'#404e62'],[.7,'#7e96a8'],[1,'#bcccd8']],
+        night:  [[0,'#000308'],[.4,'#020818'],[.7,'#050f2a'],[1,'#0a1030']],
+        sunrise:[[0,'#0d1a3a'],[.3,'#2a3c7a'],[.55,'#9a5a7a'],[.75,'#d4784a'],[.9,'#f0a040'],[1,'#f8d060']],
+        sunset: [[0,'#0a0e28'],[.3,'#2a1e5a'],[.55,'#8a3050'],[.75,'#c45030'],[.9,'#e87828'],[1,'#f8d060']],
+      };
+      (stops[s] || [[0,'#07101e'],[1,'#1a2a4a']]).forEach(st => g.addColorStop(st[0], st[1]));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, S.W, S.H);
+    }
+    function makeStars() { S.stars = []; for (let i=0;i<120;i++) S.stars.push({x:Math.random()*S.W,y:Math.random()*S.H*.7,r:Math.random()*1.5+.3,ph:Math.random()*Math.PI*2,spd:.02+Math.random()*.04}); }
+    function drawStars() { S.stars.forEach(s=>{const o=.2+.6*Math.max(0,Math.sin(S.tick*s.spd+s.ph));ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${o.toFixed(2)})`;ctx.fill();}); }
+    function drawMoon() {
+      const mx=S.W*.15,my=S.H*.18;
+      let mg=ctx.createRadialGradient(mx,my,0,mx,my,45);
+      mg.addColorStop(0,'rgba(255,248,220,.95)');mg.addColorStop(.6,'rgba(255,240,180,.7)');mg.addColorStop(1,'rgba(255,220,120,0)');
+      ctx.fillStyle=mg;ctx.beginPath();ctx.arc(mx,my,45,0,Math.PI*2);ctx.fill();
+      let halo=ctx.createRadialGradient(mx,my,30,mx,my,90);
+      halo.addColorStop(0,'rgba(255,240,150,.12)');halo.addColorStop(1,'transparent');
+      ctx.fillStyle=halo;ctx.beginPath();ctx.arc(mx,my,90,0,Math.PI*2);ctx.fill();
+    }
+    function drawSun() {
+      const cx=S.W*.85,cy=-30;
+      let halo=ctx.createRadialGradient(cx,cy,0,cx,cy,320);
+      halo.addColorStop(0,'rgba(255,230,80,.45)');halo.addColorStop(.3,'rgba(255,180,50,.2)');halo.addColorStop(.6,'rgba(255,140,0,.08)');halo.addColorStop(1,'transparent');
+      ctx.fillStyle=halo;ctx.fillRect(0,0,S.W,S.H);
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(S.tick*.003);
+      for(let i=0;i<24;i++){const a=(i/24)*Math.PI*2;const gr=ctx.createLinearGradient(0,0,Math.cos(a)*300,Math.sin(a)*300);gr.addColorStop(0,'rgba(255,240,100,.3)');gr.addColorStop(1,'transparent');ctx.strokeStyle=gr;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*300,Math.sin(a)*300);ctx.stroke();}
+      ctx.restore();
+      let disc=ctx.createRadialGradient(cx,cy,0,cx,cy,90);
+      disc.addColorStop(0,'rgba(255,255,210,.95)');disc.addColorStop(.5,'rgba(255,230,80,.8)');disc.addColorStop(1,'transparent');
+      ctx.fillStyle=disc;ctx.beginPath();ctx.arc(cx,cy,90,0,Math.PI*2);ctx.fill();
+      S.sparkles.forEach(p=>{const sv=Math.sin(S.tick*p.spd+p.ph),o=p.op*(.1+.9*Math.max(0,sv)),r=p.r*(.5+.7*Math.max(0,sv));ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=`rgba(255,240,100,${o.toFixed(2)})`;ctx.fill();});
+    }
+    function cloudPuff(cx,cy,r,light,alpha){const g=ctx.createRadialGradient(cx,cy-r*.1,r*.05,cx,cy,r);g.addColorStop(0,`rgba(${light},${alpha})`);g.addColorStop(.6,`rgba(${light},${(alpha*.6).toFixed(2)})`);g.addColorStop(1,`rgba(${light},0)`);ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();}
+    function drawOneCloud(x,y,sc,dark){
+      const col=dark?'130,145,175':'230,242,255',shad=dark?'70,80,105':'150,175,210';
+      cloudPuff(x,y+10*sc,55*sc,shad,.4);cloudPuff(x+70*sc,y+12*sc,42*sc,shad,.3);
+      cloudPuff(x+35*sc,y+8*sc,58*sc,col,.92);cloudPuff(x,y,48*sc,col,.88);cloudPuff(x+75*sc,y+2*sc,38*sc,col,.82);
+      cloudPuff(x+22*sc,y-25*sc,38*sc,col,.9);cloudPuff(x+55*sc,y-18*sc,32*sc,col,.85);
+      cloudPuff(x-15*sc,y-8*sc,28*sc,col,.75);cloudPuff(x+90*sc,y-5*sc,25*sc,col,.7);
+      cloudPuff(x+32*sc,y-10*sc,20*sc,'255,255,255',dark?.12:.4);
+    }
+    function makeClouds(s){S.clouds=[];const n=s==='over'?8:s==='storm'?6:s==='cloud'?5:s==='rain'?6:s==='fog'?4:0,dark=['over','storm','rain','fog'].includes(s);for(let i=0;i<n;i++)S.clouds.push({x:Math.random()*(S.W+600)-600,y:20+Math.random()*(S.H*.38),sc:.5+Math.random()*.8,spd:.18+Math.random()*.28,dark});}
+    function drawClouds(){S.clouds.forEach(c=>{c.x+=c.spd;if(c.x>S.W+150){c.x=-600;c.y=20+Math.random()*(S.H*.38);}drawOneCloud(c.x,c.y,c.sc,c.dark);});}
+    function makeDrops(n){S.drops=[];for(let i=0;i<n;i++)S.drops.push({x:Math.random()*S.W*1.3,y:Math.random()*S.H,len:8+Math.random()*22,spd:6+Math.random()*10,op:.3+Math.random()*.5,w:.5+Math.random()*1.5});}
+    function drawRain(storm){const ang=12*Math.PI/180,sa=Math.sin(ang),ca=Math.cos(ang);if(storm){const t=S.tick%220;if(t<3||(t>7&&t<10)){ctx.fillStyle='rgba(200,220,255,.3)';ctx.fillRect(0,0,S.W,S.H);}}S.drops.forEach(p=>{ctx.strokeStyle=`rgba(180,220,255,${p.op})`;ctx.lineWidth=p.w;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+sa*p.len,p.y+ca*p.len);ctx.stroke();p.y+=p.spd;p.x+=p.spd*.22;if(p.y>S.H+40){p.y=-60;p.x=Math.random()*S.W*1.3;}});}
+    function makeFlakes(){S.flakes=[];for(let i=0;i<100;i++)S.flakes.push({x:Math.random()*S.W,y:Math.random()*S.H,r:1+Math.random()*5,spd:.3+Math.random()*1.2,dx:Math.random()*.5-.25,op:.4+Math.random()*.6,ph:Math.random()*Math.PI*2});}
+    function drawSnow(){S.flakes.forEach(p=>{p.x+=Math.sin(S.tick*.02+p.ph)*.4+p.dx;p.y+=p.spd;if(p.y>S.H+10){p.y=-10;p.x=Math.random()*S.W;}ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(240,248,255,${p.op})`;ctx.fill();});}
+    function drawFog(){for(let i=0;i<8;i++){const ox=Math.sin(S.tick*.004+i*1.3)*40,y=30+i*65;const g=ctx.createLinearGradient(0,y-60,0,y+60);g.addColorStop(0,'transparent');g.addColorStop(.5,`rgba(200,215,225,${.08+i*.012})`);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.save();ctx.translate(ox,0);ctx.fillRect(-50,y-60,S.W+100,120);ctx.restore();}}
+
+    function setScene(s){
+      if (S.scene === s && S._seeded) return;
+      S.scene=s;S._seeded=true;S.drops=[];S.flakes=[];S.sparkles=[];S.clouds=[];
+      makeClouds(s);
+      if(s==='rain')makeDrops(120);
+      if(s==='storm')makeDrops(200);
+      if(s==='snow')makeFlakes();
+      if(s==='sun')for(let i=0;i<60;i++)S.sparkles.push({x:Math.random()*S.W,y:Math.random()*S.H,r:.5+Math.random()*2.5,op:.3+Math.random()*.6,ph:Math.random()*Math.PI*2,spd:.015+Math.random()*.025});
+      if(s==='night')makeStars();
+      if(!S.animated) drawFrame();
+    }
+    function drawFrame(){
+      drawBg(S.scene);
+      if(S.scene==='night'){drawStars();drawMoon();}
+      else if(S.scene==='sun')drawSun();
+      if(['cloud','over','rain','storm','fog'].includes(S.scene))drawClouds();
+      if(S.scene==='rain')drawRain(false);
+      if(S.scene==='storm')drawRain(true);
+      if(S.scene==='snow')drawSnow();
+      if(S.scene==='fog')drawFog();
+    }
+    function loop(){ S.tick++; S.half^=1; if(S.half===0) drawFrame(); S.raf=requestAnimationFrame(loop); }
+
+    const ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(() => { resize(); drawFrame(); }) : null;
+    if (ro) ro.observe(canvas);
+
+    const controller = { setScene, destroy(){ if(S.raf) cancelAnimationFrame(S.raf); if(ro) ro.disconnect(); canvas.__sky=null; } };
+    canvas.__sky = controller;
+    resize();
+    setScene(S.scene);
+    if (S.animated) loop(); else drawFrame();
+    return controller;
+  }
+
+  _renderWeatherWidget(w, sizeStyle, noBorder=false) {
+    const cfg = w.weather_config || {};
+    const E = (k, def) => cfg[k] || def;
+    const st = (id) => id && this.hass?.states[id] ? this.hass.states[id] : null;
+    const stState = (id) => { const s = st(id); return s ? s.state : null; };
+
+    const wxId = E('weather', 'weather.sainte_croix_en_plaine');
+    this._subscribeForecast(wxId);
+    this._wxAnimated = w.animated !== false;
+
+    const wx   = st(wxId);
+    const wa   = wx ? wx.attributes : {};
+    const pw   = st('weather.pirateweather'); const pwa = pw ? pw.attributes : {};
+    const sun  = st('sun.sun'); const sa = sun ? sun.attributes : {};
+    const cond = (wx ? wx.state : 'cloudy') || 'cloudy';
+
+    // ── scène (fond) selon condition + soleil ──
+    const SMAP = { 'sunny':'sun','clear-day':'sun','clear-night':'night','cloudy':'cloud','partlycloudy':'cloud','partly-cloudy-day':'cloud','partly-cloudy-night':'cloud','overcast':'over','rainy':'rain','pouring':'rain','drizzle':'rain','snowy':'snow','snowy-rainy':'snow','fog':'fog','lightning':'storm','lightning-rainy':'storm','hail':'storm','windy':'cloud','windy-variant':'cloud','exceptional':'cloud','ensoleillé':'sun','ciel clair':'sun','nuageux':'cloud','partiellement nuageux':'cloud','variable':'cloud','couvert':'over','pluie':'rain','averses':'rain','averses faibles':'rain','pluies orageuses':'storm','orage':'storm','brouillard':'fog','brume':'fog','neige':'snow' };
+    let scene = SMAP[String(cond).toLowerCase()] || 'cloud';
+    const elev = sa.elevation != null ? sa.elevation : 90;
+    const rising = sa.rising || false;
+    if (elev < -6) scene = 'night';
+    else if (elev < 4 && rising) scene = 'sunrise';
+    else if (elev < 4 && !rising) scene = 'sunset';
+    this._wxScene = scene;
+
+    const WICO = { 'sunny':'☀️','clear-day':'☀️','clear-night':'🌙','cloudy':'⛅','partlycloudy':'🌤️','partly-cloudy-day':'🌤️','partly-cloudy-night':'🌤️','overcast':'☁️','rainy':'🌧️','pouring':'🌧️','drizzle':'🌦️','snowy':'❄️','snowy-rainy':'🌨️','fog':'🌫️','lightning':'⛈️','lightning-rainy':'⛈️','hail':'🌨️','windy':'💨','exceptional':'⚠️','ensoleillé':'☀️','ciel clair':'☀️','nuageux':'⛅','couvert':'☁️','pluie':'🌧️','averses':'🌦️','orage':'⛈️','neige':'❄️' };
+    const WLBL = { 'clear-day':'Ensoleillé','clear-night':'Ciel clair','sunny':'Ensoleillé','partlycloudy':'Partiellement nuageux','partly-cloudy-day':'Partiellement nuageux','partly-cloudy-night':'Partiellement nuageux','cloudy':'Nuageux','overcast':'Couvert','rainy':'Pluie','pouring':'Forte pluie','drizzle':'Bruine','snowy':'Neige','snowy-rainy':'Pluie et neige','fog':'Brouillard','lightning':'Orage','lightning-rainy':'Orage','hail':'Grêle','windy':'Venteux','exceptional':'Exceptionnel' };
+    const wIco = WICO[String(cond).toLowerCase()] || '🌥️';
+    const wLbl = WLBL[String(cond).toLowerCase()] || cond;
+    const DAYS = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+
+    // ── header : lever/coucher, durée du jour, variation ──
+    let rise='--:--', set='--:--', dh=0, dm=0;
+    const nr = new Date(sa.next_rising||0).getTime();
+    const ns = new Date(sa.next_setting||0).getTime();
+    if (nr && ns) {
+      const tr = nr < ns ? nr : nr - 86400000;
+      rise = new Date(tr).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      set  = new Date(ns).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      dh = Math.floor((ns-tr)/3600000); dm = Math.floor(((ns-tr)%3600000)/60000);
+    }
+    const day = Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/86400000);
+    const vv = day<=80?(1.5+day*.03):day<=172?(4-(day-80)*.043):day<=264?(-(day-172)*.043):(-4+(day-264)*.04);
+
+    const uv   = stState(E('uv','sensor.colmar_uv')) || '–';
+    const rain = stState(E('rain','sensor.colmar_daily_precipitation')) || '–';
+    const moon = stState(E('moon','sensor.phase_de_la_lune_fr')) || '–';
+    const vis  = (pwa.visibility !== undefined) ? pwa.visibility : (wa.visibility != null ? wa.visibility : '–');
+    const res  = pwa.apparent_temperature != null ? pwa.apparent_temperature : (pwa.feels_like != null ? pwa.feels_like : (wa.apparent_temperature != null ? wa.apparent_temperature : (wa.feels_like != null ? wa.feels_like : '–')));
+
+    const fc = this._wxForecast || [];
+
+    // ── pollen ──
+    const niveauInfo = (id) => {
+      const e = st(id);
+      if (!e || !['1','2','3','4','5'].includes(String(e.state))) return { l:'N/A', p:0, col:'#555' };
+      const n = parseInt(e.state);
+      const lbl = e.attributes['Libellé'] || '';
+      let col = e.attributes['Couleur'] || '#888';
+      if (col === '#ddd') col = '#555';
+      return { l: lbl || ['','Très faible','Faible','Modéré','Élevé','Très élevé'][n] || '?', p: Math.round(n/5*100), col };
+    };
+    const qpE = st(E('qp','sensor.qualite_globale_pollen_sainte_croix_en_plaine'));
+    const qaE = st(E('qa','sensor.qualite_globale_sainte_croix_en_plaine'));
+    const qpL = qpE ? (qpE.attributes['Libellé']||'–') : '–', qpC = qpE ? (qpE.attributes['Couleur']||'#888') : '#888';
+    const qaL = qaE ? (qaE.attributes['Libellé']||'–') : '–', qaC = qaE ? (qaE.attributes['Couleur']||'#888') : '#888';
+    const polls = [
+      { n:'🌾 Graminées', nk:E('ng','sensor.niveau_gramine_sainte_croix_en_plaine'),   ck:E('cg','sensor.concentration_gramine_sainte_croix_en_plaine') },
+      { n:'🌳 Bouleau',   nk:E('nb','sensor.niveau_bouleau_sainte_croix_en_plaine'),   ck:E('cb','sensor.concentration_bouleau_sainte_croix_en_plaine') },
+      { n:'🌱 Ambroisie', nk:E('na','sensor.niveau_ambroisie_sainte_croix_en_plaine'), ck:E('ca','sensor.concentration_ambroisie_sainte_croix_en_plaine') },
+      { n:'🌲 Aulne',     nk:E('nu','sensor.niveau_aulne_sainte_croix_en_plaine'),     ck:E('cu','sensor.concentration_aulne_sainte_croix_en_plaine') },
+      { n:'🌿 Armoise',   nk:E('nr','sensor.niveau_armoise_sainte_croix_en_plaine'),   ck:E('crr','sensor.concentration_armoise_sainte_croix_en_plaine') },
+      { n:'🫒 Olivier',   nk:E('no','sensor.niveau_olivier_sainte_croix_en_plaine'),   ck:E('co','sensor.concentration_olivier_sainte_croix_en_plaine') },
+    ];
+
+    // ── vigilance ──
+    const ws2 = parseFloat(wa.wind_speed) || 0;
+    const mx  = parseFloat(wa.temperature) || 0;
+    const lc  = String(cond).toLowerCase();
+    const al  = [];
+    if (lc.includes('lightning')||lc.includes('thunder')||lc.includes('orage')) al.push({v:'o',t:'⛈ Orages — Vigilance orange'});
+    else if (lc.includes('rain')||lc.includes('pouring')||lc.includes('drizzle')||lc.includes('pluie')||lc.includes('averse')) al.push({v:'y',t:'🌧 Pluie — Vigilance jaune'});
+    if (mx>=35) al.push({v:'r',t:`🌡 Canicule — ${mx}°C`});
+    else if (mx>=30) al.push({v:'o',t:`🌡 Chaleur — ${mx}°C`});
+    if (ws2>=80) al.push({v:'o',t:`💨 Vent violent — ${Math.round(ws2)} km/h`});
+    else if (ws2>=60) al.push({v:'y',t:`💨 Vent fort — ${Math.round(ws2)} km/h`});
+    if (lc.includes('snow')||lc.includes('neige')) al.push({v:'y',t:'❄ Épisode neigeux'});
+    if (lc.includes('fog')||lc.includes('brouillard')) al.push({v:'y',t:'🌫 Brouillard'});
+    if (!al.length) al.push({v:'g',t:'✓ Aucune alerte en cours'});
+    const VM = {g:'ag',y:'ay',o:'ao',r:'ar'}, VD = {g:'dg',y:'dy',o:'do',r:'dr'};
+
+    const badge = (l,col) => html`<span style="border-radius:5px;padding:2px 7px;font-size:12px;font-weight:700;background:${col}33;color:${col};border:1px solid ${col}55;">${l}</span>`;
+
+    return html`
+      <div class="dw-card re-wx ${noBorder?'no-border':''}" style="${sizeStyle} position:relative; overflow:hidden; padding:0;">
+        <canvas class="re-wx-sky"></canvas>
+        <div class="re-wx-card">
+          <div class="re-wx-hdr">
+            <div class="re-wx-hdr-txt">
+              <span style="font-size:16px;">${wIco}</span>
+              <span style="font-size:14px;font-weight:700;color:#fff;margin-right:10px;">${wLbl}</span>
+              <span style="opacity:.6;font-size:12px;">🌅<b>${rise}</b> 🌇<b>${set}</b> ⏱<b>${dh}h${String(dm).padStart(2,'0')}</b> 📈<b>${vv>0?'+':''}${vv.toFixed(1)}m</b></span>
+            </div>
+          </div>
+          <div class="re-wx-meteo">
+            <div>🌡️ Temp <b>${wa.temperature != null ? wa.temperature : '–'}°C</b><br>
+                 🌬️ Vent <b>${wa.wind_speed != null ? wa.wind_speed : '–'} km/h</b><br>
+                 👁️ Visib. <b>${vis} km</b><br>
+                 🌡 Press. <b>${wa.pressure != null ? wa.pressure : '–'} hPa</b></div>
+            <div class="re-wx-mc2">💧 Humid. <b>${wa.humidity != null ? wa.humidity : '–'}%</b><br>
+                 ☀️ UV <b>${uv}</b> | 🌧️ <b>${rain}mm</b><br>
+                 🌙 Lune <b>${moon}</b><br>
+                 🤗 Ressenti <b>${res}°C</b></div>
+          </div>
+          <div class="re-wx-fc">
+            ${fc.length ? fc.slice(0,7).map((d,i) => {
+              const dt = new Date(d.datetime), label = i===0 ? "Aujourd'hui" : DAYS[dt.getDay()];
+              return html`<div class="re-wx-day ${i===0?'today':''}">
+                <div class="re-wx-dd">${label}</div>
+                <span class="re-wx-di">${WICO[String(d.condition).toLowerCase()]||'🌥️'}</span>
+                <span class="re-wx-dh">${Math.round(d.temperature!=null?d.temperature:0)}°</span>
+                <span class="re-wx-dl">${Math.round(d.templow!=null?d.templow:0)}°</span>
+              </div>`;
+            }) : html`<div style="font-size:12px;color:rgba(255,255,255,.4);padding:6px;">Prévisions indisponibles</div>`}
+          </div>
+          <div>
+            <div class="re-wx-stl">🌿 Pollen ${badge(qpL,qpC)} &nbsp;🏭 Air ${badge(qaL,qaC)}</div>
+            <div class="re-wx-pol">
+              ${polls.map(p => {
+                const ni = niveauInfo(p.nk);
+                const cv = stState(p.ck);
+                const conc = (cv && cv!=='unavailable' && cv!=='unknown' && !isNaN(parseFloat(cv))) ? parseFloat(cv).toFixed(1) : null;
+                return html`<div class="re-wx-pi">
+                  <div class="re-wx-pn">${p.n}</div>
+                  <span class="re-wx-pb" style="background:${ni.col}33;color:${ni.col};border:1px solid ${ni.col}55;">${ni.l}</span>
+                  ${conc ? html`<span class="re-wx-pc">${conc}µg</span>` : html``}
+                  <div class="re-wx-pbar"><div class="re-wx-pbf" style="width:${ni.p}%;background:${ni.col};"></div></div>
+                </div>`;
+              })}
+            </div>
+          </div>
+          <div>
+            <div class="re-wx-stl">⚠ Vigilance</div>
+            <div class="re-wx-alt">
+              ${al.map(a => html`<div class="re-wx-ai ${VM[a.v]}"><div class="re-wx-adot ${VD[a.v]}"></div><span>${a.t}</span></div>`)}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
   _renderEnergieWidget(w, sizeStyle, noBorder=false) {
     // Intègre la carte "energie-card" (HACS) en pleine page.
     const cfg = w.energie_config || {};
@@ -2959,6 +3274,11 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'bgImage',l:'Image de fond',t:T},{k:'color',l:'Couleur',t:T},
         {k:'cameraEntity',l:'Caméra',t:E},{k:'scheduleEntity',l:'Heure cible',t:E},
         {k:'progEnableEntity',l:'Bool. programmation',t:E},
+        // ── Chimie de l'eau (vue CHIMIE) ──
+        {k:'phEntity',l:'pH — entité',t:E},{k:'ph_min',l:'pH min',t:N},{k:'ph_max',l:'pH max',t:N},
+        {k:'orpEntity',l:'ORP — entité',t:E},{k:'orp_min',l:'ORP min',t:N},{k:'orp_max',l:'ORP max',t:N},
+        {k:'tdsEntity',l:'TDS — entité',t:E},{k:'tds_min',l:'TDS min',t:N},{k:'tds_max',l:'TDS max',t:N},
+        {k:'saltEntity',l:'Sel — entité',t:E},{k:'salt_min',l:'Sel min',t:N},{k:'salt_max',l:'Sel max',t:N},
       ],
       tank: [
         {k:'tank_title',l:'Titre',t:T},{k:'subtitle',l:'Sous-titre',t:T},{k:'capacity',l:'Capacité (L)',t:N},
@@ -2995,6 +3315,19 @@ class ResidentEvilCardEditor extends LitElement {
       shape: [
         {k:'label',l:'Libellé',t:T},{k:'shape',l:'Forme',t:S,o:['circle','square','triangle','hexagon']},
         {k:'size',l:'Taille (px)',t:N},{k:'filled',l:'Remplie',t:'bool'},
+      ],
+      weather: [
+        {k:'animated',l:'Ciel animé',t:'bool'},
+        {k:'weather_config.weather',l:'Météo (weather.*)',t:E},
+        {k:'weather_config.uv',l:'UV',t:E},{k:'weather_config.rain',l:'Pluie/jour',t:E},
+        {k:'weather_config.moon',l:'Lune',t:E},
+        {k:'weather_config.ng',l:'Niveau graminées',t:E},{k:'weather_config.cg',l:'Conc. graminées',t:E},
+        {k:'weather_config.nb',l:'Niveau bouleau',t:E},{k:'weather_config.cb',l:'Conc. bouleau',t:E},
+        {k:'weather_config.na',l:'Niveau ambroisie',t:E},{k:'weather_config.ca',l:'Conc. ambroisie',t:E},
+        {k:'weather_config.nu',l:'Niveau aulne',t:E},{k:'weather_config.cu',l:'Conc. aulne',t:E},
+        {k:'weather_config.nr',l:'Niveau armoise',t:E},{k:'weather_config.crr',l:'Conc. armoise',t:E},
+        {k:'weather_config.no',l:'Niveau olivier',t:E},{k:'weather_config.co',l:'Conc. olivier',t:E},
+        {k:'weather_config.qp',l:'Qualité pollen',t:E},{k:'weather_config.qa',l:'Qualité air',t:E},
       ],
       health: [],
       energie: [
@@ -3322,7 +3655,7 @@ class ResidentEvilCardEditor extends LitElement {
                     {v:'gauge',l:'Jauge circulaire'},{v:'sparkline',l:'Graphique sparkline'},
                     {v:'badge',l:'Badge valeur'},{v:'shape',l:'Forme / cadre coloré'},
                     {v:'spa_temp',l:'Spa'},{v:'tank',l:'Cuve / jardin'},{v:'server',l:'Serveur'},
-                    {v:'plant',l:'Plante'},{v:'health',l:'Santé'},{v:'solar',l:'Solaire'},
+                    {v:'plant',l:'Plante'},{v:'health',l:'Santé'},{v:'solar',l:'Solaire'},{v:'weather',l:'Météo'},
                     {v:'energie',l:'Consommation'},{v:'appliance',l:'Équipements'},
                     {v:'tracker',l:'Radar présence'},{v:'map',l:'Carte présence'},
                   ].map(t=>html`<option value="${t.v}">${t.l}</option>`)}
@@ -3333,6 +3666,7 @@ class ResidentEvilCardEditor extends LitElement {
                     sparkline:{type:'sparkline',widthPct:32,heightPx:140,color:'#22d3ee',label:'Tendance'},
                     badge:{type:'badge',widthPct:24,heightPx:110,icon:'mdi:flash',color:'#f59e0b',label:'Valeur'},
                     shape:{type:'shape',widthPct:15,heightPx:120,shape:'hexagon',size:64,filled:true,color:'#ef4444',label:'Statut'},
+                    weather:{type:'weather',widthPct:100,heightPx:530,noBorder:true,animated:true,weather_config:{weather:'weather.sainte_croix_en_plaine'}},
                   };
                   this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.widgets=s.widgets||[];
                     s.widgets.push(defs[t] ? JSON.parse(JSON.stringify(defs[t])) : {type:t,widthPct:100,noBorder:true}); }); }, '#22c55e')}
