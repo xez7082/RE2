@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v119 (version RICHE : widgets)
+   RESIDENT EVIL CARD v120 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2632,7 +2632,7 @@ class ResidentEvilCard extends LitElement {
               </button>
             `) : html``}
           </div>
-          <div class="re-content-container ${this._glitch ? 're-glitch' : ''}"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span><div class="re-scanlines"></div>
+          <div class="re-content-container ${this._glitch ? 're-glitch' : ''}"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span><div class="re-hexbg"></div><div class="re-watermark" style="background-image:url('${this.config.logo || '/local/Umbrella.png'}');"></div><div class="re-scanlines"></div>
             ${!hasIframe && !isSpaMode && !isDesignMode && sensorsRaw.length > 0 && subsubmenus.length > 0 ? html`
               <div class="re-filter-bar">
                 ${subsubmenus.map(subsub => html`
@@ -2647,14 +2647,19 @@ class ResidentEvilCard extends LitElement {
                 : isDesignMode
                   ? html`<div class="design-grid" style="height:100%;">${(activeSubMenu.widgets || []).map(w => this._renderDesignWidget(w, (activeSubMenu.widgets || []).length === 1))}</div>`
                   : html`
-                      <div class="re-sensor-grid">
+                      <div class="re-section-head">
+                        <span class="re-section-bar"></span>
+                        <span class="re-section-label">SECTEUR : ${activeSubMenu.name || ''}</span>
+                        <span class="re-section-id">REF#${String((this._activeMainMenu*10)+this._activeSubMenu).padStart(4,'0')} // SEC-LVL-4</span>
+                      </div>
+                      <div class="re-sensor-grid re-cascade" data-cascade="${this._activeMainMenu}-${this._activeSubMenu}-${effectiveFilter}">
                         ${(effectiveFilter === 'all'
                           ? sensorsRaw
                           : sensorsRaw.filter(id => {
                               const s = (activeSubMenu.sensors || []).find(s => (s.entity||s) === id);
                               return s && s.type === effectiveFilter;
                             })
-                        ).map(id => this.renderEntity(id))}
+                        ).map((id, idx) => html`<div class="re-cascade-item" style="animation-delay:${Math.min(idx*35, 700)}ms;">${this.renderEntity(id)}</div>`)}
                       </div>`}
             </div>
           </div>
@@ -2785,6 +2790,45 @@ class ResidentEvilCard extends LitElement {
       .re-boot-bar div { height: 100%; width: 0; background: linear-gradient(90deg,#22d3ee,#ef4444);
         animation: re-boot-fill 1.3s ease forwards; box-shadow: 0 0 10px #22d3ee; }
       .re-boot-dots { animation: batt-flash 0.6s infinite alternate; }
+
+      /* ═══ #1 FOND HEXAGONAL (NEST) ═══ */
+      .re-content-container { position: relative; }
+      .re-hexbg { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .05;
+        background-image:
+          radial-gradient(circle at 50% 50%, var(--ec-hud,#22d3ee) 0, transparent 60%),
+          repeating-linear-gradient(60deg,  rgba(255,255,255,.6) 0 1px, transparent 1px 26px),
+          repeating-linear-gradient(-60deg, rgba(255,255,255,.6) 0 1px, transparent 1px 26px),
+          repeating-linear-gradient(0deg,   rgba(255,255,255,.6) 0 1px, transparent 1px 45px);
+        background-size: 100% 100%, 30px 52px, 30px 52px, 52px 45px;
+        animation: re-hex-drift 40s linear infinite; }
+      @keyframes re-hex-drift { from { background-position: 0 0,0 0,0 0,0 0; } to { background-position: 0 0,60px 104px,-60px 104px,104px 0; } }
+
+      /* ═══ #7 FILIGRANE LOGO ═══ */
+      .re-watermark { position: absolute; top: 50%; left: 50%; width: 60%; height: 60%;
+        transform: translate(-50%,-50%); z-index: 0; pointer-events: none; opacity: .035;
+        background-repeat: no-repeat; background-position: center; background-size: contain;
+        filter: grayscale(1) brightness(2); }
+      .re-biohazard .re-watermark { opacity: .06; filter: none; }
+      /* le contenu repasse au-dessus de la texture */
+      .re-filter-bar, .re-content-scroll { position: relative; z-index: 1; }
+
+      /* ═══ #4 EN-TÊTE DE SECTION ═══ */
+      .re-section-head { display: flex; align-items: center; gap: 10px; padding: 4px 2px 12px;
+        flex-shrink: 0; }
+      .re-section-bar { width: 5px; height: 18px; background: var(--ec-hud,#22d3ee);
+        box-shadow: 0 0 8px var(--ec-hud,#22d3ee); border-radius: 1px; flex-shrink: 0; }
+      .re-section-label { font-size: 14px; font-weight: 800; letter-spacing: 2px; color: #e2e8f0; }
+      .re-section-id { margin-left: auto; font-size: 12px; letter-spacing: 1px; color: #475569;
+        font-family: 'Courier New', monospace; }
+
+      /* ═══ #10 CASCADE D'ARRIVÉE ═══ */
+      .re-cascade-item { animation: re-cascade-in .42s cubic-bezier(.2,.8,.3,1) both; }
+      @keyframes re-cascade-in { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+
+      /* ═══ #5 TUILES À COINS COUPÉS (HUD) ═══ */
+      .re-sensor-grid .sensor-card {
+        clip-path: polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px);
+        border-radius: 2px; }
       /* ═══ MODE CONTRASTE RENFORCÉ (accessibilité) ═══ */
       .re-hc .re-header, .re-hc .re-nav, .re-hc .re-sidebar, .re-hc .re-content-container { background: #000 !important; border-width: 2px !important; border-color: #38e0ff !important; }
       .re-hc .re-title { color: #ffffff !important; font-size: calc(var(--ec-fs-title, 18px) + 2px) !important; }
