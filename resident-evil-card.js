@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v125 (version RICHE : widgets)
+   RESIDENT EVIL CARD v126 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1121,10 +1121,10 @@ class ResidentEvilCard extends LitElement {
 
     const renderChem = () => html`
       <div style="display:flex;flex-direction:column;gap:8px;">
-        ${chemGauge(ph,   Number(w.ph_min||7),   Number(w.ph_max||7.6),  'pH',  '')}
-        ${chemGauge(orp,  Number(w.orp_min||650), Number(w.orp_max||800), 'ORP', 'mV')}
-        ${chemGauge(tds,  Number(w.tds_min||500), Number(w.tds_max||2000),'TDS', 'ppm')}
-        ${chemGauge(salt, Number(w.salt_min||300), Number(w.salt_max||500),'Sel', 'ppm')}
+        ${chemGauge(ph,   Number(w.ph_min??7),   Number(w.ph_max??7.6),  'pH',  '')}
+        ${chemGauge(orp,  Number(w.orp_min??650), Number(w.orp_max??800), 'ORP', 'mV')}
+        ${chemGauge(tds,  Number(w.tds_min??500), Number(w.tds_max??2000),'TDS', 'ppm')}
+        ${chemGauge(salt, Number(w.salt_min??300), Number(w.salt_max??500),'Sel', 'ppm')}
         ${ph==null&&orp==null&&tds==null&&salt==null ? html`<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px;">Aucune entité chimie configurée</div>` : html``}
       </div>`;
 
@@ -3207,12 +3207,17 @@ class ResidentEvilCardEditor extends LitElement {
       @input="${(e)=>cb(e.target.value)}"
       @change="${(e)=>cb(e.target.value)}" />`;
   }
-  _num(val, cb, min=8, max=60) {
-    return html`<input type="number" min="${min}" max="${max}" .value="${val ?? ''}"
+  _num(val, cb, min=8, max=60, step) {
+    const conv = (raw) => {
+      if (raw === '' || raw == null) return undefined;
+      const n = parseFloat(raw);
+      return isNaN(n) ? undefined : n;
+    };
+    return html`<input type="number" min="${min}" max="${max}" ${step!=null?`step="${step}"`:''} .value="${val ?? ''}"
       style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;
              padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;"
-      @input="${(e)=>cb(e.target.value === '' ? undefined : parseInt(e.target.value))}"
-      @change="${(e)=>cb(e.target.value === '' ? undefined : parseInt(e.target.value))}" />`;
+      @input="${(e)=>cb(conv(e.target.value))}"
+      @change="${(e)=>cb(conv(e.target.value))}" />`;
   }
   _color(val, def, cb) {
     return html`
@@ -3347,7 +3352,7 @@ class ResidentEvilCardEditor extends LitElement {
       const parts = key.split('.');
       for (let i=0;i<parts.length-1;i++) { if(!o[parts[i]]) o[parts[i]]={}; o=o[parts[i]]; }
       const last = parts[parts.length-1];
-      if (val === undefined || val === '') delete o[last]; else o[last] = val;
+      if (val === undefined || val === null || val === '') delete o[last]; else o[last] = val;
     });
   }
 
@@ -3363,7 +3368,7 @@ class ResidentEvilCardEditor extends LitElement {
             ${f.o.map(o=>html`<option value="${o}" ?selected="${String(cur)===String(o)}">${o}</option>`)}
           </select>
         </div>`;
-      if (f.t === 'number') return html`<div>${this._lbl(f.l)}${this._num(cur, v=>this._wgSet(ci,si,wi,f.k,v), 0, 100000)}</div>`;
+      if (f.t === 'number') return html`<div>${this._lbl(f.l)}${this._num(cur, v=>this._wgSet(ci,si,wi,f.k,v), -100000, 100000, f.step != null ? f.step : 'any')}</div>`;
       if (f.t === 'color')  return html`<div>${this._lbl(f.l)}${this._color(cur, f.d || '#00ff00', v=>this._wgSet(ci,si,wi,f.k,v))}</div>`;
       if (f.t === 'bool')   return html`<div>${this._lbl(f.l)}
         <select style="${selStyle}" @change="${e=>this._wgSet(ci,si,wi,f.k, e.target.value==='oui')}">
