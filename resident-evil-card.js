@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v113 (version RICHE : widgets)
+   RESIDENT EVIL CARD v114 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3032,12 +3032,27 @@ class ResidentEvilCardEditor extends LitElement {
           </div>
           ${cat ? this._txt(cat.name, v=>this._mutate(c=>c.categories[ci].name=v), 'Nom de la catégorie') : html``}
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-            ${this._btn('⭳ Exporter la catégorie', ()=>{ if(!cat) return;
-              const json = JSON.stringify(cat, null, 2);
-              if (navigator.clipboard) navigator.clipboard.writeText(json).then(()=>alert('Catégorie copiée dans le presse-papier (JSON).'));
-              else prompt('Copie ce JSON :', json); }, '#06b6d4')}
-            ${this._btn(this._impOpen ? '✕ Fermer' : '⭱ Importer une catégorie', ()=>{ this._impOpen=!this._impOpen; this.requestUpdate(); }, '#f59e0b')}
+            ${this._btn(this._expOpen ? '✕ Fermer export' : '⭳ Exporter la catégorie', ()=>{ if(!cat) return;
+              this._expOpen = !this._expOpen; this.requestUpdate();
+              if (this._expOpen) setTimeout(()=>{
+                const ta = this.shadowRoot.querySelector('#re2-exp');
+                if (!ta) return;
+                ta.value = JSON.stringify(cat, null, 2);
+                ta.focus(); ta.select();
+                try { document.execCommand('copy'); } catch(_e) {}
+                try { if (navigator.clipboard) navigator.clipboard.writeText(ta.value).catch(()=>{}); } catch(_e) {}
+              }, 50);
+            }, '#06b6d4')}
+            ${this._btn(this._impOpen ? '✕ Fermer import' : '⭱ Importer une catégorie', ()=>{ this._impOpen=!this._impOpen; this.requestUpdate(); }, '#f59e0b')}
           </div>
+          ${this._expOpen ? html`
+            <div style="margin-top:8px;">
+              ${this._lbl('JSON de la catégorie — sélectionné et copié ; sinon Ctrl+C')}
+              <textarea id="re2-exp" rows="6" readonly
+                @focus="${e=>e.target.select()}"
+                style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #06b6d4;color:#7dd3fc;
+                       padding:9px 10px;font-size:12px;border-radius:6px;font-family:'Courier New',monospace;"></textarea>
+            </div>` : html``}
           ${this._impOpen ? html`
             <div style="margin-top:8px;">
               <textarea id="re2-imp" rows="5" placeholder='Colle ici le JSON d&apos;une catégorie exportée'
