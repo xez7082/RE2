@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v120 (version RICHE : widgets)
+   RESIDENT EVIL CARD v121 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -116,7 +116,14 @@ const cardStyles = css`
   @keyframes alert-card-pulse { 0% { background: #0d0d0d; box-shadow: none; } 100% { background: #210505; box-shadow: 0 0 12px var(--re-red-glow); } }
   @keyframes alert-icon-shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } 100% { transform: rotate(0deg); } }
 
-  .sensor-card.type-climate, .sensor-card.type-temp-visual { grid-column: span 2; min-height: 125px; background: #09090b; border: 1px solid #1f1f23; }
+  .sensor-card.type-climate, .sensor-card.type-temp-visual { grid-column: span 2; min-height: 150px; background: #09090b; border: 1px solid #1f1f23; }
+  .sensor-name-block { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+  .sensor-room-name { font-size: 15px; font-weight: 800; color: #f1f5f9; text-transform: uppercase;
+    letter-spacing: .5px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+  .sensor-sub-label { font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 1px; white-space: nowrap; }
+  /* coin coupé plus marqué sur les tuiles temp/climate */
+  .sensor-card.type-climate, .sensor-card.type-temp-visual {
+    clip-path: polygon(18px 0, 100% 0, 100% 100%, 0 100%, 0 18px) !important; }
   .temp-display-container { display: flex; align-items: baseline; gap: 8px; margin-top: 5px; }
   .temp-huge-value { font-size: 28px; font-weight: bold; font-family: 'Courier New', monospace; letter-spacing: -1px; }
   .temp-status-tag { font-size: 11px; padding: 2px 6px; font-weight: bold; border: 1px solid #333; text-transform: uppercase; background: #000; letter-spacing: 1px; }
@@ -563,7 +570,10 @@ class ResidentEvilCard extends LitElement {
       return html`
         <div class="sensor-card type-climate" @click="${() => this._handleAction(entityId)}">
           <div class="sensor-card-header">
-            <div class="sensor-name">☣️ HVAC // ${name}</div>
+            <div class="sensor-name-block">
+              <div class="sensor-room-name">${name}</div>
+              <div class="sensor-sub-label">☣️ HVAC CONTROL</div>
+            </div>
             <ha-icon class="sensor-icon" icon="${iconToRender}" style="color:#ff9900;"></ha-icon>
           </div>
           ${this._renderThermalGauge(currentTemp)}
@@ -580,7 +590,10 @@ class ResidentEvilCard extends LitElement {
       return html`
         <div class="sensor-card type-temp-visual" @click="${() => this._handleAction(entityId)}">
           <div class="sensor-card-header">
-            <div class="sensor-name">🌡️ THERMAL MONITOR // ${name}</div>
+            <div class="sensor-name-block">
+              <div class="sensor-room-name">${this._staleDot(stateObj)}${name}</div>
+              <div class="sensor-sub-label">🌡️ THERMAL MONITOR</div>
+            </div>
             <ha-icon class="sensor-icon" icon="${iconToRender}"></ha-icon>
           </div>
           ${this._renderThermalGauge(state)}
