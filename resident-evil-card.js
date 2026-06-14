@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v138 (version RICHE : widgets)
+   RESIDENT EVIL CARD v139 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -340,6 +340,63 @@ class ResidentEvilCard extends LitElement {
   getCardSize() { return 10; }
   static getStubConfig() { return { title: "UMBRELLA CORP. TERMINAL", categories: [] }; }
   static getConfigElement() { return document.createElement("resident-evil-card-editor"); }
+
+  _collectAlerts() {
+    const out = [];
+    const states = this.hass?.states || {};
+    const cfg = this.config || {};
+    const nameOf = (eid) => states[eid]?.attributes?.friendly_name || eid;
+
+    // (A) Règles personnalisées : config.alerts = [{entity, op, value, message, level}]
+    (cfg.alerts || []).forEach(r => {
+      if (!r || !r.entity) return;
+      const s = states[r.entity];
+      const state = s ? String(s.state) : 'unavailable';
+      const num = parseFloat(state);
+      const v = r.value;
+      const vn = parseFloat(v);
+      let hit = false;
+      switch ((r.op || 'off')) {
+        case 'on':          hit = state === 'on'; break;
+        case 'off':         hit = state === 'off'; break;
+        case 'unavailable': hit = ['unavailable','unknown','none',''].includes(state); break;
+        case '=':  case '==': hit = state === String(v); break;
+        case '!=':          hit = state !== String(v); break;
+        case '<':           hit = !isNaN(num) && !isNaN(vn) && num <  vn; break;
+        case '<=':          hit = !isNaN(num) && !isNaN(vn) && num <= vn; break;
+        case '>':           hit = !isNaN(num) && !isNaN(vn) && num >  vn; break;
+        case '>=':          hit = !isNaN(num) && !isNaN(vn) && num >= vn; break;
+        case 'contains':    hit = state.toLowerCase().includes(String(v).toLowerCase()); break;
+        default:            hit = false;
+      }
+      if (hit) out.push({ msg: r.message || (nameOf(r.entity) + ' : ' + state), level: r.level || 'warn' });
+    });
+
+    // (B) Chimie du spa : détectée depuis les widgets spa_temp configurés
+    (cfg.categories || []).forEach(cat => (cat.submenus || []).forEach(sub => (sub.widgets || []).forEach(w => {
+      if (!w || w.type !== 'spa_temp') return;
+      const chk = (eid, mn, mx, lbl, unit) => {
+        if (!eid || !states[eid]) return;
+        const val = parseFloat(states[eid].state);
+        if (isNaN(val)) return;
+        if (val < mn) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' bas (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
+        else if (val > mx) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' haut (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
+      };
+      chk(w.phEntity,   Number(w.ph_min??7),    Number(w.ph_max??7.6),   'pH',  '');
+      chk(w.orpEntity,  Number(w.orp_min??650), Number(w.orp_max??800),  'ORP', 'mV');
+      chk(w.tdsEntity,  Number(w.tds_min??500), Number(w.tds_max??2000), 'TDS', 'ppm');
+      chk(w.saltEntity, Number(w.salt_min??300),Number(w.salt_max??500), 'Sel', 'ppm');
+    })));
+
+    // (C) Capteurs biohazard actifs
+    (cfg.biohazard_entities || []).forEach(eid => {
+      if (states[eid]?.state === 'on') out.push({ msg: 'ALERTE : ' + nameOf(eid), level: 'crit' });
+    });
+
+    // Dédoublonnage
+    const seen = new Set();
+    return out.filter(a => { if (seen.has(a.msg)) return false; seen.add(a.msg); return true; });
+  }
 
   _handleAction(entityId) {
     const domain = entityId.split('.')[0];
@@ -3101,6 +3158,26 @@ class ResidentEvilCard extends LitElement {
           </div>
         </div>
 
+        ${(() => {
+          const alerts = this._collectAlerts();
+          if (!alerts.length) return html``;
+          const worst = alerts.some(a=>a.level==='crit') ? '#ef4444' : '#f59e0b';
+          const sep = html`<span style="color:rgba(255,255,255,.3);margin:0 18px;">●</span>`;
+          const line = alerts.map((a,i) => html`${i>0?sep:html``}<span style="color:${a.level==='crit'?'#fca5a5':'#fde68a'};">${a.level==='crit'?'⛔':'⚠'} ${a.msg}</span>`);
+          // durée proportionnelle au nombre d'alertes (lisible)
+          const dur = Math.max(14, alerts.length * 7);
+          return html`
+            <div class="re-ticker" style="border-color:${worst}55;">
+              <div class="re-ticker-tag" style="background:${worst};">${alerts.length} ALERTE${alerts.length>1?'S':''}</div>
+              <div class="re-ticker-viewport">
+                <div class="re-ticker-track" style="animation-duration:${dur}s;">
+                  <span class="re-ticker-seg">${line}</span>
+                  <span class="re-ticker-seg" aria-hidden="true">${line}</span>
+                </div>
+              </div>
+            </div>`;
+        })()}
+
         <div class="re-nav"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
           ${categories.map((cat, index) => {
             const catIcons = {
@@ -3276,6 +3353,17 @@ class ResidentEvilCard extends LitElement {
         font-size: 13px; font-weight: 800; letter-spacing: 1.5px; max-width: 46%;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         animation: batt-flash 0.9s infinite alternate; }
+      /* ── Bandeau d'alertes défilant ── */
+      .re-ticker { display: flex; align-items: stretch; gap: 0; margin-top: 8px; flex-shrink: 0;
+        background: rgba(10,12,20,.85); border: 1px solid; border-radius: 8px; overflow: hidden; height: 30px; }
+      .re-ticker-tag { display: flex; align-items: center; padding: 0 12px; font-size: 12px; font-weight: 800;
+        color: #0a0c14; letter-spacing: .5px; white-space: nowrap; flex-shrink: 0; }
+      .re-ticker-viewport { flex: 1; overflow: hidden; position: relative; display: flex; align-items: center; }
+      .re-ticker-track { display: inline-flex; white-space: nowrap; will-change: transform;
+        animation-name: re-ticker-scroll; animation-timing-function: linear; animation-iteration-count: infinite; }
+      .re-ticker-seg { display: inline-block; padding: 0 24px; font-size: 13px; font-weight: 700; line-height: 30px; }
+      @keyframes re-ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      .re-ticker:hover .re-ticker-track { animation-play-state: paused; }
       .re-biohazard { --ec-hud: #ef4444; --ec-hud-border: rgba(239,68,68,.45); }
       .re-biohazard .re-umbrella-icon { animation-duration: 1.4s; }
       .re-boot { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column;
@@ -3691,6 +3779,35 @@ class ResidentEvilCardEditor extends LitElement {
         <div>${this._lbl('Logo (URL)')}${this._txt(this._config.logo, v=>this._mutate(c=>{ if(v) c.logo=v; else delete c.logo; }), '/local/Umbrella.png')}</div>
         <div>${this._lbl('Entité de statut (en-tête)')}${this._txt(this._config.status_entity, v=>this._mutate(c=>{ if(v) c.status_entity=v; else delete c.status_entity; }), 'binary_sensor.…', 're2ents')}</div>
         <div>${this._lbl('Hauteur de la carte (px)')}${this._num(this._config.card_height ?? 550, v=>this._mutate(c=>{ if(v) c.card_height=v; else delete c.card_height; }), 300, 1600)}</div>
+
+        <div style="border-top:1px solid #1e2d3d;padding-top:12px;">
+          ${this._lbl('🚨 ALERTES DÉFILANTES (bandeau d\'en-tête)')}
+          <div style="font-size:12px;color:#64748b;margin-bottom:8px;line-height:1.5;">
+            La chimie du spa hors plage et les capteurs « biohazard » sont détectés automatiquement.
+            Ajoute ici des règles : spa éteint, lave-linge en panne, production faible…
+          </div>
+          ${(this._config.alerts || []).map((r, i) => html`
+            <div style="background:#101826;border:1px solid #1e2d3d;border-radius:8px;padding:8px;margin-bottom:6px;display:flex;flex-direction:column;gap:5px;">
+              <div style="display:flex;gap:5px;align-items:center;">
+                <span style="font-size:12px;color:#94a3b8;flex:1;">Règle ${i+1}</span>
+                ${this._btn('🗑', ()=>this._mutate(c=>{ c.alerts.splice(i,1); if(!c.alerts.length) delete c.alerts; }), '#ef4444', 'Supprimer')}
+              </div>
+              ${this._txt(r.entity, v=>this._mutate(c=>c.alerts[i].entity=v), 'entité (sensor./switch./binary_sensor.…)', 're2ents')}
+              <div style="display:flex;gap:5px;">
+                <select style="flex:0 0 130px;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;padding:8px;font-size:13px;border-radius:6px;font-family:inherit;"
+                        .value="${r.op||'off'}" @change="${e=>this._mutate(c=>c.alerts[i].op=e.target.value)}">
+                  ${[['off','est éteint (off)'],['on','est allumé (on)'],['unavailable','indisponible'],['<','< valeur'],['<=','≤ valeur'],['>','> valeur'],['>=','≥ valeur'],['=','= valeur'],['!=','≠ valeur'],['contains','contient']].map(o=>html`<option value="${o[0]}" ?selected="${(r.op||'off')===o[0]}">${o[1]}</option>`)}
+                </select>
+                ${this._txt(r.value, v=>this._mutate(c=>c.alerts[i].value=v), 'valeur (si applicable)')}
+              </div>
+              ${this._txt(r.message, v=>this._mutate(c=>c.alerts[i].message=v), 'message affiché (ex: SPA ÉTEINT)')}
+              <select style="background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;padding:8px;font-size:13px;border-radius:6px;font-family:inherit;"
+                      .value="${r.level||'warn'}" @change="${e=>this._mutate(c=>c.alerts[i].level=e.target.value)}">
+                ${[['warn','⚠ Avertissement (orange)'],['crit','⛔ Critique (rouge)']].map(o=>html`<option value="${o[0]}" ?selected="${(r.level||'warn')===o[0]}">${o[1]}</option>`)}
+              </select>
+            </div>`)}
+          ${this._btn('＋ Ajouter une règle d\'alerte', ()=>this._mutate(c=>{ c.alerts=c.alerts||[]; c.alerts.push({entity:'',op:'off',message:'',level:'warn'}); }), '#22c55e')}
+        </div>
       </div>`;
 
     // ═════════ ONGLET THÈME ═════════
