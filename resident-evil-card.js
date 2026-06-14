@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v142 (version RICHE : widgets)
+   RESIDENT EVIL CARD v143 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2830,6 +2830,29 @@ class ResidentEvilCard extends LitElement {
     const att = (id, a) => Sx(id)?.attributes?.[a];
     const toKwh = (id) => { const s = Sx(id); if (!s || ['unavailable','unknown'].includes(s.state)) return null; const v = parseFloat(s.state); if (isNaN(v)) return null; return /^wh$/i.test(s.attributes.unit_of_measurement||'kWh') ? v/1000 : v; };
     const fmt = (v, d=1) => v == null ? '--' : v.toLocaleString('fr-FR', {maximumFractionDigits: d});
+    const FR = {
+      // Phases de lune
+      'new_moon':'Nouvelle lune','waxing_crescent':'Premier croissant','first_quarter':'Premier quartier',
+      'waxing_gibbous':'Gibbeuse croissante','full_moon':'Pleine lune','waning_gibbous':'Gibbeuse décroissante',
+      'last_quarter':'Dernier quartier','waning_crescent':'Dernier croissant',
+      // Conditions météo
+      'sunny':'Ensoleillé','clear':'Dégagé','clear-night':'Ciel clair','cloudy':'Nuageux','partlycloudy':'Partiellement nuageux',
+      'partly-cloudy-day':'Partiellement nuageux','partly-cloudy-night':'Partiellement nuageux','overcast':'Couvert',
+      'rainy':'Pluvieux','pouring':'Forte pluie','drizzle':'Bruine','snowy':'Neigeux','snowy-rainy':'Pluie et neige',
+      'fog':'Brouillard','hail':'Grêle','lightning':'Orage','lightning-rainy':'Orage','windy':'Venteux',
+      'windy-variant':'Venteux','exceptional':'Exceptionnel',
+      // États génériques
+      'on':'Activé','off':'Désactivé','home':'Présent','not_home':'Absent','away':'Absent',
+      'open':'Ouvert','closed':'Fermé','locked':'Verrouillé','unlocked':'Déverrouillé',
+      'unavailable':'Indisponible','unknown':'Inconnu','idle':'En veille','active':'Actif',
+      'heat':'Chauffage','cool':'Refroidissement','dry':'Déshumidification','auto':'Auto','heat_cool':'Auto',
+      'rising':'Montant','setting':'Descendant','above_horizon':'Au-dessus de l\'horizon','below_horizon':'Sous l\'horizon',
+    };
+    const frState = (val) => {
+      if (val == null) return val;
+      const k = String(val).toLowerCase().trim().replace(/\s+/g,'_');
+      return FR[k] || val;
+    };
 
     // ── Tuile générique HUD ──
     const tile = (label, value, unit, col, icon) => html`
@@ -2927,13 +2950,13 @@ class ResidentEvilCard extends LitElement {
           <div style="flex-shrink:0;display:flex;gap:10px;">
             ${num(c.temp_ext)!=null ? tile('Température', fmt(num(c.temp_ext),1), '°C', '#f97316', 'mdi:thermometer') : html``}
             ${num(c.hum_ext)!=null ? tile('Humidité', fmt(num(c.hum_ext),0), '%', '#38bdf8', 'mdi:water-percent') : html``}
-            ${stt(c.moon_entity) ? tile('Lune', stt(c.moon_entity), '', '#a78bfa', 'mdi:moon-waning-crescent') : html``}
+            ${stt(c.moon_entity) ? tile('Lune', frState(stt(c.moon_entity)), '', '#a78bfa', 'mdi:moon-waning-crescent') : html``}
           </div>
           <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start;">
             ${wItems.map(x => {
               const s = Sx(x.e);
               const v = parseFloat(s.state);
-              return tile(x.l, isNaN(v)?s.state:fmt(v,1), s.attributes.unit_of_measurement||'', '#22d3ee', x.i);
+              return tile(x.l, isNaN(v)?frState(s.state):fmt(v,1), s.attributes.unit_of_measurement||'', '#22d3ee', x.i);
             })}
             ${wItems.length===0 ? html`<div style="grid-column:span 2;text-align:center;color:#64748b;font-size:13px;padding:20px;">Aucune entité météo configurée</div>` : html``}
           </div>
