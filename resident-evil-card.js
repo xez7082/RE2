@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v137 (version RICHE : widgets)
+   RESIDENT EVIL CARD v138 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2558,23 +2558,23 @@ class ResidentEvilCard extends LitElement {
     return html`
       <div class="dw-card ${noBorder?'no-border':''}"
            style="${sizeStyle} background:#0a0c14;border-color:${col}33;overflow:hidden;
-                  display:flex;flex-direction:column;justify-content:center;gap:8px;padding:14px 16px;box-sizing:border-box;"
+                  display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 16px;box-sizing:border-box;"
            @click="${() => w.entity && this._handleAction(w.entity)}">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;">
           <span style="font-size:14px;font-weight:700;color:#e2e8f0;letter-spacing:.3px;
                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</span>
           <span style="font-size:18px;font-weight:800;color:${col};white-space:nowrap;">
             ${disp}<span style="font-size:13px;color:#94a3b8;font-weight:600;"> ${unit}</span>
           </span>
         </div>
-        <div style="width:100%;height:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+        <div style="width:100%;height:22px;min-height:22px;flex-shrink:0;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
                     border-radius:11px;overflow:hidden;box-sizing:border-box;position:relative;">
           <div style="position:absolute;top:0;left:0;height:100%;width:${val==null?'0':Math.max(pct,(val>min?5:0)).toFixed(1)}%;
                       border-radius:11px;transition:width .8s cubic-bezier(.2,.8,.3,1);
                       background:${col};box-shadow:0 0 10px ${col};"></div>
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);pointer-events:none;">${val==null?'--':disp+' '+unit}</div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;font-weight:600;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;font-weight:600;flex-shrink:0;">
           <span>${min.toLocaleString('fr-FR')} ${unit}</span>
           <span style="color:${col};">${pct.toFixed(0)}%</span>
           <span>${max.toLocaleString('fr-FR')} ${unit}</span>
