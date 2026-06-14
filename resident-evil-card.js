@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v141 (version RICHE : widgets)
+   RESIDENT EVIL CARD v142 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -336,7 +336,7 @@ class ResidentEvilCard extends LitElement {
     if (this._wxUnsub) { try { this._wxUnsub(); } catch(_e) {} this._wxUnsub = null; this._wxSubEntity = null; }
   }
 
-  setConfig(config) { this.config = config; }
+  setConfig(config) { this.config = config; if (this.requestUpdate) this.requestUpdate(); }
   getCardSize() { return 10; }
   static getStubConfig() { return { title: "UMBRELLA CORP. TERMINAL", categories: [] }; }
   static getConfigElement() { return document.createElement("resident-evil-card-editor"); }
