@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v144 (version RICHE : widgets)
+   RESIDENT EVIL CARD v145 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -372,28 +372,36 @@ class ResidentEvilCard extends LitElement {
       if (hit) out.push({ msg: r.message || (nameOf(r.entity) + ' : ' + state), level: r.level || 'warn' });
     });
 
-    // (B) Chimie du spa : uniquement si min ET max sont explicitement réglés sur le widget
-    //     (sinon, pas de seuil inventé -> évite les fausses alertes des widgets sans seuils)
-    const chemSeen = new Set();
+    // (B) Chimie du spa : on privilégie les seuils de la vue CHIMIE (view:'chem').
+    //     S'il n'y en a pas, on retient la plage la plus large parmi les widgets définissant le seuil.
+    const numFR = (x) => { if (x == null || x === '') return null; const n = parseFloat(String(x).replace(',', '.')); return isNaN(n) ? null : n; };
+    const spaWidgets = [];
     (cfg.categories || []).forEach(cat => (cat.submenus || []).forEach(sub => (sub.widgets || []).forEach(w => {
-      if (!w || w.type !== 'spa_temp') return;
-      const chk = (eid, mn, mx, lbl, unit, lowMatters=true) => {
-        if (!eid || !states[eid]) return;
-        if (mn == null || mx == null || mn === '' || mx === '') return; // seuils non définis -> on ignore
-        const lo = parseFloat(String(mn).replace(',','.')), hi = parseFloat(String(mx).replace(',','.'));
-        if (isNaN(lo) || isNaN(hi)) return;
-        const key = lbl + '|' + eid;
-        if (chemSeen.has(key)) return; chemSeen.add(key); // un seul contrôle par paramètre+entité
-        const val = parseFloat(String(states[eid].state).replace(',','.'));
-        if (isNaN(val)) return;
-        if (lowMatters && val < lo) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' bas (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
-        else if (val > hi) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' haut (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
-      };
-      chk(w.phEntity,   w.ph_min,   w.ph_max,   'pH',  '');
-      chk(w.orpEntity,  w.orp_min,  w.orp_max,  'ORP', 'mV');
-      chk(w.tdsEntity,  w.tds_min,  w.tds_max,  'TDS', 'ppm', false); // TDS : seul un excès compte
-      chk(w.saltEntity, w.salt_min, w.salt_max, 'Sel', 'ppm');
+      if (w && w.type === 'spa_temp') spaWidgets.push(w);
     })));
+    const chemViews = spaWidgets.filter(w => w.view === 'chem');
+    const sources = chemViews.length ? chemViews : spaWidgets;
+    const params = [
+      { eKey:'phEntity',   mnKey:'ph_min',   mxKey:'ph_max',   lbl:'pH',  unit:'',    low:true  },
+      { eKey:'orpEntity',  mnKey:'orp_min',  mxKey:'orp_max',  lbl:'ORP', unit:'mV',  low:true  },
+      { eKey:'tdsEntity',  mnKey:'tds_min',  mxKey:'tds_max',  lbl:'TDS', unit:'ppm', low:false },
+      { eKey:'saltEntity', mnKey:'salt_min', mxKey:'salt_max', lbl:'Sel', unit:'ppm', low:true  },
+    ];
+    params.forEach(p => {
+      let eid = null, lo = null, hi = null;
+      sources.forEach(w => {
+        const mn = numFR(w[p.mnKey]), mx = numFR(w[p.mxKey]);
+        if (!w[p.eKey] || mn == null || mx == null) return;
+        eid = w[p.eKey];
+        lo = (lo == null) ? mn : Math.min(lo, mn);  // plage la plus large
+        hi = (hi == null) ? mx : Math.max(hi, mx);
+      });
+      if (!eid || lo == null || hi == null || !states[eid]) return;
+      const val = numFR(states[eid].state);
+      if (val == null) return;
+      if (p.low && val < lo) out.push({ msg: 'CHIMIE SPA : ' + p.lbl + ' bas (' + val + (p.unit?(' '+p.unit):'') + ')', level: 'warn' });
+      else if (val > hi) out.push({ msg: 'CHIMIE SPA : ' + p.lbl + ' haut (' + val + (p.unit?(' '+p.unit):'') + ')', level: 'warn' });
+    });
 
     // (C) Capteurs biohazard actifs
     (cfg.biohazard_entities || []).forEach(eid => {
