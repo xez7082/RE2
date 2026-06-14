@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v145 (version RICHE : widgets)
+   RESIDENT EVIL CARD v146 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2505,13 +2505,17 @@ class ResidentEvilCard extends LitElement {
   // ═══════════════════════════════════════════════════════════
   _subscribeForecast(entityId) {
     if (!entityId || !this.hass || !this.hass.connection) return;
-    if (this._wxSubEntity === entityId && this._wxUnsub) return;
+    // Garde SYNCHRONE : si déjà abonné/en cours pour cette entité, ne rien relancer
+    if (this._wxSubEntity === entityId) return;
+    // Couper un éventuel abonnement précédent
     if (this._wxUnsub) { try { this._wxUnsub(); } catch (_e) {} this._wxUnsub = null; }
-    this._wxSubEntity = entityId;
+    this._wxSubEntity = entityId;            // marqué AVANT l'appel async -> bloque les doublons
+    this._wxSubscribing = true;
     this.hass.connection.subscribeMessage(
       (evt) => { this._wxForecast = (evt && evt.forecast) || []; this.requestUpdate(); },
       { type: 'weather/subscribe_forecast', forecast_type: 'daily', entity_id: entityId }
-    ).then(unsub => { this._wxUnsub = unsub; }).catch(() => {});
+    ).then(unsub => { this._wxUnsub = unsub; this._wxSubscribing = false; })
+     .catch(() => { this._wxSubEntity = null; this._wxSubscribing = false; });
   }
 
   _initWeatherSky(canvas, animated) {
@@ -2601,7 +2605,7 @@ class ResidentEvilCard extends LitElement {
       if(S.scene==='snow')drawSnow();
       if(S.scene==='fog')drawFog();
     }
-    function loop(){ S.tick++; S.half^=1; if(S.half===0) drawFrame(); S.raf=requestAnimationFrame(loop); }
+    function loop(){ if (!canvas.isConnected) { controller.destroy(); return; } S.tick++; S.half^=1; if(S.half===0) drawFrame(); S.raf=requestAnimationFrame(loop); }
 
     const ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(() => { resize(); drawFrame(); }) : null;
     if (ro) ro.observe(canvas);
