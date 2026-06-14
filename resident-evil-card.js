@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v134 (version RICHE : widgets)
+   RESIDENT EVIL CARD v136 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1121,13 +1121,43 @@ class ResidentEvilCard extends LitElement {
           </div>` : html``}
       </div>`;
 
+    const chemAdvice = () => {
+      const phMin=Number(w.ph_min??7), phMax=Number(w.ph_max??7.6);
+      const orpMin=Number(w.orp_min??650), orpMax=Number(w.orp_max??800);
+      const tdsMin=Number(w.tds_min??500), tdsMax=Number(w.tds_max??2000);
+      const saltMin=Number(w.salt_min??300), saltMax=Number(w.salt_max??500);
+      const tips = [];
+      if (ph!=null && ph<phMin)  tips.push({t:'pH trop bas ('+ph.toFixed(2)+') : ajoutez du pH+ (rehausseur), puis recontrôlez après circulation.'});
+      if (ph!=null && ph>phMax)  tips.push({t:'pH trop haut ('+ph.toFixed(2)+') : ajoutez du pH− (réducteur) par petites doses.'});
+      if (orp!=null && orp<orpMin) tips.push({t:'Désinfection insuffisante (ORP '+orp.toFixed(0)+' mV) : ajoutez du chlore/brome.'});
+      if (orp!=null && orp>orpMax) tips.push({t:'Désinfectant trop élevé (ORP '+orp.toFixed(0)+' mV) : attendez avant la baignade, ne rajoutez rien.'});
+      if (tds!=null && tds>tdsMax) tips.push({t:'Trop de matières dissoutes (TDS '+tds.toFixed(0)+' ppm) : renouvelez une partie de l\'eau.'});
+      if (tds!=null && tds<tdsMin) tips.push({t:'TDS bas ('+tds.toFixed(0)+' ppm) : équilibre minéral faible, contrôlez après ajout de produits.'});
+      if (salt!=null && salt<saltMin) tips.push({t:'Sel trop bas ('+salt.toFixed(0)+' ppm) : ajoutez du sel selon la notice de l\'électrolyseur.'});
+      if (salt!=null && salt>saltMax) tips.push({t:'Sel trop élevé ('+salt.toFixed(0)+' ppm) : diluez avec de l\'eau fraîche.'});
+      if (!tips.length) {
+        if (ph==null&&orp==null&&tds==null&&salt==null) return html``;
+        return html`<div style="display:flex;align-items:center;gap:8px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;color:#10b981;">
+          <ha-icon icon="mdi:check-circle" style="--mdc-icon-size:18px;"></ha-icon><span>Eau équilibrée — aucun ajustement nécessaire.</span></div>`;
+      }
+      return html`
+        <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:#fca5a5;letter-spacing:.3px;">
+            <ha-icon icon="mdi:flask-alert" style="--mdc-icon-size:18px;"></ha-icon>ACTIONS RECOMMANDÉES
+          </div>
+          ${tips.map(x => html`<div style="display:flex;gap:7px;align-items:flex-start;font-size:13px;line-height:1.45;color:#fde68a;">
+            <span style="color:#f59e0b;flex-shrink:0;">▶</span><span>${x.t}</span></div>`)}
+          <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;">Valeurs indicatives — suivez la notice de votre analyseur et de vos produits.</div>
+        </div>`;
+    };
+
     const renderChem = () => html`
       <div style="display:flex;flex-direction:column;gap:8px;">
         ${chemGauge(ph,   Number(w.ph_min??7),   Number(w.ph_max??7.6),  'pH',  '')}
         ${chemGauge(orp,  Number(w.orp_min??650), Number(w.orp_max??800), 'ORP', 'mV')}
         ${chemGauge(tds,  Number(w.tds_min??500), Number(w.tds_max??2000),'TDS', 'ppm')}
         ${chemGauge(salt, Number(w.salt_min??300), Number(w.salt_max??500),'Sel', 'ppm')}
-        ${ph==null&&orp==null&&tds==null&&salt==null ? html`<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px;">Aucune entité chimie configurée</div>` : html``}
+        ${ph==null&&orp==null&&tds==null&&salt==null ? html`<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px;">Aucune entité chimie configurée</div>` : chemAdvice()}
       </div>`;
 
     const renderSw = () => html`
@@ -2537,10 +2567,12 @@ class ResidentEvilCard extends LitElement {
             ${disp}<span style="font-size:13px;color:#94a3b8;font-weight:600;"> ${unit}</span>
           </span>
         </div>
-        <div style="width:100%;height:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
-                    border-radius:9px;overflow:hidden;box-sizing:border-box;">
-          <div style="height:100%;width:${pct.toFixed(1)}%;border-radius:9px;transition:width .8s cubic-bezier(.2,.8,.3,1);
-                      background:linear-gradient(90deg,${col}aa,${col});box-shadow:0 0 10px ${col}88;"></div>
+        <div style="width:100%;height:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+                    border-radius:11px;overflow:hidden;box-sizing:border-box;position:relative;">
+          <div style="height:100%;width:${val==null?0:Math.max(pct,(val>min?4:0)).toFixed(1)}%;border-radius:11px;transition:width .8s cubic-bezier(.2,.8,.3,1);
+                      background:linear-gradient(90deg,${col},#ffffff66 ${pct.toFixed(0)}%,${col});background-blend-mode:screen;
+                      box-shadow:0 0 12px ${col}, inset 0 1px 2px rgba(255,255,255,.5);"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;">${val==null?'--':pct.toFixed(0)+'%'}</div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;font-weight:600;">
           <span>${min.toLocaleString('fr-FR')} ${unit}</span>
