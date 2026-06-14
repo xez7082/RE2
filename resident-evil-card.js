@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v136 (version RICHE : widgets)
+   RESIDENT EVIL CARD v137 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2567,12 +2567,12 @@ class ResidentEvilCard extends LitElement {
             ${disp}<span style="font-size:13px;color:#94a3b8;font-weight:600;"> ${unit}</span>
           </span>
         </div>
-        <div style="width:100%;height:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+        <div style="width:100%;height:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
                     border-radius:11px;overflow:hidden;box-sizing:border-box;position:relative;">
-          <div style="height:100%;width:${val==null?0:Math.max(pct,(val>min?4:0)).toFixed(1)}%;border-radius:11px;transition:width .8s cubic-bezier(.2,.8,.3,1);
-                      background:linear-gradient(90deg,${col},#ffffff66 ${pct.toFixed(0)}%,${col});background-blend-mode:screen;
-                      box-shadow:0 0 12px ${col}, inset 0 1px 2px rgba(255,255,255,.5);"></div>
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;">${val==null?'--':pct.toFixed(0)+'%'}</div>
+          <div style="position:absolute;top:0;left:0;height:100%;width:${val==null?'0':Math.max(pct,(val>min?5:0)).toFixed(1)}%;
+                      border-radius:11px;transition:width .8s cubic-bezier(.2,.8,.3,1);
+                      background:${col};box-shadow:0 0 10px ${col};"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);pointer-events:none;">${val==null?'--':disp+' '+unit}</div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;font-weight:600;">
           <span>${min.toLocaleString('fr-FR')} ${unit}</span>
