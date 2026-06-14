@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v143 (version RICHE : widgets)
+   RESIDENT EVIL CARD v144 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -380,11 +380,11 @@ class ResidentEvilCard extends LitElement {
       const chk = (eid, mn, mx, lbl, unit, lowMatters=true) => {
         if (!eid || !states[eid]) return;
         if (mn == null || mx == null || mn === '' || mx === '') return; // seuils non définis -> on ignore
-        const lo = parseFloat(mn), hi = parseFloat(mx);
+        const lo = parseFloat(String(mn).replace(',','.')), hi = parseFloat(String(mx).replace(',','.'));
         if (isNaN(lo) || isNaN(hi)) return;
         const key = lbl + '|' + eid;
         if (chemSeen.has(key)) return; chemSeen.add(key); // un seul contrôle par paramètre+entité
-        const val = parseFloat(states[eid].state);
+        const val = parseFloat(String(states[eid].state).replace(',','.'));
         if (isNaN(val)) return;
         if (lowMatters && val < lo) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' bas (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
         else if (val > hi) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' haut (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
@@ -1034,6 +1034,7 @@ class ResidentEvilCard extends LitElement {
     const orp  = ex(w.orpEntity)  ? parseFloat(st(w.orpEntity))  : null;
     const tds  = ex(w.tdsEntity)  ? parseFloat(st(w.tdsEntity))  : null;
     const salt = ex(w.saltEntity) ? parseFloat(st(w.saltEntity)) : null;
+    const numv = (x, def) => { if (x==null || x==='') return def; const n = parseFloat(String(x).replace(',','.')); return isNaN(n) ? def : n; };
     const chemGauge = (val, min, max, lbl, unit) => {
       if (val==null) return html``;
       const pct = Math.min(100, Math.max(0, (val-min)/(max-min)*100));
@@ -1186,10 +1187,10 @@ class ResidentEvilCard extends LitElement {
       </div>`;
 
     const chemAdvice = () => {
-      const phMin=Number(w.ph_min??7), phMax=Number(w.ph_max??7.6);
-      const orpMin=Number(w.orp_min??650), orpMax=Number(w.orp_max??800);
-      const tdsMin=Number(w.tds_min??500), tdsMax=Number(w.tds_max??2000);
-      const saltMin=Number(w.salt_min??300), saltMax=Number(w.salt_max??500);
+      const phMin=numv(w.ph_min,7), phMax=numv(w.ph_max,7.6);
+      const orpMin=numv(w.orp_min,650), orpMax=numv(w.orp_max,800);
+      const tdsMin=numv(w.tds_min,500), tdsMax=numv(w.tds_max,2000);
+      const saltMin=numv(w.salt_min,300), saltMax=numv(w.salt_max,500);
       const tips = [];
       if (ph!=null && ph<phMin)  tips.push({t:'pH trop bas ('+ph.toFixed(2)+') : ajoutez du pH+ (rehausseur), puis recontrôlez après circulation.'});
       if (ph!=null && ph>phMax)  tips.push({t:'pH trop haut ('+ph.toFixed(2)+') : ajoutez du pH− (réducteur) par petites doses.'});
@@ -1216,10 +1217,10 @@ class ResidentEvilCard extends LitElement {
 
     const renderChem = () => html`
       <div style="display:flex;flex-direction:column;gap:8px;">
-        ${chemGauge(ph,   Number(w.ph_min??7),   Number(w.ph_max??7.6),  'pH',  '')}
-        ${chemGauge(orp,  Number(w.orp_min??650), Number(w.orp_max??800), 'ORP', 'mV')}
-        ${chemGauge(tds,  Number(w.tds_min??500), Number(w.tds_max??2000),'TDS', 'ppm')}
-        ${chemGauge(salt, Number(w.salt_min??300), Number(w.salt_max??500),'Sel', 'ppm')}
+        ${chemGauge(ph,   numv(w.ph_min,7),    numv(w.ph_max,7.6),  'pH',  '')}
+        ${chemGauge(orp,  numv(w.orp_min,650), numv(w.orp_max,800), 'ORP', 'mV')}
+        ${chemGauge(tds,  numv(w.tds_min,500), numv(w.tds_max,2000),'TDS', 'ppm')}
+        ${chemGauge(salt, numv(w.salt_min,300),numv(w.salt_max,500),'Sel', 'ppm')}
         ${ph==null&&orp==null&&tds==null&&salt==null ? html`<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px;">Aucune entité chimie configurée</div>` : chemAdvice()}
       </div>`;
 
@@ -3494,7 +3495,7 @@ class ResidentEvilCardEditor extends LitElement {
   _num(val, cb, min=8, max=60, step) {
     const conv = (raw) => {
       if (raw === '' || raw == null) return undefined;
-      const n = parseFloat(raw);
+      const n = parseFloat(String(raw).replace(',', '.'));
       return isNaN(n) ? undefined : n;
     };
     return html`<input type="number" min="${min}" max="${max}" ${step!=null?`step="${step}"`:''} .value="${val ?? ''}"
