@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v140 (version RICHE : widgets)
+   RESIDENT EVIL CARD v141 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -377,7 +377,7 @@ class ResidentEvilCard extends LitElement {
     const chemSeen = new Set();
     (cfg.categories || []).forEach(cat => (cat.submenus || []).forEach(sub => (sub.widgets || []).forEach(w => {
       if (!w || w.type !== 'spa_temp') return;
-      const chk = (eid, mn, mx, lbl, unit) => {
+      const chk = (eid, mn, mx, lbl, unit, lowMatters=true) => {
         if (!eid || !states[eid]) return;
         if (mn == null || mx == null || mn === '' || mx === '') return; // seuils non définis -> on ignore
         const lo = parseFloat(mn), hi = parseFloat(mx);
@@ -386,12 +386,12 @@ class ResidentEvilCard extends LitElement {
         if (chemSeen.has(key)) return; chemSeen.add(key); // un seul contrôle par paramètre+entité
         const val = parseFloat(states[eid].state);
         if (isNaN(val)) return;
-        if (val < lo) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' bas (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
+        if (lowMatters && val < lo) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' bas (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
         else if (val > hi) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' haut (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
       };
       chk(w.phEntity,   w.ph_min,   w.ph_max,   'pH',  '');
       chk(w.orpEntity,  w.orp_min,  w.orp_max,  'ORP', 'mV');
-      chk(w.tdsEntity,  w.tds_min,  w.tds_max,  'TDS', 'ppm');
+      chk(w.tdsEntity,  w.tds_min,  w.tds_max,  'TDS', 'ppm', false); // TDS : seul un excès compte
       chk(w.saltEntity, w.salt_min, w.salt_max, 'Sel', 'ppm');
     })));
 
@@ -1196,7 +1196,6 @@ class ResidentEvilCard extends LitElement {
       if (orp!=null && orp<orpMin) tips.push({t:'Désinfection insuffisante (ORP '+orp.toFixed(0)+' mV) : ajoutez du chlore/brome.'});
       if (orp!=null && orp>orpMax) tips.push({t:'Désinfectant trop élevé (ORP '+orp.toFixed(0)+' mV) : attendez avant la baignade, ne rajoutez rien.'});
       if (tds!=null && tds>tdsMax) tips.push({t:'Trop de matières dissoutes (TDS '+tds.toFixed(0)+' ppm) : renouvelez une partie de l\'eau.'});
-      if (tds!=null && tds<tdsMin) tips.push({t:'TDS bas ('+tds.toFixed(0)+' ppm) : équilibre minéral faible, contrôlez après ajout de produits.'});
       if (salt!=null && salt<saltMin) tips.push({t:'Sel trop bas ('+salt.toFixed(0)+' ppm) : ajoutez du sel selon la notice de l\'électrolyseur.'});
       if (salt!=null && salt>saltMax) tips.push({t:'Sel trop élevé ('+salt.toFixed(0)+' ppm) : diluez avec de l\'eau fraîche.'});
       if (!tips.length) {
