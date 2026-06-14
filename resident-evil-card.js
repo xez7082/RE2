@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v139 (version RICHE : widgets)
+   RESIDENT EVIL CARD v140 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -372,20 +372,27 @@ class ResidentEvilCard extends LitElement {
       if (hit) out.push({ msg: r.message || (nameOf(r.entity) + ' : ' + state), level: r.level || 'warn' });
     });
 
-    // (B) Chimie du spa : détectée depuis les widgets spa_temp configurés
+    // (B) Chimie du spa : uniquement si min ET max sont explicitement réglés sur le widget
+    //     (sinon, pas de seuil inventé -> évite les fausses alertes des widgets sans seuils)
+    const chemSeen = new Set();
     (cfg.categories || []).forEach(cat => (cat.submenus || []).forEach(sub => (sub.widgets || []).forEach(w => {
       if (!w || w.type !== 'spa_temp') return;
       const chk = (eid, mn, mx, lbl, unit) => {
         if (!eid || !states[eid]) return;
+        if (mn == null || mx == null || mn === '' || mx === '') return; // seuils non définis -> on ignore
+        const lo = parseFloat(mn), hi = parseFloat(mx);
+        if (isNaN(lo) || isNaN(hi)) return;
+        const key = lbl + '|' + eid;
+        if (chemSeen.has(key)) return; chemSeen.add(key); // un seul contrôle par paramètre+entité
         const val = parseFloat(states[eid].state);
         if (isNaN(val)) return;
-        if (val < mn) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' bas (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
-        else if (val > mx) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' haut (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
+        if (val < lo) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' bas (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
+        else if (val > hi) out.push({ msg: 'CHIMIE SPA : ' + lbl + ' haut (' + val + (unit?(' '+unit):'') + ')', level: 'warn' });
       };
-      chk(w.phEntity,   Number(w.ph_min??7),    Number(w.ph_max??7.6),   'pH',  '');
-      chk(w.orpEntity,  Number(w.orp_min??650), Number(w.orp_max??800),  'ORP', 'mV');
-      chk(w.tdsEntity,  Number(w.tds_min??500), Number(w.tds_max??2000), 'TDS', 'ppm');
-      chk(w.saltEntity, Number(w.salt_min??300),Number(w.salt_max??500), 'Sel', 'ppm');
+      chk(w.phEntity,   w.ph_min,   w.ph_max,   'pH',  '');
+      chk(w.orpEntity,  w.orp_min,  w.orp_max,  'ORP', 'mV');
+      chk(w.tdsEntity,  w.tds_min,  w.tds_max,  'TDS', 'ppm');
+      chk(w.saltEntity, w.salt_min, w.salt_max, 'Sel', 'ppm');
     })));
 
     // (C) Capteurs biohazard actifs
