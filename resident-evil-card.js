@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v152 (version RICHE : widgets)
+   RESIDENT EVIL CARD v154 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2656,32 +2656,42 @@ class ResidentEvilCard extends LitElement {
 
     if (!this._foundryCards) this._foundryCards = {};
     const key = (w.card_id || 'f') + '#' + raw;
-    if (!this._foundryCards[key]) {
-      this._foundryCards[key] = 'loading';
+    const slot = this._foundryCards[key];
+    if (!slot) {
+      this._foundryCards[key] = { state: 'loading' };
       (async () => {
         try {
           const helpers = await window.loadCardHelpers();
           const el = helpers.createCardElement(cfg);
-          el.hass = this.hass;
+          try { el.hass = this.hass; } catch (_e) {}
           el.style.cssText = 'display:block;width:100%;height:100%;';
-          this._foundryCards[key] = el;
+          this._foundryCards[key] = { state: 'ok', el, errCount: 0 };
           this.requestUpdate();
         } catch (e) {
-          this._foundryCards[key] = 'error';
+          this._foundryCards[key] = { state: 'error', msg: (e && e.message) ? e.message : String(e) };
           this.requestUpdate();
         }
       })();
     }
-    const card = this._foundryCards[key];
-    if (card && card.nodeType) { try { card.hass = this.hass; } catch(_e){} }
+    const cur = this._foundryCards[key] || { state: 'loading' };
+    if (cur.state === 'ok' && cur.el) {
+      try { cur.el.hass = this.hass; }
+      catch (e) {
+        // La carte imbriquée plante : on la neutralise pour ne PAS boucler.
+        this._foundryCards[key] = { state: 'error', msg: (e && e.message) ? e.message : 'Carte interne en erreur' };
+      }
+    }
 
     return html`
       <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}padding:0;overflow:auto;">
-        ${card === 'error'
-          ? html`<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#ef4444;font-size:13px;padding:14px;text-align:center;">Erreur de chargement de la carte. Vérifie que Foundry est installé et que la config est correcte.</div>`
-          : card === 'loading' || !card
+        ${cur.state === 'error'
+          ? html`<div style="display:flex;flex-direction:column;gap:6px;height:100%;align-items:center;justify-content:center;color:#ef4444;font-size:13px;padding:14px;text-align:center;">
+                   <div style="font-weight:700;">Carte Foundry — erreur</div>
+                   <div style="color:#fca5a5;font-size:12px;">${cur.msg || 'Vérifie que Foundry est installé et que la config est correcte.'}</div>
+                 </div>`
+          : cur.state !== 'ok' || !cur.el
             ? html`<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#64748b;font-size:13px;">Chargement…</div>`
-            : card}
+            : cur.el}
       </div>`;
   }
 
