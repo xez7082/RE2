@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v150 (version RICHE : widgets)
+   RESIDENT EVIL CARD v151 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3662,6 +3662,22 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'orpEntity',l:'ORP — entité',t:E},{k:'orp_min',l:'ORP min',t:N},{k:'orp_max',l:'ORP max',t:N},
         {k:'tdsEntity',l:'TDS — entité',t:E},{k:'tds_min',l:'TDS min',t:N},{k:'tds_max',l:'TDS max',t:N},
         {k:'saltEntity',l:'Sel — entité',t:E},{k:'salt_min',l:'Sel min',t:N},{k:'salt_max',l:'Sel max',t:N},
+        // ── Interrupteurs (vue INTERRUPTEURS) ──
+        {k:'switch_1',l:'Interrupteur 1 — entité',t:E},{k:'name_switch_1',l:'Interrupteur 1 — nom',t:T},
+        {k:'switch_2',l:'Interrupteur 2 — entité',t:E},{k:'name_switch_2',l:'Interrupteur 2 — nom',t:T},
+        {k:'switch_3',l:'Interrupteur 3 — entité',t:E},{k:'name_switch_3',l:'Interrupteur 3 — nom',t:T},
+        {k:'switch_4',l:'Interrupteur 4 — entité',t:E},{k:'name_switch_4',l:'Interrupteur 4 — nom',t:T},
+        {k:'switch_5',l:'Interrupteur 5 — entité',t:E},{k:'name_switch_5',l:'Interrupteur 5 — nom',t:T},
+        {k:'switch_6',l:'Interrupteur 6 — entité',t:E},{k:'name_switch_6',l:'Interrupteur 6 — nom',t:T},
+        {k:'switch_7',l:'Interrupteur 7 — entité',t:E},{k:'name_switch_7',l:'Interrupteur 7 — nom',t:T},
+        {k:'switch_8',l:'Interrupteur 8 — entité',t:E},{k:'name_switch_8',l:'Interrupteur 8 — nom',t:T},
+        {k:'switch_9',l:'Interrupteur 9 — entité',t:E},{k:'name_switch_9',l:'Interrupteur 9 — nom',t:T},
+        {k:'switch_10',l:'Interrupteur 10 — entité',t:E},{k:'name_switch_10',l:'Interrupteur 10 — nom',t:T},
+        {k:'switch_11',l:'Interrupteur 11 — entité',t:E},{k:'name_switch_11',l:'Interrupteur 11 — nom',t:T},
+        {k:'switch_12',l:'Interrupteur 12 — entité',t:E},{k:'name_switch_12',l:'Interrupteur 12 — nom',t:T},
+        {k:'switch_13',l:'Interrupteur 13 — entité',t:E},{k:'name_switch_13',l:'Interrupteur 13 — nom',t:T},
+        {k:'switch_14',l:'Interrupteur 14 — entité',t:E},{k:'name_switch_14',l:'Interrupteur 14 — nom',t:T},
+        {k:'switch_15',l:'Interrupteur 15 — entité',t:E},{k:'name_switch_15',l:'Interrupteur 15 — nom',t:T},
       ],
       tank: [
         {k:'tank_title',l:'Titre',t:T},{k:'subtitle',l:'Sous-titre',t:T},{k:'capacity',l:'Capacité (L)',t:N},
