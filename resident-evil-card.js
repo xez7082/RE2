@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v149 (version RICHE : widgets)
+   RESIDENT EVIL CARD v150 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1062,7 +1062,7 @@ class ResidentEvilCard extends LitElement {
     };
 
     const switches = [];
-    for (let i=1; i<=10; i++) {
+    for (let i=1; i<=15; i++) {
       const eid  = w['switch_'+i];
       const name = w['name_switch_'+i] || 'Switch '+i;
       if (eid) switches.push({ eid, name });
