@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v146 (version RICHE : widgets)
+   RESIDENT EVIL CARD v147 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -333,7 +333,7 @@ class ResidentEvilCard extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     if (this._timeUpdater) clearInterval(this._timeUpdater);
-    if (this._wxUnsub) { try { this._wxUnsub(); } catch(_e) {} this._wxUnsub = null; this._wxSubEntity = null; }
+    if (this._wxUnsub) { try { this._wxUnsub(); } catch(_e) {} this._wxUnsub = null; }
   }
 
   setConfig(config) { this.config = config; if (this.requestUpdate) this.requestUpdate(); }
@@ -2503,19 +2503,34 @@ class ResidentEvilCard extends LitElement {
   //  WIDGET MÉTÉO NATIF (porté depuis meteo_ha_ws.html)
   //  Données en direct via this.hass — pas de WebSocket ni token.
   // ═══════════════════════════════════════════════════════════
-  _subscribeForecast(entityId) {
-    if (!entityId || !this.hass || !this.hass.connection) return;
-    // Garde SYNCHRONE : si déjà abonné/en cours pour cette entité, ne rien relancer
-    if (this._wxSubEntity === entityId) return;
-    // Couper un éventuel abonnement précédent
-    if (this._wxUnsub) { try { this._wxUnsub(); } catch (_e) {} this._wxUnsub = null; }
-    this._wxSubEntity = entityId;            // marqué AVANT l'appel async -> bloque les doublons
-    this._wxSubscribing = true;
-    this.hass.connection.subscribeMessage(
-      (evt) => { this._wxForecast = (evt && evt.forecast) || []; this.requestUpdate(); },
-      { type: 'weather/subscribe_forecast', forecast_type: 'daily', entity_id: entityId }
-    ).then(unsub => { this._wxUnsub = unsub; this._wxSubscribing = false; })
-     .catch(() => { this._wxSubEntity = null; this._wxSubscribing = false; });
+  _refreshForecast(entityId) {
+    // Interrogation PONCTUELLE des prévisions (pas d'abonnement permanent -> aucune saturation WebSocket).
+    if (!entityId || !this.hass) return;
+    const now = Date.now();
+    // Si l'entité change, on force un rafraîchissement immédiat
+    if (this._wxFcEntity !== entityId) { this._wxFcEntity = entityId; this._wxFcAt = 0; }
+    // Une requête au plus toutes les 30 min, et pas deux en parallèle
+    if (this._wxFcBusy) return;
+    if (this._wxFcAt && (now - this._wxFcAt) < 1800000) return;
+    this._wxFcBusy = true;
+    this._wxFcAt = now;
+    this.hass.callWS({
+      type: 'execute_script',
+      sequence: [{
+        service: 'weather.get_forecasts',
+        data: { type: 'daily' },
+        target: { entity_id: entityId },
+        response_variable: 'fc'
+      }],
+      return_response: true
+    }).then(res => {
+      const data = res && res.response && res.response[entityId];
+      const fc = data && data.forecast ? data.forecast : [];
+      if (fc && fc.length) { this._wxForecast = fc; this.requestUpdate(); }
+    }).catch(() => {
+      // En cas d'échec, on réessaiera au prochain cycle
+      this._wxFcAt = 0;
+    }).finally(() => { this._wxFcBusy = false; });
   }
 
   _initWeatherSky(canvas, animated) {
@@ -2665,7 +2680,7 @@ class ResidentEvilCard extends LitElement {
     const stState = (id) => { const s = st(id); return s ? s.state : null; };
 
     const wxId = E('weather', 'weather.sainte_croix_en_plaine');
-    this._subscribeForecast(wxId);
+    this._refreshForecast(wxId);
     this._wxAnimated = w.animated !== false;
 
     const wx   = st(wxId);
