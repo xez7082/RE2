@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v151 (version RICHE : widgets)
+   RESIDENT EVIL CARD v152 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -829,6 +829,7 @@ class ResidentEvilCard extends LitElement {
       case 'map':       return this._renderMapWidget(w, sizeStyle, noBorder);
       case 'appliance': return this._renderApplianceWidget(w, sizeStyle, noBorder);
       case 'progress':   return this._renderProgressWidget(w, sizeStyle, noBorder);
+      case 'foundry':    return this._renderFoundryWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
       default:          return html``;
@@ -2637,6 +2638,97 @@ class ResidentEvilCard extends LitElement {
     return controller;
   }
 
+  _renderFoundryWidget(w, sizeStyle, noBorder=false) {
+    // Affiche une carte Foundry (ou toute autre carte HA) à partir d'une config YAML/JSON.
+    const raw = (w.foundry_yaml || '').trim();
+    if (!raw) {
+      return html`<div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}display:flex;align-items:center;justify-content:center;color:#64748b;font-size:13px;text-align:center;padding:14px;">Carte Foundry : colle la configuration YAML de la carte dans l'éditeur du widget.</div>`;
+    }
+    // Parse la config (YAML simple ou JSON). On tente JSON puis un mini-parseur YAML clé:valeur.
+    let cfg = w.__foundryCfg;
+    if (!cfg || w.__foundryRaw !== raw) {
+      cfg = this._parseCardConfig(raw);
+      w.__foundryCfg = cfg; w.__foundryRaw = raw;
+    }
+    if (!cfg || !cfg.type) {
+      return html`<div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:13px;text-align:center;padding:14px;">Config Foundry invalide : il faut au minimum une clé « type: ».</div>`;
+    }
+
+    if (!this._foundryCards) this._foundryCards = {};
+    const key = (w.card_id || 'f') + '#' + raw;
+    if (!this._foundryCards[key]) {
+      this._foundryCards[key] = 'loading';
+      (async () => {
+        try {
+          const helpers = await window.loadCardHelpers();
+          const el = helpers.createCardElement(cfg);
+          el.hass = this.hass;
+          el.style.cssText = 'display:block;width:100%;height:100%;';
+          this._foundryCards[key] = el;
+          this.requestUpdate();
+        } catch (e) {
+          this._foundryCards[key] = 'error';
+          this.requestUpdate();
+        }
+      })();
+    }
+    const card = this._foundryCards[key];
+    if (card && card.nodeType) { try { card.hass = this.hass; } catch(_e){} }
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}padding:0;overflow:auto;">
+        ${card === 'error'
+          ? html`<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#ef4444;font-size:13px;padding:14px;text-align:center;">Erreur de chargement de la carte. Vérifie que Foundry est installé et que la config est correcte.</div>`
+          : card === 'loading' || !card
+            ? html`<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#64748b;font-size:13px;">Chargement…</div>`
+            : card}
+      </div>`;
+  }
+
+  _parseCardConfig(text) {
+    // 1) Tentative JSON direct
+    try { const j = JSON.parse(text); if (j && typeof j === 'object') return j; } catch(_e) {}
+    // 2) Mini-parseur YAML (indentation par 2 espaces, listes simples, clé: valeur)
+    try {
+      const lines = text.replace(/\t/g,'  ').split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
+      const root = {};
+      const stack = [{ indent: -1, obj: root, key: null }];
+      const coerce = (v) => {
+        v = v.trim();
+        if (v === '') return '';
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) return v.slice(1,-1);
+        if (v === 'true') return true; if (v === 'false') return false; if (v === 'null') return null;
+        if (!isNaN(Number(v)) && /^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+        return v;
+      };
+      for (const line of lines) {
+        const indent = line.search(/\S/);
+        const content = line.trim();
+        while (stack.length > 1 && indent <= stack[stack.length-1].indent) stack.pop();
+        const parent = stack[stack.length-1].obj;
+        if (content.startsWith('- ')) {
+          const item = content.slice(2).trim();
+          const holderKey = stack[stack.length-1].key;
+          const holder = stack[stack.length-1].obj;
+          if (holderKey != null && !Array.isArray(holder[holderKey])) holder[holderKey] = [];
+          const arr = holderKey != null ? holder[holderKey] : (holder.__list = holder.__list || []);
+          if (item.includes(':')) {
+            const o = {}; const idx = item.indexOf(':');
+            o[item.slice(0,idx).trim()] = coerce(item.slice(idx+1));
+            arr.push(o);
+          } else arr.push(coerce(item));
+        } else if (content.includes(':')) {
+          const idx = content.indexOf(':');
+          const k = content.slice(0, idx).trim();
+          const v = content.slice(idx+1).trim();
+          if (v === '') { parent[k] = {}; stack.push({ indent, obj: parent[k], key: k, parent }); }
+          else parent[k] = coerce(v);
+        }
+      }
+      return root;
+    } catch(_e) { return null; }
+  }
+
   _renderProgressWidget(w, sizeStyle, noBorder=false) {
     const s = w.entity && this.hass?.states[w.entity] ? this.hass.states[w.entity] : null;
     const raw = s ? parseFloat(s.state) : null;
@@ -3733,6 +3825,9 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'min',l:'Min',t:N},{k:'max',l:'Max',t:N},
         {k:'unit',l:'Unité',t:T},{k:'decimals',l:'Décimales',t:N},
       ],
+      foundry: [
+        {k:'foundry_yaml',l:'Configuration de la carte (YAML)',t:'textarea'},
+      ],
       health: [],
       energie: [
         {k:'energie_config.title',l:'Titre',t:T},{k:'energie_config.solar',l:'Production solaire',t:E},
@@ -3778,6 +3873,11 @@ class ResidentEvilCardEditor extends LitElement {
         <select style="${selStyle}" @change="${e=>this._wgSet(ci,si,wi,f.k, e.target.value==='oui')}">
           <option value="non" ?selected="${!cur}">non</option><option value="oui" ?selected="${!!cur}">oui</option>
         </select></div>`;
+      if (f.t === 'textarea') return html`<div>${this._lbl(f.l)}
+        <textarea style="${selStyle}min-height:150px;resize:vertical;font-family:monospace;font-size:13px;line-height:1.4;white-space:pre;"
+          @input="${e=>this._wgSet(ci,si,wi,f.k,e.target.value)}"
+          @change="${e=>this._wgSet(ci,si,wi,f.k,e.target.value)}"
+          placeholder="type: foundry-gauge-card&#10;entity: sensor.xxx&#10;...">${cur || ''}</textarea></div>`;
       return html`<div>${this._lbl(f.l)}${this._txt(cur, v=>this._wgSet(ci,si,wi,f.k,v), '', f.t==='entity'?'re2ents':'')}</div>`;
     };
 
@@ -4102,6 +4202,7 @@ class ResidentEvilCardEditor extends LitElement {
                   ${[
                     {v:'gauge',l:'Jauge circulaire'},{v:'sparkline',l:'Graphique sparkline'},
                     {v:'badge',l:'Badge valeur'},{v:'progress',l:'Barre de progression'},{v:'shape',l:'Forme / cadre coloré'},
+                    {v:'foundry',l:'Carte Foundry'},
                     {v:'spa_temp',l:'Spa'},{v:'tank',l:'Cuve / jardin'},{v:'server',l:'Serveur'},
                     {v:'plant',l:'Plante'},{v:'health',l:'Santé'},{v:'solar',l:'Solaire'},{v:'weather',l:'Météo'},
                     {v:'energie',l:'Consommation'},{v:'appliance',l:'Équipements'},
@@ -4114,6 +4215,7 @@ class ResidentEvilCardEditor extends LitElement {
                     sparkline:{type:'sparkline',widthPct:32,heightPx:140,color:'#22d3ee',label:'Tendance'},
                     badge:{type:'badge',widthPct:24,heightPx:110,icon:'mdi:flash',color:'#f59e0b',label:'Valeur'},
                     progress:{type:'progress',widthPct:100,heightPx:90,min:0,max:100,unit:'%',decimals:0,color:'#22c55e',label:'Progression'},
+                    foundry:{type:'foundry',widthPct:100,heightPx:260,noBorder:true,foundry_yaml:''},
                     shape:{type:'shape',widthPct:15,heightPx:120,shape:'hexagon',size:64,filled:true,color:'#ef4444',label:'Statut'},
                     weather:{type:'weather',widthPct:100,heightPx:530,noBorder:true,animated:true,weather_config:{weather:'weather.sainte_croix_en_plaine'}},
                   };
