@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v147 (version RICHE : widgets)
+   RESIDENT EVIL CARD v148 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2524,11 +2524,29 @@ class ResidentEvilCard extends LitElement {
       }],
       return_response: true
     }).then(res => {
-      const data = res && res.response && res.response[entityId];
-      const fc = data && data.forecast ? data.forecast : [];
+      // La structure varie selon la version HA : res.response[eid].forecast,
+      // res[eid].forecast, ou directement {forecast:[...]} -> on couvre tous les cas.
+      const root = (res && res.response) ? res.response : res;
+      let fc = [];
+      if (root) {
+        const node = root[entityId] || root;
+        if (node && Array.isArray(node.forecast)) fc = node.forecast;
+        else if (Array.isArray(node)) fc = node;
+      }
+      // Repli : prévisions présentes dans les attributs de l'entité météo
+      if ((!fc || !fc.length) && this.hass.states[entityId]) {
+        const att = this.hass.states[entityId].attributes || {};
+        if (Array.isArray(att.forecast)) fc = att.forecast;
+      }
       if (fc && fc.length) { this._wxForecast = fc; this.requestUpdate(); }
+      else { this._wxFcAt = 0; }   // rien reçu -> on réessaiera
     }).catch(() => {
-      // En cas d'échec, on réessaiera au prochain cycle
+      // En cas d'échec, repli sur les attributs puis nouvel essai au prochain cycle
+      const st = this.hass.states[entityId];
+      const att = st && st.attributes ? st.attributes : {};
+      if (Array.isArray(att.forecast) && att.forecast.length) {
+        this._wxForecast = att.forecast; this.requestUpdate();
+      }
       this._wxFcAt = 0;
     }).finally(() => { this._wxFcBusy = false; });
   }
