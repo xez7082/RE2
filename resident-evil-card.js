@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v148 (version RICHE : widgets)
+   RESIDENT EVIL CARD v149 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2513,42 +2513,28 @@ class ResidentEvilCard extends LitElement {
     if (this._wxFcBusy) return;
     if (this._wxFcAt && (now - this._wxFcAt) < 1800000) return;
     this._wxFcBusy = true;
-    this._wxFcAt = now;
-    this.hass.callWS({
-      type: 'execute_script',
-      sequence: [{
-        service: 'weather.get_forecasts',
-        data: { type: 'daily' },
-        target: { entity_id: entityId },
-        response_variable: 'fc'
-      }],
-      return_response: true
-    }).then(res => {
-      // La structure varie selon la version HA : res.response[eid].forecast,
-      // res[eid].forecast, ou directement {forecast:[...]} -> on couvre tous les cas.
-      const root = (res && res.response) ? res.response : res;
-      let fc = [];
-      if (root) {
-        const node = root[entityId] || root;
-        if (node && Array.isArray(node.forecast)) fc = node.forecast;
-        else if (Array.isArray(node)) fc = node;
-      }
-      // Repli : prévisions présentes dans les attributs de l'entité météo
-      if ((!fc || !fc.length) && this.hass.states[entityId]) {
-        const att = this.hass.states[entityId].attributes || {};
-        if (Array.isArray(att.forecast)) fc = att.forecast;
-      }
-      if (fc && fc.length) { this._wxForecast = fc; this.requestUpdate(); }
-      else { this._wxFcAt = 0; }   // rien reçu -> on réessaiera
-    }).catch(() => {
-      // En cas d'échec, repli sur les attributs puis nouvel essai au prochain cycle
+    this._wxFcAt = now;   // posé AVANT tout appel -> verrouille pour 30 min, AUCUNE boucle possible
+    const useAttr = () => {
       const st = this.hass.states[entityId];
       const att = st && st.attributes ? st.attributes : {};
       if (Array.isArray(att.forecast) && att.forecast.length) {
-        this._wxForecast = att.forecast; this.requestUpdate();
+        this._wxForecast = att.forecast; this.requestUpdate(); return true;
       }
-      this._wxFcAt = 0;
-    }).finally(() => { this._wxFcBusy = false; });
+      return false;
+    };
+    // 1) Beaucoup d'intégrations exposent déjà les prévisions dans les attributs : on tente d'abord.
+    if (useAttr()) { this._wxFcBusy = false; return; }
+    // 2) Sinon, appel REST du service avec return_response (format HTTP correct, pas WebSocket).
+    this.hass.callApi('POST',
+      'services/weather/get_forecasts?return_response',
+      { type: 'daily', entity_id: entityId }
+    ).then(res => {
+      const node = res && res.service_response ? res.service_response[entityId]
+                 : (res && res[entityId] ? res[entityId] : null);
+      const fc = node && Array.isArray(node.forecast) ? node.forecast : [];
+      if (fc.length) { this._wxForecast = fc; this.requestUpdate(); }
+    }).catch(() => { /* on garde le verrou 30 min : surtout pas de boucle */ })
+     .finally(() => { this._wxFcBusy = false; });
   }
 
   _initWeatherSky(canvas, animated) {
