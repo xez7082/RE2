@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v155 (version RICHE : widgets)
+   RESIDENT EVIL CARD v156 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -829,6 +829,7 @@ class ResidentEvilCard extends LitElement {
       case 'map':       return this._renderMapWidget(w, sizeStyle, noBorder);
       case 'appliance': return this._renderApplianceWidget(w, sizeStyle, noBorder);
       case 'progress':   return this._renderProgressWidget(w, sizeStyle, noBorder);
+      case 'button':     return this._renderButtonWidget(w, sizeStyle, noBorder);
       case 'foundry':    return this._renderFoundryWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
@@ -2638,6 +2639,119 @@ class ResidentEvilCard extends LitElement {
     return controller;
   }
 
+  _renderButtonWidget(w, sizeStyle, noBorder=false) {
+    const entity   = w.entity || null;
+    const s        = entity && this.hass?.states[entity] ? this.hass.states[entity] : null;
+    const domain   = entity ? entity.split('.')[0] : null;
+    const isUnavail = !s || ['unavailable','unknown'].includes(s.state);
+
+    // États ON reconnus par domaine
+    const ON_STATES = ['on','open','home','active','playing','heat','cool','auto','fan_only','dry','heat_cool','locked','true'];
+    const isOn = !isUnavail && ON_STATES.includes(s.state);
+
+    const label     = w.label     || s?.attributes?.friendly_name || entity || 'BOUTON';
+    const icon      = w.icon      || this._getEntityIcon(entity || '');
+    const color     = w.color     || '#22d3ee';
+    const colorOff  = w.color_off || '#475569';
+    const action    = w.action    || 'toggle';
+    const showState = w.show_state !== false;
+    const iconSize  = Math.max(16, parseInt(w.icon_size) || 32);
+    const labelOn   = w.label_on  || 'ON';
+    const labelOff  = w.label_off || 'OFF';
+    const confirm   = w.confirm   || false;
+
+    const curColor = isUnavail ? '#2d3748' : (isOn ? color : colorOff);
+    const bgOn     = `${color}16`;
+    const bgOff    = 'rgba(255,255,255,.03)';
+
+    const doAction = () => {
+      if (!entity || !this.hass || isUnavail) return;
+      switch (action) {
+        case 'toggle':    this.hass.callService('homeassistant','toggle',{entity_id:entity}); break;
+        case 'turn_on':   this.hass.callService(domain,'turn_on',{entity_id:entity}); break;
+        case 'turn_off':  this.hass.callService(domain,'turn_off',{entity_id:entity}); break;
+        case 'press':     this.hass.callService('button','press',{entity_id:entity}); break;
+        case 'activate':  this.hass.callService('scene','turn_on',{entity_id:entity}); break;
+        case 'run':       this.hass.callService('script','turn_on',{entity_id:entity}); break;
+      }
+    };
+    const handleClick = (e) => {
+      e.stopPropagation();
+      if (confirm) { if (!window.confirm('Confirmer : ' + label + ' ?')) return; }
+      doAction();
+    };
+
+    const stateText = isUnavail ? 'HORS LIGNE' : (isOn ? labelOn : labelOff);
+
+    // Variantes visuelles
+    const style = w.style || 'default'; // default | pill | square | minimal
+
+    if (style === 'minimal') {
+      return html`
+        <div class="dw-card ${noBorder?'no-border':''}"
+             style="${sizeStyle} background:transparent; border-color:${curColor}33;
+                    display:flex; align-items:center; justify-content:center; gap:8px; padding:10px;
+                    cursor:${isUnavail?'default':'pointer'}; transition:.2s; user-select:none;"
+             @click="${handleClick}">
+          <ha-icon icon="${icon}" style="--mdc-icon-size:${iconSize}px; color:${curColor};
+            filter:${isOn?`drop-shadow(0 0 6px ${color})`:'none'}; transition:.2s;"></ha-icon>
+          <span style="font-size:14px; font-weight:800; color:${curColor}; letter-spacing:.5px;">${label}</span>
+        </div>`;
+    }
+
+    if (style === 'pill') {
+      return html`
+        <div class="dw-card ${noBorder?'no-border':''}"
+             style="${sizeStyle} background:${isOn?bgOn:bgOff}; border-color:${curColor}44;
+                    display:flex; align-items:center; justify-content:center;
+                    border-radius:999px; padding:0 16px; gap:10px;
+                    cursor:${isUnavail?'default':'pointer'}; transition:.25s; user-select:none;
+                    ${isOn?`box-shadow:0 0 18px ${color}22;`:''}"
+             @click="${handleClick}">
+          <ha-icon icon="${icon}" style="--mdc-icon-size:${iconSize}px; color:${curColor};
+            filter:${isOn?`drop-shadow(0 0 7px ${color})`:'none'}; transition:.2s;"></ha-icon>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:14px; font-weight:800; color:#f1f5f9; letter-spacing:.5px;">${label}</span>
+            ${showState?html`<span style="font-size:11px;font-weight:700;color:${curColor};letter-spacing:.5px;">${stateText}</span>`:html``}
+          </div>
+          <!-- toggle visuel -->
+          <div style="margin-left:auto;width:36px;height:20px;border-radius:10px;flex-shrink:0;
+                      background:${isOn?color:'rgba(255,255,255,.12)'};position:relative;transition:.25s;">
+            <div style="position:absolute;top:3px;left:${isOn?'17px':'3px'};
+                        width:14px;height:14px;border-radius:50%;background:#fff;
+                        box-shadow:0 1px 4px rgba(0,0,0,.4);transition:.25s;"></div>
+          </div>
+        </div>`;
+    }
+
+    // ── Style par défaut : grande tuile carrée ──
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}"
+           style="${sizeStyle} background:${isOn?bgOn:bgOff}; border-color:${curColor}44;
+                  display:flex; flex-direction:column; align-items:center; justify-content:center;
+                  gap:8px; padding:12px; cursor:${isUnavail?'default':'pointer'};
+                  transition:.25s; user-select:none;
+                  ${isOn?`box-shadow:0 0 22px ${color}1a, inset 0 0 18px ${color}08;`:''}"
+           @click="${handleClick}">
+        <!-- Indicateur état (point) -->
+        <div style="position:absolute;top:8px;right:10px;width:7px;height:7px;border-radius:50%;
+                    background:${curColor};
+                    box-shadow:${isOn?`0 0 7px ${color}`:'none'};
+                    transition:.25s;"></div>
+        <ha-icon icon="${icon}"
+          style="--mdc-icon-size:${iconSize}px; color:${curColor};
+                 filter:${isOn?`drop-shadow(0 0 10px ${color})`:'none'};
+                 transition:.3s; ${isUnavail?'opacity:.35;':''}"></ha-icon>
+        <div style="font-size:13px; font-weight:800; color:${isUnavail?'#475569':'#f1f5f9'};
+                    letter-spacing:.8px; text-align:center; line-height:1.3;">${label}</div>
+        ${showState ? html`
+          <div style="font-size:12px; font-weight:700; padding:2px 9px; border-radius:4px;
+                      color:${curColor}; background:${curColor}18;
+                      border:1px solid ${curColor}33; letter-spacing:.5px;">${stateText}</div>
+        ` : html``}
+      </div>`;
+  }
+
   _renderFoundryWidget(w, sizeStyle, noBorder=false) {
     // Affiche une carte Foundry (ou toute autre carte HA) à partir d'une config YAML/JSON.
     const raw = (w.foundry_yaml || '').trim();
@@ -3962,6 +4076,20 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'foundry_yaml',l:'Configuration de la carte (YAML)',t:'textarea'},
       ],
       health: [],
+      button: [
+        {k:'entity',    l:'Entité',            t:'entity'},
+        {k:'label',     l:'Libellé',           t:'text'},
+        {k:'icon',      l:'Icône (mdi:…)',     t:'text'},
+        {k:'action',    l:'Action',            t:'select', o:['toggle','turn_on','turn_off','press','activate','run']},
+        {k:'style',     l:'Style',             t:'select', o:['default','pill','minimal']},
+        {k:'color',     l:'Couleur ON',        t:'color',  d:'#22d3ee'},
+        {k:'color_off', l:'Couleur OFF (hex)', t:'text'},
+        {k:'label_on',  l:'Texte état ON',     t:'text'},
+        {k:'label_off', l:'Texte état OFF',    t:'text'},
+        {k:'icon_size', l:'Taille icône (px)', t:'number'},
+        {k:'show_state',l:'Afficher état',     t:'bool'},
+        {k:'confirm',   l:'Confirmation',      t:'bool'},
+      ],
       energie: [
         {k:'energie_config.title',l:'Titre',t:T},{k:'energie_config.solar',l:'Production solaire',t:E},
         {k:'energie_config.linky',l:'Réseau (Linky)',t:E},{k:'energie_config.talon',l:'Talon (W)',t:N},
@@ -4335,6 +4463,7 @@ class ResidentEvilCardEditor extends LitElement {
                   ${[
                     {v:'gauge',l:'Jauge circulaire'},{v:'sparkline',l:'Graphique sparkline'},
                     {v:'badge',l:'Badge valeur'},{v:'progress',l:'Barre de progression'},{v:'shape',l:'Forme / cadre coloré'},
+                    {v:'button',l:'Bouton ON/OFF'},
                     {v:'foundry',l:'Carte Foundry'},
                     {v:'spa_temp',l:'Spa'},{v:'tank',l:'Cuve / jardin'},{v:'server',l:'Serveur'},
                     {v:'plant',l:'Plante'},{v:'health',l:'Santé'},{v:'solar',l:'Solaire'},{v:'weather',l:'Météo'},
@@ -4348,6 +4477,7 @@ class ResidentEvilCardEditor extends LitElement {
                     sparkline:{type:'sparkline',widthPct:32,heightPx:140,color:'#22d3ee',label:'Tendance'},
                     badge:{type:'badge',widthPct:24,heightPx:110,icon:'mdi:flash',color:'#f59e0b',label:'Valeur'},
                     progress:{type:'progress',widthPct:100,heightPx:90,min:0,max:100,unit:'%',decimals:0,color:'#22c55e',label:'Progression'},
+                    button:{type:'button',widthPct:24,heightPx:110,color:'#22d3ee',action:'toggle',show_state:true,style:'default'},
                     foundry:{type:'foundry',widthPct:100,heightPx:260,noBorder:true,foundry_yaml:''},
                     shape:{type:'shape',widthPct:15,heightPx:120,shape:'hexagon',size:64,filled:true,color:'#ef4444',label:'Statut'},
                     weather:{type:'weather',widthPct:100,heightPx:530,noBorder:true,animated:true,weather_config:{weather:'weather.sainte_croix_en_plaine'}},
