@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v157 (version RICHE : widgets)
+   RESIDENT EVIL CARD v158 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2784,6 +2784,8 @@ class ResidentEvilCard extends LitElement {
           el.style.cssText = 'display:block;width:100%;height:100%;';
           this._foundryCards[key] = { state: 'ok', el, errCount: 0 };
           this.requestUpdate();
+          // Patch traduction EN→FR après rendu initial
+          setTimeout(() => this._foundryPatchFR(el), 600);
         } catch (e) {
           this._foundryCards[key] = { state: 'error', msg: (e && e.message) ? e.message : String(e) };
           this.requestUpdate();
@@ -2810,6 +2812,73 @@ class ResidentEvilCard extends LitElement {
             ? html`<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#64748b;font-size:13px;">Chargement…</div>`
             : cur.el}
       </div>`;
+  }
+
+  // ─── Traduction EN→FR pour les cartes Foundry embarquées ───────────────
+  // MutationObserver qui surveille le DOM de la carte (incl. shadow roots)
+  // et remplace à la volée les chaînes anglaises par du français.
+  _foundryPatchFR(el) {
+    if (!el) return;
+    // Table de traduction : regex → remplacement
+    const TR = [
+      // Durées relatives (ex: "1d ago", "3h ago", "5m ago", "30s ago")
+      [/\b(\d+)\s*d\s+ago\b/gi,  (_, n) => `il y a ${n}j`],
+      [/\b(\d+)\s*h\s+ago\b/gi,  (_, n) => `il y a ${n}h`],
+      [/\b(\d+)\s*m\s+ago\b/gi,  (_, n) => `il y a ${n}min`],
+      [/\b(\d+)\s*s\s+ago\b/gi,  (_, n) => `il y a ${n}s`],
+      // "Now" seul (insensible à la casse)
+      [/\bNow\b/g, 'Maintenant'],
+      // Unités de temps abrégées seules (sans "ago")
+      [/\b(\d+)\s*d\b/g, (_, n) => `${n}j`],
+      // États génériques Foundry
+      [/\bUnavailable\b/gi, 'Indisponible'],
+      [/\bUnknown\b/gi,     'Inconnu'],
+      [/\bLoading\b/gi,     'Chargement'],
+      [/\bError\b/gi,       'Erreur'],
+      [/\bConnected\b/gi,   'Connecté'],
+      [/\bDisconnected\b/gi,'Déconnecté'],
+      [/\bOn\b/g,           'Activé'],
+      [/\bOff\b/g,          'Désactivé'],
+      [/\bToday\b/gi,       "Aujourd'hui"],
+      [/\bYesterday\b/gi,   'Hier'],
+      [/\bLast 24 hours\b/gi, 'Dernières 24h'],
+      [/\bLast 7 days\b/gi,   '7 derniers jours'],
+      [/\bLast 30 days\b/gi,  '30 derniers jours'],
+    ];
+
+    // Parcourt tous les nœuds texte dans un élément (shadow root incl.)
+    const patchNode = (root) => {
+      if (!root) return;
+      // Accès au shadow root si disponible
+      const target = root.shadowRoot || root;
+      const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT, null);
+      let node;
+      while ((node = walker.nextNode())) {
+        let txt = node.nodeValue;
+        if (!txt || !txt.trim()) continue;
+        let changed = false;
+        for (const [re, rep] of TR) {
+          const next = txt.replace(re, rep);
+          if (next !== txt) { txt = next; changed = true; }
+        }
+        if (changed) node.nodeValue = txt;
+      }
+      // Récursion sur les enfants qui ont eux-mêmes un shadowRoot
+      const all = (root.shadowRoot || root).querySelectorAll('*');
+      for (const child of all) {
+        if (child.shadowRoot) patchNode(child);
+      }
+    };
+
+    // Premier passage immédiat
+    patchNode(el);
+
+    // MutationObserver pour les mises à jour ultérieures (Foundry re-render)
+    if (el.__frObserver) el.__frObserver.disconnect();
+    const obs = new MutationObserver(() => patchNode(el));
+    const target = el.shadowRoot || el;
+    obs.observe(target, { childList: true, subtree: true, characterData: true });
+    el.__frObserver = obs;
   }
 
   _parseCardConfig(text) {
