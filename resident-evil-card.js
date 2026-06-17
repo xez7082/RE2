@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v154 (version RICHE : widgets)
+   RESIDENT EVIL CARD v155 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3599,6 +3599,129 @@ class ResidentEvilCard extends LitElement {
       .dw-card::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; transition: background 0.2s; }
       .dw-card.no-border::before { display: none; }
       .dw-card:hover { border-color: #333; }
+
+      /* ═══════════════════════════════════════════════════════════
+         RESPONSIVE SMARTPHONE (≤ 480px)
+         Layout : sidebar fixe → barre horizontale défilante
+         Hauteur fixe → auto (override l'inline style via !important)
+      ═══════════════════════════════════════════════════════════ */
+      @media (max-width: 480px) {
+
+        /* ─── Conteneur principal ─── */
+        .re-container {
+          height: auto !important;
+          min-height: 0;
+          gap: 6px;
+        }
+
+        /* ─── En-tête ─── */
+        .re-header {
+          padding: 7px 10px;
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+        .re-logo { gap: 7px; }
+        .re-umbrella { width: 30px; height: 30px; }
+        .re-title {
+          font-size: max(13px, var(--ec-fs-title, 13px)) !important;
+          letter-spacing: 1px;
+        }
+        .re-subtitle { display: none; }
+        .re-status { gap: 4px; flex-shrink: 0; }
+        .re-status-text { font-size: 11px; letter-spacing: 0; }
+        .re-ecg { width: 40px; }
+        .re-search-btn ha-icon { --mdc-icon-size: 15px; }
+        .re-bio-banner { font-size: 11px; padding: 4px 8px; max-width: 100%; }
+
+        /* ─── Ticker alertes ─── */
+        .re-ticker { height: 26px; }
+        .re-ticker-seg { font-size: 11px; line-height: 26px; padding: 0 14px; }
+        .re-ticker-tag { font-size: 11px; padding: 0 8px; }
+
+        /* ─── Nav catégories : scroll horizontal ─── */
+        .re-nav {
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin;
+          scrollbar-color: #1e2d3d transparent;
+          flex-wrap: nowrap;
+          border-radius: 6px;
+        }
+        .re-nav::-webkit-scrollbar { display: block; height: 3px; }
+        .re-nav::-webkit-scrollbar-thumb { background: #1e2d3d; border-radius: 3px; }
+        .main-nav-item {
+          font-size: 11px !important;
+          padding: 8px 9px;
+          white-space: nowrap;
+        }
+
+        /* ─── Corps : vertical au lieu d'horizontal ─── */
+        .re-body {
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        /* ─── Sidebar → barre horizontale défilante ─── */
+        .re-sidebar {
+          width: 100% !important;
+          flex-direction: row;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          height: auto;
+          min-height: 0;
+          padding: 5px 6px;
+          gap: 4px;
+          scrollbar-width: thin;
+          scrollbar-color: #1e2d3d transparent;
+        }
+        .re-sidebar::-webkit-scrollbar { display: block; height: 3px; }
+        .re-sidebar::-webkit-scrollbar-thumb { background: #1e2d3d; border-radius: 3px; }
+        .submenu-btn {
+          flex-shrink: 0;
+          white-space: nowrap;
+          padding: 6px 10px;
+          font-size: 12px !important;
+          flex-direction: row;
+          gap: 5px;
+        }
+        .submenu-btn ha-icon { --mdc-icon-size: 14px; }
+
+        /* ─── Zone de contenu ─── */
+        .re-content-container { min-height: 300px; }
+        .re-section-head { padding: 3px 2px 8px; gap: 7px; }
+        .re-section-label { font-size: 12px; }
+        .re-section-id { display: none; }
+
+        /* ─── Grille de capteurs : 2 colonnes minimum ─── */
+        .re-sensor-grid {
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap: 7px;
+        }
+        .sensors-grid {
+          grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+          gap: 6px;
+        }
+
+        /* ─── Coins HUD : réduits ─── */
+        .re-header::before, .re-nav::before,
+        .re-sidebar::before, .re-content-container::before { width: 18px; height: 18px; }
+        .re-header::after, .re-nav::after,
+        .re-sidebar::after, .re-content-container::after  { width: 18px; height: 18px; }
+
+        /* ─── Filtres ─── */
+        .re-filter-bar { padding: 6px 8px; gap: 3px; }
+        .filter-item { padding: 3px 9px; font-size: 11px !important; }
+      }
+
+      /* ═══ RESPONSIVE TABLETTE ÉTROITE (481–700px) ═══ */
+      @media (min-width: 481px) and (max-width: 700px) {
+        .re-sidebar { width: 150px !important; }
+        .submenu-btn { font-size: 11px !important; padding: 7px 8px; }
+        .re-title { font-size: max(14px, var(--ec-fs-title, 14px)) !important; }
+      }
     `];
   }
 }
