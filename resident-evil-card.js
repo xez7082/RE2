@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v156 (version RICHE : widgets)
+   RESIDENT EVIL CARD v157 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2759,10 +2759,13 @@ class ResidentEvilCard extends LitElement {
       return html`<div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}display:flex;align-items:center;justify-content:center;color:#64748b;font-size:13px;text-align:center;padding:14px;">Carte Foundry : colle la configuration YAML de la carte dans l'éditeur du widget.</div>`;
     }
     // Parse la config (YAML simple ou JSON). On tente JSON puis un mini-parseur YAML clé:valeur.
-    let cfg = w.__foundryCfg;
-    if (!cfg || w.__foundryRaw !== raw) {
+    // NE PAS écrire sur `w` : LitElement gèle les objets de config → TypeError.
+    // Cache Map sur l'instance : clé = raw YAML, valeur = config parsée.
+    if (!this._foundryCfgCache) this._foundryCfgCache = new Map();
+    let cfg = this._foundryCfgCache.get(raw);
+    if (!cfg) {
       cfg = this._parseCardConfig(raw);
-      w.__foundryCfg = cfg; w.__foundryRaw = raw;
+      if (cfg) this._foundryCfgCache.set(raw, cfg);
     }
     if (!cfg || !cfg.type) {
       return html`<div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:13px;text-align:center;padding:14px;">Config Foundry invalide : il faut au minimum une clé « type: ».</div>`;
