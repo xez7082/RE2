@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v159 (version RICHE : widgets)
+   RESIDENT EVIL CARD v160 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3231,19 +3231,39 @@ class ResidentEvilCard extends LitElement {
         </div>
       </div>`;
 
-    // ── Bandeaux jour / mois (onglet Solaire) ──
-    const dayDefs = [
-      { l: w.d1_label || 'Jour - Maison', e: w.d1_entity || c.beem_m_d || 'sensor.beem_maison_production_aujourd_hui', col:'#f59e0b' },
-      { l: w.d2_label || 'Jour - Spa',    e: w.d2_entity || c.beem_s_d || 'sensor.beem_spa_production_aujourd_hui',    col:'#38bdf8' },
-      { l: w.d3_label || 'Jour - IBC',    e: w.d3_entity || c.beem_i_d || 'sensor.ibc_production_aujourd_hui',         col:'#22c55e' },
-      { l: w.dt_label || 'Jour - Total',  e: w.dt_entity || c.solar_daily_kwh || 'sensor.production_totale_beem_jour', col:'#a78bfa' },
-    ];
-    const monthDefs = [
-      { l: w.m1_label || 'Mois - Maison', e: w.m1_entity || c.beem_m_m || 'sensor.beem_maison_production_du_mois', col:'#f59e0b' },
-      { l: w.m2_label || 'Mois - Spa',    e: w.m2_entity || c.beem_s_m || 'sensor.beem_spa_production_du_mois',    col:'#38bdf8' },
-      { l: w.m3_label || 'Mois - IBC',    e: w.m3_entity || c.beem_i_m || 'sensor.ibc_production_du_mois',         col:'#22c55e' },
-    ];
-    const monthTotal = monthDefs.reduce((a,d)=>{ const v=toKwh(d.e); return v==null?a:(a==null?v:a+v); }, null);
+    // ── Palette de couleurs pour les panneaux sans couleur explicite ──
+    const PANEL_PALETTE = ['#f59e0b','#38bdf8','#22c55e','#ec4899','#a78bfa','#fb923c','#06b6d4','#84cc16'];
+
+    // ── Liste des installations solaires : tableau dynamique `c.panels`
+    //    (modifiable dans l'éditeur — ajouter/retirer une installation,
+    //    ex. une future installation côté Ouest) avec repli sur l'ancien
+    //    format figé p1/p2/p3 pour ne rien casser sur les configs existantes.
+    const panelList = (c.panels && c.panels.length)
+      ? c.panels.map((p, i) => ({
+          n: p.name || ('Panneau ' + (i + 1)),
+          w: p.power_entity,
+          d: p.daily_entity,
+          m: p.monthly_entity,
+          col: p.color || PANEL_PALETTE[i % PANEL_PALETTE.length],
+        }))
+      : [
+          { n: c.p1_name || 'Maison', w: c.p1_w || c.beem_m_w, d: c.p1_d || c.beem_m_d, m: c.beem_m_m, col: '#f59e0b' },
+          { n: c.p2_name || 'Spa',    w: c.p2_w || c.beem_s_w, d: c.p2_d || c.beem_s_d, m: c.beem_s_m, col: '#38bdf8' },
+          { n: c.p3_name || 'IBC',    w: c.p3_w || c.beem_i_w, d: c.p3_d || c.beem_i_d, m: c.beem_i_m, col: '#22c55e' },
+        ];
+
+    // ── Bandeaux jour / mois (onglet Solaire) — dérivés de panelList ──
+    const dayDefs = panelList
+      .filter(p => p.d)
+      .map(p => ({ l: 'Jour - ' + p.n, e: p.d, col: p.col }));
+    const monthDefs = panelList
+      .filter(p => p.m)
+      .map(p => ({ l: 'Mois - ' + p.n, e: p.m, col: p.col }));
+    const dayTotalEntity = w.dt_entity || c.solar_daily_kwh;
+    const dayTotal = dayTotalEntity != null
+      ? toKwh(dayTotalEntity)
+      : dayDefs.reduce((a, d) => { const v = toKwh(d.e); return v == null ? a : (a == null ? v : a + v); }, null);
+    const monthTotal = monthDefs.reduce((a, d) => { const v = toKwh(d.e); return v == null ? a : (a == null ? v : a + v); }, null);
     const stripTile = (label, val, col, forceKwh) => html`
       <div style="flex:1;min-width:0;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);
                   border-radius:10px;padding:9px 11px;text-align:center;">
@@ -3256,12 +3276,7 @@ class ResidentEvilCard extends LitElement {
     // ════ ONGLET 0 — SOLAIRE ════
     const renderSolar = () => {
       const totalNow = num(c.total_now) != null ? num(c.total_now)
-        : [c.p1_w||c.beem_m_w, c.p2_w||c.beem_s_w, c.p3_w||c.beem_i_w].reduce((a,e)=>{const v=num(e);return v==null?a:a+v;},0);
-      const panels = [
-        { n: c.p1_name||'Maison', w: c.p1_w||c.beem_m_w, d: c.p1_d||c.beem_m_d, col:'#f59e0b' },
-        { n: c.p2_name||'Spa',    w: c.p2_w||c.beem_s_w, d: c.p2_d||c.beem_s_d, col:'#38bdf8' },
-        { n: c.p3_name||'IBC',    w: c.p3_w||c.beem_i_w, d: c.p3_d||c.beem_i_d, col:'#22c55e' },
-      ];
+        : panelList.reduce((a, p) => { const v = num(p.w); return v == null ? a : a + v; }, 0);
       const auto = num(c.autoconso_pct);
       return html`
         <div style="display:flex;flex-direction:column;gap:7px;height:100%;overflow:hidden;">
@@ -3279,10 +3294,10 @@ class ResidentEvilCard extends LitElement {
                 <div style="font-size:12px;color:#94a3b8;font-weight:600;">AUTOCONSO</div>
               </div>` : html``}
           </div>
-          <div style="flex-shrink:0;display:flex;gap:7px;">
-            ${panels.map(p => html`
-              <div style="flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid ${p.col}33;border-radius:12px;padding:8px;text-align:center;">
-                <div style="font-size:13px;color:#94a3b8;font-weight:600;">${p.n}</div>
+          <div style="flex-shrink:0;display:flex;gap:7px;flex-wrap:wrap;">
+            ${panelList.map(p => html`
+              <div style="flex:1;min-width:90px;background:rgba(255,255,255,.04);border:1px solid ${p.col}33;border-radius:12px;padding:8px;text-align:center;">
+                <div style="font-size:13px;color:#94a3b8;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.n}</div>
                 <div style="font-size:19px;font-weight:800;color:${p.col};line-height:1.1;margin-top:1px;">${fmt(num(p.w),0)}<span style="font-size:12px;"> W</span></div>
                 ${num(p.d)!=null ? html`<div style="font-size:12px;color:#64748b;margin-top:2px;">${fmt(toKwh(p.d),2)} kWh aujourd'hui</div>` : html``}
               </div>`)}
@@ -3292,9 +3307,8 @@ class ResidentEvilCard extends LitElement {
             ${num(c.main_cons)!=null ? tile('Consommation', fmt(num(c.main_cons),0), uni(c.main_cons)||'W', '#f97316', 'mdi:home-lightning-bolt') : html``}
             ${num(c.autoconso_nuit)!=null ? tile('Autoconso nuit', fmt(toKwh(c.autoconso_nuit),2), 'kWh', '#818cf8', 'mdi:weather-night') : html``}
           </div>
-          <div style="flex-shrink:0;display:flex;gap:6px;">${monthDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}${stripTile(w.mt_label||'Mois - Total', monthTotal, '#a78bfa')}</div>
-          <div style="flex-shrink:0;display:flex;gap:6px;">${dayDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}</div>
-        </div>`;
+          ${monthDefs.length ? html`<div style="flex-shrink:0;display:flex;gap:6px;flex-wrap:wrap;">${monthDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}${stripTile(w.mt_label||'Mois - Total', monthTotal, '#a78bfa')}</div>` : html``}
+          ${dayDefs.length ? html`<div style="flex-shrink:0;display:flex;gap:6px;flex-wrap:wrap;">${dayDefs.map(d=>stripTile(d.l, toKwh(d.e), d.col))}${stripTile(w.dt_label||'Jour - Total', dayTotal, '#a78bfa')}</div>` : html``}</div>`;
     };
 
     // ════ ONGLET 1 — MÉTÉO ════
@@ -4078,9 +4092,59 @@ class ResidentEvilCardEditor extends LitElement {
       ]],
     ];
     const isLabel = (k) => /_(l|name|label)$/.test(k) || k.endsWith('_n');
+
+    // ── Éditeur de la liste dynamique des installations solaires ──
+    const panels = (wg.solar_config && wg.solar_config.panels) || [];
+    const editPanels = (fn) => this._mutate(c => {
+      const w2 = c.categories[ci].submenus[si].widgets[wi];
+      w2.solar_config = w2.solar_config || {};
+      w2.solar_config.panels = w2.solar_config.panels || [];
+      fn(w2.solar_config.panels);
+    });
+    const panelsEditor = html`
+      <div style="background:#101826;border:1px solid #fbbf2444;border-radius:10px;padding:12px;">
+        ${this._lbl('🌞 INSTALLATIONS SOLAIRES (panneaux) — ' + panels.length)}
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;line-height:1.5;">
+          Une ligne par installation (ex. Maison, Spa, IBC). Dès qu'une ligne est ajoutée ici,
+          elle remplace les champs figés « Panneau 1/2/3 » ci-dessous. Pratique pour ajouter
+          plus tard une nouvelle installation (ex. côté Ouest) sans toucher au code.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px;">
+          ${panels.map((p, pi) => html`
+            <div style="background:#0b121d;border:1px solid #1e2d3d;border-radius:8px;padding:9px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <div style="flex:1;">${this._txt(p.name, v => editPanels(arr => { arr[pi].name = v; }), 'Nom (ex: Ouest)')}</div>
+                ${this._color(p.color, '#f59e0b', v => editPanels(arr => { if (v) arr[pi].color = v; else delete arr[pi].color; }))}
+                ${this._btn('▲', () => editPanels(arr => { if (pi < 1) return; [arr[pi-1], arr[pi]] = [arr[pi], arr[pi-1]]; }), '#334155')}
+                ${this._btn('▼', () => editPanels(arr => { if (pi >= arr.length - 1) return; [arr[pi+1], arr[pi]] = [arr[pi], arr[pi+1]]; }), '#334155')}
+                ${this._btn('🗑', () => { if (confirm('Supprimer l\'installation « ' + (p.name || pi) + ' » ?')) editPanels(arr => arr.splice(pi, 1)); }, '#ef4444')}
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+                <div>
+                  <div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">Puissance (W)</div>
+                  ${this._txt(p.power_entity, v => editPanels(arr => { arr[pi].power_entity = v; }), 'sensor.…_power', 're2ents')}
+                </div>
+                <div>
+                  <div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">Production jour</div>
+                  ${this._txt(p.daily_entity, v => editPanels(arr => { arr[pi].daily_entity = v; }), 'sensor.…_jour', 're2ents')}
+                </div>
+                <div>
+                  <div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">Production mois</div>
+                  ${this._txt(p.monthly_entity, v => editPanels(arr => { arr[pi].monthly_entity = v; }), 'sensor.…_mois', 're2ents')}
+                </div>
+              </div>
+            </div>`)}
+        </div>
+        <div style="margin-top:8px;">
+          ${this._btn('＋ Ajouter une installation solaire', () => editPanels(arr => arr.push({ name: '', power_entity: '', daily_entity: '', monthly_entity: '' })), '#22c55e')}
+        </div>
+      </div>`;
+
     return html`
       <div style="margin-top:10px;background:#101826;border:1px solid #f59e0b33;border-radius:10px;padding:12px;">
         ${this._lbl('☀️ ENTITÉS DU WIDGET SOLAIRE')}
+        ${panelsEditor}
+        <div style="margin-top:12px;font-size:12px;color:#64748b;">Champs figés ci-dessous (repli si aucune installation n'est ajoutée au-dessus) :</div>
         <div style="display:flex;flex-direction:column;gap:12px;max-height:460px;overflow-y:auto;padding-right:4px;">
           ${groups.map(([title, rows]) => html`
             <div>
