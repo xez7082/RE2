@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v158 (version RICHE : widgets)
+   RESIDENT EVIL CARD v159 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2884,45 +2884,89 @@ class ResidentEvilCard extends LitElement {
   _parseCardConfig(text) {
     // 1) Tentative JSON direct
     try { const j = JSON.parse(text); if (j && typeof j === 'object') return j; } catch(_e) {}
-    // 2) Mini-parseur YAML (indentation par 2 espaces, listes simples, clé: valeur)
+    // 2) Mini-parseur YAML basé sur un arbre d'indentation (gère correctement
+    //    les listes de mappings comme `segments: [{from,to,color}, ...]`,
+    //    contrairement à l'ancienne version qui plaçait le tableau au mauvais
+    //    endroit dès qu'une clé contenait une liste → `segments.forEach` cassait).
     try {
-      const lines = text.replace(/\t/g,'  ').split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
-      const root = {};
-      const stack = [{ indent: -1, obj: root, key: null }];
+      const rawLines = text.replace(/\t/g, '  ').split('\n');
       const coerce = (v) => {
         v = v.trim();
-        if (v === '') return '';
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) return v.slice(1,-1);
-        if (v === 'true') return true; if (v === 'false') return false; if (v === 'null') return null;
-        if (!isNaN(Number(v)) && /^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+        if (v === '') return undefined;
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) return v.slice(1, -1);
+        if (v === 'true') return true;
+        if (v === 'false') return false;
+        if (v === 'null' || v === '~') return null;
+        if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
         return v;
       };
-      for (const line of lines) {
-        const indent = line.search(/\S/);
-        const content = line.trim();
-        while (stack.length > 1 && indent <= stack[stack.length-1].indent) stack.pop();
-        const parent = stack[stack.length-1].obj;
-        if (content.startsWith('- ')) {
-          const item = content.slice(2).trim();
-          const holderKey = stack[stack.length-1].key;
-          const holder = stack[stack.length-1].obj;
-          if (holderKey != null && !Array.isArray(holder[holderKey])) holder[holderKey] = [];
-          const arr = holderKey != null ? holder[holderKey] : (holder.__list = holder.__list || []);
-          if (item.includes(':')) {
-            const o = {}; const idx = item.indexOf(':');
-            o[item.slice(0,idx).trim()] = coerce(item.slice(idx+1));
-            arr.push(o);
-          } else arr.push(coerce(item));
-        } else if (content.includes(':')) {
-          const idx = content.indexOf(':');
-          const k = content.slice(0, idx).trim();
-          const v = content.slice(idx+1).trim();
-          if (v === '') { parent[k] = {}; stack.push({ indent, obj: parent[k], key: k, parent }); }
-          else parent[k] = coerce(v);
-        }
+
+      // Étape A : aplatir en nœuds {indent, content, isItem}
+      const nodes = [];
+      for (const l of rawLines) {
+        if (!l.trim() || l.trim().startsWith('#')) continue;
+        const indent = l.search(/\S/);
+        let content = l.trim();
+        let isItem = false;
+        if (content.startsWith('- ')) { isItem = true; content = content.slice(2).trim(); }
+        else if (content === '-') { isItem = true; content = ''; }
+        nodes.push({ indent, content, isItem, children: [] });
       }
-      return root;
-    } catch(_e) { return null; }
+      if (!nodes.length) return null;
+
+      // Étape B : reconstruire l'arbre via la pile d'indentation
+      const root = { indent: -1, content: '', isItem: false, children: [] };
+      const stk = [root];
+      for (const n of nodes) {
+        while (stk.length > 1 && n.indent <= stk[stk.length - 1].indent) stk.pop();
+        stk[stk.length - 1].children.push(n);
+        stk.push(n);
+      }
+
+      // Étape C : convertir récursivement un nœud en valeur JS
+      const convert = (node) => {
+        if (!node.children.length) return coerce(node.content);
+
+        const allItems = node.children.every(c => c.isItem);
+        if (allItems) {
+          // Liste : chaque enfant est un élément de tableau
+          return node.children.map(c => {
+            if (c.content.includes(':')) {
+              const idx = c.content.indexOf(':');
+              const k = c.content.slice(0, idx).trim();
+              const v = c.content.slice(idx + 1).trim();
+              const obj = {};
+              obj[k] = v === '' ? convert(c) : coerce(v);
+              // clés additionnelles du même élément (lignes suivantes, même retrait que les champs de cet item)
+              for (const cc of c.children) {
+                if (cc.isItem || !cc.content.includes(':')) continue;
+                const idx2 = cc.content.indexOf(':');
+                const k2 = cc.content.slice(0, idx2).trim();
+                const v2 = cc.content.slice(idx2 + 1).trim();
+                obj[k2] = v2 === '' ? convert(cc) : coerce(v2);
+              }
+              return obj;
+            }
+            // item scalaire ou sous-structure sans clé inline (ex: "- \n    foo: 1")
+            return c.children.length ? convert(c) : coerce(c.content);
+          });
+        }
+
+        // Mapping : chaque enfant est une paire clé: valeur
+        const obj = {};
+        for (const c of node.children) {
+          if (c.isItem || !c.content.includes(':')) continue;
+          const idx = c.content.indexOf(':');
+          const k = c.content.slice(0, idx).trim();
+          const v = c.content.slice(idx + 1).trim();
+          obj[k] = v === '' ? convert(c) : coerce(v);
+        }
+        return obj;
+      };
+
+      const result = convert(root);
+      return (result && typeof result === 'object' && !Array.isArray(result)) ? result : null;
+    } catch (_e) { return null; }
   }
 
   _renderProgressWidget(w, sizeStyle, noBorder=false) {
