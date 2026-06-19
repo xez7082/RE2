@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v162 (version RICHE : widgets)
+   RESIDENT EVIL CARD v163 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -257,6 +257,7 @@ const cardStyles = css`
   .dw-badge-value { font-size: 22px; font-weight: bold; line-height: 1; }
   .dw-badge-unit  { font-size: 12px; opacity: 0.7; font-weight: normal; }
   .dw-badge-secondary { font-size: 12px; font-weight: 600; opacity: .85; color: #94a3b8; margin-top: 2px; }
+  .dw-badge-tertiary { font-size: 11px; font-weight: 600; opacity: .65; color: #64748b; margin-top: 1px; }
   .dw-card.hud-frame {
     clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
     box-shadow: inset 0 0 14px rgba(34,211,238,.08);
@@ -992,6 +993,11 @@ class ResidentEvilCard extends LitElement {
       if (w.secondary_label) secText = w.secondary_label + ' ' + secText;
     }
 
+    // ── Ligne tertiaire optionnelle (ex: texte additionnel libre) ──
+    const terEntity = w.tertiary_entity;
+    const terState  = terEntity && this.hass?.states[terEntity] ? this.hass.states[terEntity].state : null;
+    const terText = (terState != null && !['unavailable','unknown',''].includes(String(terState))) ? terState : null;
+
     return html`
       <div class="dw-card ${noBorder?'no-border':''} ${hudClass}" style="border-color:${color}33; ${sizeStyle}">
         <div class="dw-badge-wrap icon-${iconPos}" @click="${() => w.entity && this._handleAction(w.entity)}">
@@ -1006,6 +1012,7 @@ class ResidentEvilCard extends LitElement {
               ${displayVal}<span class="dw-badge-unit">${unit}</span>
             </div>
             ${secText ? html`<div class="dw-badge-secondary">${secText}</div>` : html``}
+            ${terText ? html`<div class="dw-badge-tertiary">${terText}</div>` : html``}
           </div>
         </div>
       </div>`;
@@ -4261,6 +4268,7 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'secondary_entity',l:'Date/heure (entité)',t:E},
         {k:'secondary_label',l:'Préfixe (ex: "le")',t:T},
         {k:'hud',l:'Cadre HUD (coins coupés)',t:'bool'},
+        {k:'tertiary_entity',l:'Texte additionnel (entité)',t:E},
       ],
       shape: [
         {k:'label',l:'Libellé',t:T},{k:'shape',l:'Forme',t:S,o:['circle','square','triangle','hexagon']},
