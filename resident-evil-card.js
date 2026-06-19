@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v163 (version RICHE : widgets)
+   RESIDENT EVIL CARD v164 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -874,8 +874,10 @@ class ResidentEvilCard extends LitElement {
 
   _renderGauge(w, color, glow, sizeStyle, noBorder=false) {
     const { value, unit, name } = this._getDesignState(w);
-    const min   = w.min != null ? parseFloat(w.min) : 0;
-    const max   = w.max != null ? parseFloat(w.max) : 100;
+    const minE = w.min_entity && this.hass?.states[w.min_entity] ? parseFloat(this.hass.states[w.min_entity].state) : null;
+    const maxE = w.max_entity && this.hass?.states[w.max_entity] ? parseFloat(this.hass.states[w.max_entity].state) : null;
+    const min   = minE != null && !isNaN(minE) ? minE : (w.min != null ? parseFloat(w.min) : 0);
+    const max   = maxE != null && !isNaN(maxE) ? maxE : (w.max != null ? parseFloat(w.max) : 100);
     const label = w.label || name;
     const gaugeSize = Math.max(60, Math.min(200, parseInt(w.heightPx) || 110));
     const r = gaugeSize * 0.36; const cx = gaugeSize * 0.5; const cy = gaugeSize * 0.5;
@@ -4257,6 +4259,8 @@ class ResidentEvilCardEditor extends LitElement {
       gauge: [
         {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},
         {k:'min',l:'Min',t:N},{k:'max',l:'Max',t:N},
+        {k:'min_entity',l:'Min (entité, prioritaire)',t:E},
+        {k:'max_entity',l:'Max (entité, prioritaire)',t:E},
       ],
       sparkline: [
         {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},
