@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v164 (version RICHE : widgets)
+   RESIDENT EVIL CARD v166 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -665,7 +665,9 @@ class ResidentEvilCard extends LitElement {
     const isTemperatureSensor = domain === 'sensor' && (stateObj.attributes.unit_of_measurement === '°C' || entityId.includes('temperature'));
 
     if (domain === 'camera') {
-      const cameraUrl = `/api/camera_proxy/${entityId}?token=${stateObj.attributes.access_token}`;
+      // camera_proxy_stream = flux MJPEG continu (réellement live), contrairement
+      // à camera_proxy qui ne renvoie qu'un seul instantané figé pour toujours.
+      const cameraUrl = `/api/camera_proxy_stream/${entityId}?token=${stateObj.attributes.access_token}`;
       return html`
         <div class="sensor-card type-camera-feed" @click="${() => this._handleAction(entityId)}">
           <div class="camera-stream-container">
@@ -1078,12 +1080,15 @@ class ResidentEvilCard extends LitElement {
     const airTemp = ex(w.airTempEntity) ? st(w.airTempEntity) : null;
     const airHum  = ex(w.airHumEntity)  ? st(w.airHumEntity)  : null;
 
-    const ph   = ex(w.phEntity)   ? parseFloat(st(w.phEntity))   : null;
-    const orp  = ex(w.orpEntity)  ? parseFloat(st(w.orpEntity))  : null;
-    const tds  = ex(w.tdsEntity)  ? parseFloat(st(w.tdsEntity))  : null;
-    const salt = ex(w.saltEntity) ? parseFloat(st(w.saltEntity)) : null;
+    // ── Calibration manuelle : décalage additif appliqué à la valeur brute du capteur.
+    //    Utile si la sonde dérive par rapport à un testeur de référence (bandelette, etc.)
+    const calOff = (x) => { const n = parseFloat(String(x ?? '0').replace(',', '.')); return isNaN(n) ? 0 : n; };
+    const ph   = ex(w.phEntity)   ? parseFloat(st(w.phEntity))   + calOff(w.ph_offset)   : null;
+    const orp  = ex(w.orpEntity)  ? parseFloat(st(w.orpEntity))  + calOff(w.orp_offset)  : null;
+    const tds  = ex(w.tdsEntity)  ? parseFloat(st(w.tdsEntity))  + calOff(w.tds_offset)  : null;
+    const salt = ex(w.saltEntity) ? parseFloat(st(w.saltEntity)) + calOff(w.salt_offset) : null;
     const numv = (x, def) => { if (x==null || x==='') return def; const n = parseFloat(String(x).replace(',','.')); return isNaN(n) ? def : n; };
-    const chemGauge = (val, min, max, lbl, unit) => {
+    const chemGauge = (val, min, max, lbl, unit, cal) => {
       if (val==null) return html``;
       const pct = Math.min(100, Math.max(0, (val-min)/(max-min)*100));
       const ok  = val>=min && val<=max;
@@ -1091,7 +1096,7 @@ class ResidentEvilCard extends LitElement {
       return html`
         <div style="display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 10px;">
           <div style="display:flex;justify-content:space-between;font-size:12px;">
-            <span style="color:rgba(255,255,255,.6);font-weight:600;">${lbl}</span>
+            <span style="color:rgba(255,255,255,.6);font-weight:600;">${lbl}${cal ? html`<span style="opacity:.6;font-size:10px;margin-left:4px;" title="Calibration manuelle active (${cal>0?'+':''}${cal})">⚙</span>` : html``}</span>
             <span style="color:${c2};font-weight:700;">${val.toFixed(2)} ${unit}</span>
           </div>
           <div style="height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;">
@@ -1116,7 +1121,9 @@ class ResidentEvilCard extends LitElement {
 
     const camId   = w.cameraEntity;
     const camState = camId ? this.hass?.states[camId] : null;
-    const camUrl  = camState ? `/api/camera_proxy/${camId}?token=${camState.attributes.access_token}&t=${Date.now()}` : null;
+    // camera_proxy_stream = flux MJPEG continu (réellement live) — plus besoin
+    // de cache-busting "&t=Date.now()" puisque l'image se met à jour en continu.
+    const camUrl  = camState ? `/api/camera_proxy_stream/${camId}?token=${camState.attributes.access_token}` : null;
 
     const schedId = w.scheduleEntity;
     const schedState = schedId ? this.hass?.states[schedId] : null;
@@ -1265,10 +1272,10 @@ class ResidentEvilCard extends LitElement {
 
     const renderChem = () => html`
       <div style="display:flex;flex-direction:column;gap:8px;">
-        ${chemGauge(ph,   numv(w.ph_min,7),    numv(w.ph_max,7.6),  'pH',  '')}
-        ${chemGauge(orp,  numv(w.orp_min,650), numv(w.orp_max,800), 'ORP', 'mV')}
-        ${chemGauge(tds,  numv(w.tds_min,500), numv(w.tds_max,2000),'TDS', 'ppm')}
-        ${chemGauge(salt, numv(w.salt_min,300),numv(w.salt_max,500),'Sel', 'ppm')}
+        ${chemGauge(ph,   numv(w.ph_min,7),    numv(w.ph_max,7.6),  'pH',  '',    calOff(w.ph_offset)   || null)}
+        ${chemGauge(orp,  numv(w.orp_min,650), numv(w.orp_max,800), 'ORP', 'mV',  calOff(w.orp_offset)  || null)}
+        ${chemGauge(tds,  numv(w.tds_min,500), numv(w.tds_max,2000),'TDS', 'ppm', calOff(w.tds_offset)  || null)}
+        ${chemGauge(salt, numv(w.salt_min,300),numv(w.salt_max,500),'Sel', 'ppm', calOff(w.salt_offset) || null)}
         ${ph==null&&orp==null&&tds==null&&salt==null ? html`<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px;">Aucune entité chimie configurée</div>` : chemAdvice()}
       </div>`;
 
@@ -4216,9 +4223,13 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'progEnableEntity',l:'Bool. programmation',t:E},
         // ── Chimie de l'eau (vue CHIMIE) ──
         {k:'phEntity',l:'pH — entité',t:E},{k:'ph_min',l:'pH min',t:N},{k:'ph_max',l:'pH max',t:N},
+        {k:'ph_offset',l:'pH — calibration (décalage)',t:N},
         {k:'orpEntity',l:'ORP — entité',t:E},{k:'orp_min',l:'ORP min',t:N},{k:'orp_max',l:'ORP max',t:N},
+        {k:'orp_offset',l:'ORP — calibration (décalage)',t:N},
         {k:'tdsEntity',l:'TDS — entité',t:E},{k:'tds_min',l:'TDS min',t:N},{k:'tds_max',l:'TDS max',t:N},
+        {k:'tds_offset',l:'TDS — calibration (décalage)',t:N},
         {k:'saltEntity',l:'Sel — entité',t:E},{k:'salt_min',l:'Sel min',t:N},{k:'salt_max',l:'Sel max',t:N},
+        {k:'salt_offset',l:'Sel — calibration (décalage)',t:N},
         // ── Interrupteurs (vue INTERRUPTEURS) ──
         {k:'switch_1',l:'Interrupteur 1 — entité',t:E},{k:'name_switch_1',l:'Interrupteur 1 — nom',t:T},
         {k:'switch_2',l:'Interrupteur 2 — entité',t:E},{k:'name_switch_2',l:'Interrupteur 2 — nom',t:T},
