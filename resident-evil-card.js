@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v160 (version RICHE : widgets)
+   RESIDENT EVIL CARD v161 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -256,6 +256,7 @@ const cardStyles = css`
   .dw-badge-label { font-size: 12px; font-weight: bold; letter-spacing: 1px; }
   .dw-badge-value { font-size: 22px; font-weight: bold; line-height: 1; }
   .dw-badge-unit  { font-size: 12px; opacity: 0.7; font-weight: normal; }
+  .dw-badge-secondary { font-size: 12px; font-weight: 600; opacity: .85; color: #94a3b8; margin-top: 2px; }
 
   /* ═══ WIDGET MÉTÉO NATIF ═══ */
   .re-wx { font-family: monospace; }
@@ -964,6 +965,18 @@ class ResidentEvilCard extends LitElement {
       ? (typeof value === 'number' ? value.toFixed(decimals) : value)
       : '--';
 
+    // ── Ligne secondaire optionnelle (ex: date/heure d'un record) ──
+    const secEntity = w.secondary_entity;
+    const secState  = secEntity && this.hass?.states[secEntity] ? this.hass.states[secEntity].state : null;
+    let secText = null;
+    if (secState != null && !['unavailable','unknown',''].includes(String(secState))) {
+      const d = new Date(String(secState).replace(' ', 'T'));
+      secText = !isNaN(d.getTime())
+        ? d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})
+        : secState;
+      if (w.secondary_label) secText = w.secondary_label + ' ' + secText;
+    }
+
     return html`
       <div class="dw-card ${noBorder?'no-border':''}" style="border-color:${color}33; ${sizeStyle}">
         <div class="dw-badge-wrap icon-${iconPos}" @click="${() => w.entity && this._handleAction(w.entity)}">
@@ -977,6 +990,7 @@ class ResidentEvilCard extends LitElement {
             <div class="dw-badge-value" style="color:${color}; font-size:${fontSize}px; text-shadow:0 0 8px ${glow};">
               ${displayVal}<span class="dw-badge-unit">${unit}</span>
             </div>
+            ${secText ? html`<div class="dw-badge-secondary">${secText}</div>` : html``}
           </div>
         </div>
       </div>`;
@@ -4229,6 +4243,8 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},{k:'icon',l:'Icône (mdi:…)',t:T},
         {k:'decimals',l:'Décimales',t:N},{k:'fontSize',l:'Taille valeur (px)',t:N},
         {k:'iconSize',l:'Taille icône (px)',t:N},{k:'iconPos',l:'Position icône',t:S,o:['left','top','right']},
+        {k:'secondary_entity',l:'Date/heure (entité)',t:E},
+        {k:'secondary_label',l:'Préfixe (ex: "le")',t:T},
       ],
       shape: [
         {k:'label',l:'Libellé',t:T},{k:'shape',l:'Forme',t:S,o:['circle','square','triangle','hexagon']},
