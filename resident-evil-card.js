@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v161 (version RICHE : widgets)
+   RESIDENT EVIL CARD v162 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -257,6 +257,20 @@ const cardStyles = css`
   .dw-badge-value { font-size: 22px; font-weight: bold; line-height: 1; }
   .dw-badge-unit  { font-size: 12px; opacity: 0.7; font-weight: normal; }
   .dw-badge-secondary { font-size: 12px; font-weight: 600; opacity: .85; color: #94a3b8; margin-top: 2px; }
+  .dw-card.hud-frame {
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    box-shadow: inset 0 0 14px rgba(34,211,238,.08);
+  }
+  .dw-card.hud-frame::before {
+    content: ''; position: absolute; top: 0; right: 0; width: 16px; height: 16px;
+    border-top: 2px solid var(--ec-hud, #22d3ee); border-right: 2px solid var(--ec-hud, #22d3ee);
+    pointer-events: none; z-index: 5; filter: drop-shadow(0 0 4px var(--ec-hud, #22d3ee)); background: none;
+  }
+  .dw-card.hud-frame::after {
+    content: ''; position: absolute; bottom: 0; left: 0; width: 16px; height: 16px;
+    border-bottom: 2px solid var(--ec-hud, #22d3ee); border-left: 2px solid var(--ec-hud, #22d3ee);
+    pointer-events: none; z-index: 5; filter: drop-shadow(0 0 4px var(--ec-hud, #22d3ee));
+  }
 
   /* ═══ WIDGET MÉTÉO NATIF ═══ */
   .re-wx { font-family: monospace; }
@@ -961,6 +975,7 @@ class ResidentEvilCard extends LitElement {
     const iconSize = Math.max(16, parseInt(w.iconSize) || 28);
     const fontSize = Math.max(12, parseInt(w.fontSize) || 22);
     const decimals = w.decimals != null ? parseInt(w.decimals) : 1;
+    const hudClass = w.hud ? 'hud-frame' : '';
     const displayVal = value != null
       ? (typeof value === 'number' ? value.toFixed(decimals) : value)
       : '--';
@@ -978,7 +993,7 @@ class ResidentEvilCard extends LitElement {
     }
 
     return html`
-      <div class="dw-card ${noBorder?'no-border':''}" style="border-color:${color}33; ${sizeStyle}">
+      <div class="dw-card ${noBorder?'no-border':''} ${hudClass}" style="border-color:${color}33; ${sizeStyle}">
         <div class="dw-badge-wrap icon-${iconPos}" @click="${() => w.entity && this._handleAction(w.entity)}">
           ${iconPos !== 'none' ? html`
             <ha-icon class="dw-badge-icon"
@@ -4245,6 +4260,7 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'iconSize',l:'Taille icône (px)',t:N},{k:'iconPos',l:'Position icône',t:S,o:['left','top','right']},
         {k:'secondary_entity',l:'Date/heure (entité)',t:E},
         {k:'secondary_label',l:'Préfixe (ex: "le")',t:T},
+        {k:'hud',l:'Cadre HUD (coins coupés)',t:'bool'},
       ],
       shape: [
         {k:'label',l:'Libellé',t:T},{k:'shape',l:'Forme',t:S,o:['circle','square','triangle','hexagon']},
