@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v167 (version RICHE : widgets)
+   RESIDENT EVIL CARD v169 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -840,6 +840,7 @@ class ResidentEvilCard extends LitElement {
       case 'spa_temp':  return this._renderSpaTemp(w, color, glow, sizeStyle, noBorder);
       case 'energie':   return this._renderEnergieWidget(w, sizeStyle, noBorder);
       case 'health':    return this._renderHealthWidget(w, sizeStyle, noBorder);
+      case 'dossier':   return this._renderDossierWidget(w, sizeStyle, noBorder);
       case 'plant':     return this._renderPlantWidget(w, sizeStyle, noBorder);
       case 'server':    return this._renderServerWidget(w, sizeStyle, noBorder);
       case 'tank':      return this._renderTankWidget(w, sizeStyle, noBorder);
@@ -1661,6 +1662,133 @@ class ResidentEvilCard extends LitElement {
         <style>
           @keyframes ecg-health { from{transform:translateX(0)} to{transform:translateX(-50%)} }
         </style>
+      </div>`;
+  }
+
+  // ═══════════ WIDGET « DOSSIER » — fiche santé d'une seule personne ═══════════
+  // Style « Dossier S.T.A.R.S. » : un widget = une personne. Pour séparer Patrick
+  // et Sandra, créer deux widgets `dossier` dans deux sous-menus distincts.
+  _renderDossierWidget(w, sizeStyle, noBorder=false) {
+    const getSt = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
+    const numSt = (eid) => { const v = getSt(eid); const n = v!=null ? parseFloat(v) : null; return (n!=null && !isNaN(n)) ? n : null; };
+    const fmtV  = (v, u) => {
+      if (v == null || v === '') return '--';
+      const n = parseFloat(v);
+      const s = isNaN(n) ? String(v) : n.toLocaleString('fr-FR',{maximumFractionDigits:2});
+      return s + (u||'');
+    };
+
+    const name = w.name || 'INCONNU';
+    const initials = name.trim()[0]?.toUpperCase() || '?';
+    const archiveId = w.archiveId || ('#' + String(Math.abs([...name].reduce((h,c)=>h*31+c.charCodeAt(0),7))).slice(0,4).padStart(4,'0'));
+
+    const CAT_CFG = {
+      forme:     { label: '⚡ Forme',     color: '#22d3ee' },
+      sante:     { label: '🩺 Santé',     color: '#10b981' },
+      sommeil:   { label: '🌙 Sommeil',   color: '#818cf8' },
+      nutrition: { label: '🥗 Nutrition', color: '#f59e0b' },
+    };
+    const CAT_ORDER = ['forme','sante','sommeil','nutrition'];
+
+    const sensors = w.sensors || [];
+    let anyAlert = false;
+    const groups = {};
+    sensors.forEach(s => {
+      const c = s.cat || 'forme';
+      if (!groups[c]) groups[c] = [];
+      const val = numSt(s.entity);
+      const outOfRange = (s.min != null && val != null && val < parseFloat(s.min))
+                       || (s.max != null && val != null && val > parseFloat(s.max));
+      if (outOfRange) anyAlert = true;
+      groups[c].push({ ...s, val, outOfRange });
+    });
+    const cats = CAT_ORDER.filter(k => groups[k]?.length > 0);
+
+    // ── Poids ──
+    const wCur  = w.weight_entity ? numSt(w.weight_entity) : null;
+    const wSt   = parseFloat(w.weight_start) || wCur || null;
+    const wId   = parseFloat(w.weight_ideal) || null;
+    const wDiff = (wCur != null && wSt != null) ? wCur - wSt : null;
+    const wCol  = wDiff != null && wDiff <= 0 ? '#00ff00' : '#ff3b3b';
+    const wPct  = (wCur != null && wSt != null && wId != null && Math.abs(wSt - wId) > 0.01)
+      ? Math.min(100, Math.max(0, (Math.abs(wSt - wCur) / Math.abs(wSt - wId)) * 100))
+      : 0;
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}
+           background:#050505; border:2px solid #8b0000; border-radius:3px;
+           box-shadow:0 0 18px rgba(139,0,0,.6), inset 0 0 30px rgba(0,0,0,.7);
+           overflow:hidden; position:relative; display:flex; flex-direction:column;
+           font-family:'Courier New',monospace;">
+        <div style="position:absolute;top:4px;left:4px;width:14px;height:14px;
+                    border-top:2px solid #ff0000;border-left:2px solid #ff0000;pointer-events:none;z-index:5;"></div>
+        <div style="position:absolute;bottom:4px;right:4px;width:14px;height:14px;
+                    border-bottom:2px solid #ff0000;border-right:2px solid #ff0000;pointer-events:none;z-index:5;"></div>
+
+        <div style="flex-shrink:0;background:#8b0000;color:#1a0000;font-size:12px;font-weight:bold;
+                    letter-spacing:2px;padding:4px 10px;display:flex;justify-content:space-between;">
+          <span>ARCHIVE U.B.C.S.</span><span>DOSSIER ${archiveId}</span>
+        </div>
+
+        <div style="flex-shrink:0;display:flex;gap:12px;padding:14px 14px 10px;align-items:center;
+                    border-bottom:1px solid #2a2a2a;">
+          <div style="width:54px;height:54px;border-radius:4px;background:#161616;border:1px solid #8b0000;
+                      display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+            ${w.image
+              ? html`<img src="${w.image}" style="width:100%;height:100%;object-fit:cover;" />`
+              : html`<span style="font-size:22px;font-weight:bold;color:#ff0000;text-shadow:0 0 6px rgba(139,0,0,.6);">${initials}</span>`}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:18px;font-weight:bold;color:#f1f1f1;letter-spacing:1px;white-space:nowrap;
+                        overflow:hidden;text-overflow:ellipsis;">${name.toUpperCase()}</div>
+            <div style="font-size:12px;margin-top:3px;color:${anyAlert?'#ff3b3b':'#00ff00'};">
+              <span style="opacity:.8;">●</span> STATUT ${anyAlert?'ALERTE':'OPÉRATIONNEL'}
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;padding:12px 14px;scrollbar-width:none;">
+          ${cats.length === 0 ? html`
+            <div style="color:#666;font-size:13px;text-align:center;padding:30px 10px;">
+              Aucun capteur configuré — renseignez <code>sensors:</code> en YAML
+              (cat: forme/sante/sommeil/nutrition, entity, name, unit, min, max).
+            </div>` : html``}
+          ${cats.map(cat => {
+            const cfg = CAT_CFG[cat];
+            return html`
+              <div style="font-size:12px;letter-spacing:2px;color:${cfg.color};margin:0 0 6px;
+                          text-transform:uppercase;${cat!==cats[0]?'margin-top:12px;':''}">${cfg.label}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                ${groups[cat].map(s => html`
+                  <div style="display:flex;justify-content:space-between;align-items:center;background:#0f0f0f;
+                              border:1px solid ${s.outOfRange?'#8b0000':'#2a2a2a'};border-radius:2px;padding:6px 8px;gap:6px;">
+                    <span style="font-size:12px;color:#999;display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;">
+                      ${s.icon ? html`<ha-icon icon="${s.icon}" style="--mdc-icon-size:14px;color:${s.outOfRange?'#ff3b3b':cfg.color};flex-shrink:0;"></ha-icon>` : html``}
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.name||'—'}</span>
+                    </span>
+                    <span style="font-size:13px;font-weight:bold;color:${s.outOfRange?'#ff3b3b':cfg.color};flex-shrink:0;
+                                ${s.outOfRange?'text-shadow:0 0 5px rgba(139,0,0,.6);':''}">
+                      ${fmtV(s.val, s.unit)}
+                    </span>
+                  </div>`)}
+              </div>`;
+          })}
+
+          ${wCur != null ? html`
+            <div style="margin-top:14px;background:#0f0f0f;border:1px solid #2a2a2a;border-radius:3px;padding:8px 10px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:#bbb;margin-bottom:5px;">
+                ${wSt!=null ? html`<span>🏁 ${fmtV(wSt,' kg')}</span>` : html`<span></span>`}
+                <span style="color:${wCol};font-weight:bold;">
+                  ${fmtV(wCur,' kg')}${wDiff!=null?html` (${wDiff>0?'+':''}${wDiff.toFixed(2)} kg)`:html``}
+                </span>
+                ${wId!=null ? html`<span>🎯 ${fmtV(wId,' kg')}</span>` : html`<span></span>`}
+              </div>
+              <div style="height:6px;background:#1c1c1c;border-radius:3px;overflow:hidden;">
+                <div style="height:100%;width:${wPct.toFixed(2)}%;background:linear-gradient(90deg,#00ff00,#0a8a0a);
+                            border-radius:3px;transition:width 1.2s;"></div>
+              </div>
+            </div>` : html``}
+        </div>
       </div>`;
   }
 
@@ -4312,6 +4440,11 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'foundry_yaml',l:'Configuration de la carte (YAML)',t:'textarea'},
       ],
       health: [],
+      dossier: [
+        {k:'name',l:'Nom',t:T},{k:'image',l:'Photo (URL)',t:T},{k:'archiveId',l:'N° de dossier (ex: #0734)',t:T},
+        {k:'weight_entity',l:'Poids — entité',t:E},
+        {k:'weight_start',l:'Poids départ (kg)',t:N},{k:'weight_ideal',l:'Poids cible (kg)',t:N},
+      ],
       button: [
         {k:'entity',    l:'Entité',            t:'entity'},
         {k:'label',     l:'Libellé',           t:'text'},
@@ -4345,6 +4478,70 @@ class ResidentEvilCardEditor extends LitElement {
       const last = parts[parts.length-1];
       if (val === undefined || val === null || val === '') delete o[last]; else o[last] = val;
     });
+  }
+
+  // ── Éditeur de la liste dynamique des capteurs du widget « dossier » ──
+  _renderDossierSensorsEditor(ci, si, wi, wg) {
+    const sensors = wg.sensors || [];
+    const editSensors = (fn) => this._mutate(c => {
+      const w2 = c.categories[ci].submenus[si].widgets[wi];
+      w2.sensors = w2.sensors || [];
+      fn(w2.sensors);
+    });
+    const CAT_OPTS = [
+      { v: 'forme',     l: '⚡ Forme' },
+      { v: 'sante',     l: '🩺 Santé' },
+      { v: 'sommeil',   l: '🌙 Sommeil' },
+      { v: 'nutrition', l: '🥗 Nutrition' },
+    ];
+    return html`
+      <div style="margin-top:10px;background:#101826;border:1px solid #ef444433;border-radius:10px;padding:12px;">
+        ${this._lbl('🩻 CAPTEURS DU DOSSIER — ' + sensors.length)}
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;">
+          Une ligne par capteur affiché. La catégorie détermine la section (Forme/Santé/Sommeil/Nutrition).
+          Min/Max sont optionnels — hors plage, le STATUT du dossier passe en ALERTE.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:4px;">
+          ${sensors.map((s, si2) => html`
+            <div style="background:#0b121d;border:1px solid #1e2d3d;border-radius:8px;padding:9px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <select .value="${s.cat||'forme'}" @change="${e=>editSensors(arr=>{ arr[si2].cat = e.target.value; })}"
+                        style="flex:0 0 120px;background:#1a2332;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 4px;font-size:12px;">
+                  ${CAT_OPTS.map(o=>html`<option value="${o.v}" ?selected="${(s.cat||'forme')===o.v}">${o.l}</option>`)}
+                </select>
+                <div style="flex:1;">${this._txt(s.name, v => editSensors(arr => { arr[si2].name = v; }), 'Nom affiché (ex: Pas)')}</div>
+                ${this._btn('▲', () => editSensors(arr => { if (si2<1) return; [arr[si2-1],arr[si2]]=[arr[si2],arr[si2-1]]; }), '#334155')}
+                ${this._btn('▼', () => editSensors(arr => { if (si2>=arr.length-1) return; [arr[si2+1],arr[si2]]=[arr[si2],arr[si2+1]]; }), '#334155')}
+                ${this._btn('🗑', () => { if (confirm('Supprimer ce capteur ?')) editSensors(arr => arr.splice(si2,1)); }, '#ef4444')}
+              </div>
+              <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 0.7fr 0.7fr;gap:6px;">
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Entité</div>
+                  ${this._txt(s.entity, v => editSensors(arr => { arr[si2].entity = v; }), 'sensor.…', 're2ents')}
+                </div>
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Icône (mdi:…)</div>
+                  ${this._txt(s.icon, v => editSensors(arr => { arr[si2].icon = v; }), 'mdi:walk')}
+                </div>
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Unité</div>
+                  ${this._txt(s.unit, v => editSensors(arr => { arr[si2].unit = v; }), 'ex: " bpm"')}
+                </div>
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Min</div>
+                  ${this._txt(s.min, v => editSensors(arr => { arr[si2].min = v===''?undefined:v; }), '')}
+                </div>
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Max</div>
+                  ${this._txt(s.max, v => editSensors(arr => { arr[si2].max = v===''?undefined:v; }), '')}
+                </div>
+              </div>
+            </div>`)}
+        </div>
+        <div style="margin-top:8px;">
+          ${this._btn('＋ Ajouter un capteur', () => editSensors(arr => arr.push({ cat:'forme', entity:'', name:'', icon:'', unit:'' })), '#22c55e')}
+        </div>
+      </div>`;
   }
 
   // Éditeur générique d'un widget : champs du schéma + listes spécifiques
@@ -4693,6 +4890,7 @@ class ResidentEvilCardEditor extends LitElement {
                   ${this._safeWidgetEditor(ci,si,wi,wg)}
                   ${wg.type==='energie' ? this._renderEnergieDevicesEditor(ci,si,wi,wg) : html``}
                   ${wg.type==='solar' ? this._renderSolarConfigEditor(ci,si,wi,wg) : html``}
+                  ${wg.type==='dossier' ? this._renderDossierSensorsEditor(ci,si,wi,wg) : html``}
                 </div>`)}
               <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
                 <select id="re2-add-wtype" style="${selStyle}">
@@ -4702,7 +4900,7 @@ class ResidentEvilCardEditor extends LitElement {
                     {v:'button',l:'Bouton ON/OFF'},
                     {v:'foundry',l:'Carte Foundry'},
                     {v:'spa_temp',l:'Spa'},{v:'tank',l:'Cuve / jardin'},{v:'server',l:'Serveur'},
-                    {v:'plant',l:'Plante'},{v:'health',l:'Santé'},{v:'solar',l:'Solaire'},{v:'weather',l:'Météo'},
+                    {v:'plant',l:'Plante'},{v:'health',l:'Santé (multi-personnes)'},{v:'dossier',l:'Dossier santé (1 personne)'},{v:'solar',l:'Solaire'},{v:'weather',l:'Météo'},
                     {v:'energie',l:'Consommation'},{v:'appliance',l:'Équipements'},
                     {v:'tracker',l:'Radar présence'},{v:'map',l:'Carte présence'},
                   ].map(t=>html`<option value="${t.v}">${t.l}</option>`)}
@@ -4717,6 +4915,13 @@ class ResidentEvilCardEditor extends LitElement {
                     foundry:{type:'foundry',widthPct:100,heightPx:260,noBorder:true,foundry_yaml:''},
                     shape:{type:'shape',widthPct:15,heightPx:120,shape:'hexagon',size:64,filled:true,color:'#ef4444',label:'Statut'},
                     weather:{type:'weather',widthPct:100,heightPx:530,noBorder:true,animated:true,weather_config:{weather:'weather.sainte_croix_en_plaine'}},
+                    dossier:{type:'dossier',widthPct:48,heightPx:470,name:'Nouvelle personne',weight_entity:'',weight_start:'',weight_ideal:'',
+                      sensors:[
+                        {cat:'forme',entity:'sensor.exemple_pas',name:'Pas',unit:''},
+                        {cat:'forme',entity:'sensor.exemple_fc',name:'FC moy.',unit:' bpm'},
+                        {cat:'sante',entity:'sensor.exemple_spo2',name:'SpO2',unit:' %',min:90},
+                        {cat:'sommeil',entity:'sensor.exemple_sommeil',name:'Durée',unit:''},
+                      ]},
                   };
                   this._mutate(c=>{ const s=c.categories[ci].submenus[si]; s.widgets=s.widgets||[];
                     s.widgets.push(defs[t] ? JSON.parse(JSON.stringify(defs[t])) : {type:t,widthPct:100,noBorder:true}); }); }, '#22c55e')}
