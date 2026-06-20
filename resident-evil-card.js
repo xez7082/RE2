@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v166 (version RICHE : widgets)
+   RESIDENT EVIL CARD v167 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2571,17 +2571,18 @@ class ResidentEvilCard extends LitElement {
     };
     // 1) Beaucoup d'intégrations exposent déjà les prévisions dans les attributs : on tente d'abord.
     if (useAttr()) { this._wxFcBusy = false; return; }
-    // 2) Sinon, appel REST du service avec return_response (format HTTP correct, pas WebSocket).
-    this.hass.callApi('POST',
-      'services/weather/get_forecasts?return_response',
-      { type: 'daily', entity_id: entityId }
-    ).then(res => {
-      const node = res && res.service_response ? res.service_response[entityId]
-                 : (res && res[entityId] ? res[entityId] : null);
-      const fc = node && Array.isArray(node.forecast) ? node.forecast : [];
-      if (fc.length) { this._wxForecast = fc; this.requestUpdate(); }
-    }).catch(() => { /* on garde le verrou 30 min : surtout pas de boucle */ })
-     .finally(() => { this._wxFcBusy = false; });
+    // 2) Sinon, appel du service via le bus WebSocket avec retour de réponse —
+    //    exactement le mécanisme utilisé par Outils de développement > Actions.
+    //    (L'ancienne route REST callApi('POST', '...?return_response', ...) pouvait
+    //    renvoyer une erreur 400 selon la version/config de HA ; ce chemin est fiable.)
+    this.hass.callService('weather', 'get_forecasts', { type: 'daily' }, { entity_id: entityId }, false, true)
+      .then(res => {
+        const node = res && res.response ? res.response[entityId] : null;
+        const fc = node && Array.isArray(node.forecast) ? node.forecast : [];
+        if (fc.length) { this._wxForecast = fc; this.requestUpdate(); }
+      })
+      .catch(() => { /* on garde le verrou 30 min : surtout pas de boucle */ })
+      .finally(() => { this._wxFcBusy = false; });
   }
 
   _initWeatherSky(canvas, animated) {
