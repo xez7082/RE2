@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v172 (version RICHE : widgets)
+   RESIDENT EVIL CARD v173 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1868,6 +1868,8 @@ class ResidentEvilCard extends LitElement {
     const disks = w.disks || [];
     const procVal  = getSt(w.process_entity);
 
+    const gSize  = parseFloat(w.gauge_size) || 80;
+    const gScale = gSize / 80;
     const cpuColor = cpuVal >= 85 ? '#ef4444' : cpuVal >= 60 ? '#f59e0b' : '#00ff88';
     const ramColor = ramVal >= 85 ? '#ef4444' : ramVal >= 60 ? '#f59e0b' : '#06b6d4';
     const hddColor = hddVal >= 90 ? '#ef4444' : hddVal >= 70 ? '#f59e0b' : '#818cf8';
@@ -1897,7 +1899,7 @@ class ResidentEvilCard extends LitElement {
             <text x="${cx}" y="${cy+11}" text-anchor="middle"
               style="fill:#555;font-size:10px;font-family:'Courier New',monospace;">${unit}</text>
           </svg>
-          <div style="font-size:12px;font-weight:700;color:#cbd5e1;letter-spacing:.8px;text-transform:uppercase;">${label}</div>
+          <div style="font-size:${Math.round(12*(size/80))}px;font-weight:700;color:#cbd5e1;letter-spacing:.8px;text-transform:uppercase;">${label}</div>
         </div>`;
     };
 
@@ -1983,20 +1985,20 @@ class ResidentEvilCard extends LitElement {
           <div style="flex-shrink:0;display:flex;justify-content:space-around;
                       background:rgba(0,0,0,.4);border:1px solid #0f1f0f;
                       border-radius:8px;padding:6px 0;">
-            ${radialGauge(cpuVal, cpuColor, 'CPU', fmt(cpuVal,2), '%', 80)}
-            ${radialGauge(ramVal, ramColor, 'RAM', fmt(ramVal,2), '%', 80)}
-            ${hddVal ? radialGauge(hddVal, hddColor, 'HDD', fmt(hddVal,2), '%', 80) : html``}
+            ${radialGauge(cpuVal, cpuColor, 'CPU', fmt(cpuVal,2), '%', gSize)}
+            ${radialGauge(ramVal, ramColor, 'RAM', fmt(ramVal,2), '%', gSize)}
+            ${hddVal ? radialGauge(hddVal, hddColor, 'HDD', fmt(hddVal,2), '%', gSize) : html``}
             ${procVal != null ? html`
               <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-                <div style="width:80px;height:70px;display:flex;flex-direction:column;
+                <div style="width:${gSize}px;height:${(gSize*0.875).toFixed(0)}px;display:flex;flex-direction:column;
                             align-items:center;justify-content:center;gap:4px;">
-                  <ha-icon icon="mdi:cpu-64-bit" style="--mdc-icon-size:22px;color:#f59e0b;
+                  <ha-icon icon="mdi:cpu-64-bit" style="--mdc-icon-size:${(22*gScale).toFixed(0)}px;color:#f59e0b;
                     filter:drop-shadow(0 0 4px #f59e0b);"></ha-icon>
-                  <div style="font-size:18px;font-weight:900;color:#f59e0b;
+                  <div style="font-size:${(18*gScale).toFixed(0)}px;font-weight:900;color:#f59e0b;
                               font-family:'Courier New',monospace;line-height:1;">${procVal}</div>
-                  <div style="font-size:11px;color:#64748b;">PROC.</div>
+                  <div style="font-size:${(11*gScale).toFixed(0)}px;color:#64748b;">PROC.</div>
                 </div>
-                <div style="font-size:12px;font-weight:700;color:#cbd5e1;letter-spacing:.8px;
+                <div style="font-size:${(12*gScale).toFixed(0)}px;font-weight:700;color:#cbd5e1;letter-spacing:.8px;
                             text-transform:uppercase;">PROCESSUS</div>
               </div>` : html``}
           </div>
@@ -4398,6 +4400,7 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'cpu_entity',l:'CPU',t:E},{k:'ram_entity',l:'RAM',t:E},{k:'hdd_entity',l:'Disque',t:E},
         {k:'status_entity',l:'Statut',t:E},{k:'uptime_entity',l:'Uptime',t:E},
         {k:'restart_entity',l:'Bouton redémarrer',t:E},{k:'process_entity',l:'Processus',t:E},
+        {k:'gauge_size',l:'Taille des jauges CPU/RAM/HDD (défaut 80)',t:'number'},
       ],
       plant: [
         {k:'plant_name',l:'Nom',t:T},{k:'latin_name',l:'Nom latin',t:T},
