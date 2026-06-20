@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v170 (version RICHE : widgets)
+   RESIDENT EVIL CARD v171 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1904,7 +1904,8 @@ class ResidentEvilCard extends LitElement {
     const diskBar = (disk) => {
       const val = parseFloat(getSt(disk.entity));
       if (isNaN(val)) return html``;
-      const pct = Math.min(val, 100);
+      const maxV = (disk.max != null && disk.max !== '') ? parseFloat(disk.max) : 100;
+      const pct = maxV ? Math.min(100, Math.max(0, (val/maxV)*100)) : 0;
       const col = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#818cf8';
       return html`
         <div style="display:flex;flex-direction:column;gap:3px;">
@@ -2005,7 +2006,7 @@ class ResidentEvilCard extends LitElement {
                         background:rgba(0,0,0,.3);border:1px solid #0f1f0f;
                         border-radius:8px;padding:8px 10px;overflow:hidden;">
               <div style="flex-shrink:0;font-size:12px;font-weight:700;color:#00ff8866;
-                          letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">◈ STOCKAGE</div>
+                          letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">◈ STOCKAGE / CAPTEURS</div>
               ${disks.map(d => diskBar(d))}
             </div>` : html``}
         </div>
@@ -4552,6 +4553,56 @@ class ResidentEvilCardEditor extends LitElement {
       </div>`;
   }
 
+  _renderServerDisksEditor(ci, si, wi, wg) {
+    const disks = wg.disks || [];
+    const editDisks = (fn) => this._mutate(c => {
+      const w2 = c.categories[ci].submenus[si].widgets[wi];
+      w2.disks = w2.disks || [];
+      fn(w2.disks);
+    });
+    return html`
+      <div style="margin-top:10px;background:#0a1410;border:1px solid #00ff8833;border-radius:10px;padding:12px;">
+        ${this._lbl('💾 DISQUES / CAPTEURS DU SERVEUR — ' + disks.length)}
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;">
+          Une barre par ligne (disque, mais aussi tout capteur en %). Si "Max" est vide, la valeur du
+          capteur est traitée comme un pourcentage direct (0-100). Renseigne "Max" pour une autre échelle
+          (ex: 0-90°C pour une température).
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:4px;">
+          ${disks.map((d, di) => html`
+            <div style="background:#0b1a14;border:1px solid #1e3d2d;border-radius:8px;padding:9px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <div style="flex:1;">${this._txt(d.label, v => editDisks(arr => { arr[di].label = v; }), 'Nom affiché (ex: C: Système)')}</div>
+                ${this._btn('▲', () => editDisks(arr => { if (di<1) return; [arr[di-1],arr[di]]=[arr[di],arr[di-1]]; }), '#334155')}
+                ${this._btn('▼', () => editDisks(arr => { if (di>=arr.length-1) return; [arr[di+1],arr[di]]=[arr[di],arr[di+1]]; }), '#334155')}
+                ${this._btn('🗑', () => { if (confirm('Supprimer ce capteur ?')) editDisks(arr => arr.splice(di,1)); }, '#ef4444')}
+              </div>
+              <div style="display:grid;grid-template-columns:1.6fr 1fr 0.8fr 0.7fr;gap:6px;">
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Entité</div>
+                  ${this._txt(d.entity, v => editDisks(arr => { arr[di].entity = v; }), 'sensor.…', 're2ents')}
+                </div>
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Icône (mdi:…)</div>
+                  ${this._txt(d.icon, v => editDisks(arr => { arr[di].icon = v; }), 'mdi:harddisk')}
+                </div>
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Unité</div>
+                  ${this._txt(d.unit, v => editDisks(arr => { arr[di].unit = v; }), 'ex: " %"')}
+                </div>
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Max</div>
+                  ${this._txt(d.max, v => editDisks(arr => { arr[di].max = v===''?undefined:v; }), '100')}
+                </div>
+              </div>
+            </div>`)}
+        </div>
+        <div style="margin-top:8px;">
+          ${this._btn('＋ Ajouter un disque/capteur', () => editDisks(arr => arr.push({ label:'', entity:'', icon:'mdi:harddisk', unit:' %' })), '#22c55e')}
+        </div>
+      </div>`;
+  }
+
   // Éditeur générique d'un widget : champs du schéma + listes spécifiques
   _safeWidgetEditor(ci, si, wi, wg) {
     try { return this._renderWidgetEditor(ci, si, wi, wg); }
@@ -4899,6 +4950,7 @@ class ResidentEvilCardEditor extends LitElement {
                   ${wg.type==='energie' ? this._renderEnergieDevicesEditor(ci,si,wi,wg) : html``}
                   ${wg.type==='solar' ? this._renderSolarConfigEditor(ci,si,wi,wg) : html``}
                   ${wg.type==='dossier' ? this._renderDossierSensorsEditor(ci,si,wi,wg) : html``}
+                  ${wg.type==='server' ? this._renderServerDisksEditor(ci,si,wi,wg) : html``}
                 </div>`)}
               <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
                 <select id="re2-add-wtype" style="${selStyle}">
