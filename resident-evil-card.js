@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v171 (version RICHE : widgets)
+   RESIDENT EVIL CARD v172 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1983,9 +1983,9 @@ class ResidentEvilCard extends LitElement {
           <div style="flex-shrink:0;display:flex;justify-content:space-around;
                       background:rgba(0,0,0,.4);border:1px solid #0f1f0f;
                       border-radius:8px;padding:6px 0;">
-            ${radialGauge(cpuVal, cpuColor, 'CPU', fmt(cpuVal,0), '%', 80)}
-            ${radialGauge(ramVal, ramColor, 'RAM', fmt(ramVal,0), '%', 80)}
-            ${hddVal ? radialGauge(hddVal, hddColor, 'HDD', fmt(hddVal,0), '%', 80) : html``}
+            ${radialGauge(cpuVal, cpuColor, 'CPU', fmt(cpuVal,2), '%', 80)}
+            ${radialGauge(ramVal, ramColor, 'RAM', fmt(ramVal,2), '%', 80)}
+            ${hddVal ? radialGauge(hddVal, hddColor, 'HDD', fmt(hddVal,2), '%', 80) : html``}
             ${procVal != null ? html`
               <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
                 <div style="width:80px;height:70px;display:flex;flex-direction:column;
