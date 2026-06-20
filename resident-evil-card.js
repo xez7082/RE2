@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v169 (version RICHE : widgets)
+   RESIDENT EVIL CARD v170 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1677,6 +1677,13 @@ class ResidentEvilCard extends LitElement {
       const s = isNaN(n) ? String(v) : n.toLocaleString('fr-FR',{maximumFractionDigits:2});
       return s + (u||'');
     };
+    // Affiche la valeur numérique formatée + unité, ou — si le capteur renvoie
+    // du texte (ex: "Obésité de classe II (sévère)") — l'état brut tel quel.
+    const dispVal = (s) => {
+      if (s.val != null) return fmtV(s.val, s.unit);
+      if (s.raw != null && !['unavailable','unknown',''].includes(String(s.raw))) return s.raw;
+      return '--';
+    };
 
     const name = w.name || 'INCONNU';
     const initials = name.trim()[0]?.toUpperCase() || '?';
@@ -1697,10 +1704,11 @@ class ResidentEvilCard extends LitElement {
       const c = s.cat || 'forme';
       if (!groups[c]) groups[c] = [];
       const val = numSt(s.entity);
+      const raw = getSt(s.entity);
       const outOfRange = (s.min != null && val != null && val < parseFloat(s.min))
                        || (s.max != null && val != null && val > parseFloat(s.max));
       if (outOfRange) anyAlert = true;
-      groups[c].push({ ...s, val, outOfRange });
+      groups[c].push({ ...s, val, raw, outOfRange });
     });
     const cats = CAT_ORDER.filter(k => groups[k]?.length > 0);
 
@@ -1760,15 +1768,15 @@ class ResidentEvilCard extends LitElement {
                           text-transform:uppercase;${cat!==cats[0]?'margin-top:12px;':''}">${cfg.label}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
                 ${groups[cat].map(s => html`
-                  <div style="display:flex;justify-content:space-between;align-items:center;background:#0f0f0f;
-                              border:1px solid ${s.outOfRange?'#8b0000':'#2a2a2a'};border-radius:2px;padding:6px 8px;gap:6px;">
+                  <div style="display:flex;flex-direction:column;gap:3px;background:#0f0f0f;
+                              border:1px solid ${s.outOfRange?'#8b0000':'#2a2a2a'};border-radius:2px;padding:6px 8px;">
                     <span style="font-size:12px;color:#999;display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;">
                       ${s.icon ? html`<ha-icon icon="${s.icon}" style="--mdc-icon-size:14px;color:${s.outOfRange?'#ff3b3b':cfg.color};flex-shrink:0;"></ha-icon>` : html``}
                       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.name||'—'}</span>
                     </span>
-                    <span style="font-size:13px;font-weight:bold;color:${s.outOfRange?'#ff3b3b':cfg.color};flex-shrink:0;
+                    <span style="font-size:13px;font-weight:bold;line-height:1.25;color:${s.outOfRange?'#ff3b3b':cfg.color};
                                 ${s.outOfRange?'text-shadow:0 0 5px rgba(139,0,0,.6);':''}">
-                      ${fmtV(s.val, s.unit)}
+                      ${dispVal(s)}
                     </span>
                   </div>`)}
               </div>`;
