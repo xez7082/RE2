@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v179 (version RICHE : widgets)
+   RESIDENT EVIL CARD v183 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2751,6 +2751,64 @@ class ResidentEvilCard extends LitElement {
       .finally(() => { this._wxHFcBusy = false; });
   }
 
+  // ── Chargement dynamique du contour d'un département français (code INSEE 01-976).
+  //    GeoJSON source : gregoiredavid/france-geojson (MIT license, fichier allégé).
+  //    Le résultat (path SVG normalisé 0..1 + bbox + aspect) est mis en cache sur
+  //    l'instance. Un seul fetch pour toute la session (fichier partagé 96 depts).
+  _refreshDepartmentPath(code) {
+    if (!code || code === 'alsace') return;
+    if (!this._deptPaths)   this._deptPaths   = {};
+    if (!this._deptLoading) this._deptLoading = {};
+    if (this._deptPaths[code] || this._deptLoading[code]) return;
+    this._deptLoading[code] = true;
+
+    const GEO_URL = 'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson';
+
+    const processJson = (json) => {
+      const feature = json.features.find(f => f.properties.code === String(code).padStart(2,'0') || f.properties.code === String(code));
+      if (!feature) { console.warn('RE2: département introuvable:', code); return; }
+
+      const geom = feature.geometry;
+      let ring = [];
+      if (geom.type === 'Polygon') {
+        ring = geom.coordinates[0];
+      } else if (geom.type === 'MultiPolygon') {
+        // Prendre le plus grand polygone (surface max)
+        geom.coordinates.forEach(poly => { if (poly[0].length > ring.length) ring = poly[0]; });
+      }
+      if (!ring.length) return;
+
+      // Bbox
+      let lonMin=Infinity,lonMax=-Infinity,latMin=Infinity,latMax=-Infinity;
+      ring.forEach(([lo,la]) => {
+        if(lo<lonMin)lonMin=lo; if(lo>lonMax)lonMax=lo;
+        if(la<latMin)latMin=la; if(la>latMax)latMax=la;
+      });
+      const dLon=lonMax-lonMin, dLat=latMax-latMin;
+      const latMid=(latMin+latMax)/2;
+      const aspect=(dLon*Math.cos(latMid*Math.PI/180))/dLat;
+
+      // Path SVG normalisé 0..1
+      const pts = ring.map(([lo,la]) =>
+        `${((lo-lonMin)/dLon).toFixed(4)} ${(1-(la-latMin)/dLat).toFixed(4)}`);
+      const path = 'M ' + pts.join(' L ') + ' Z';
+
+      this._deptPaths[code] = { path, aspect, lonMin, lonMax, latMin, latMax,
+                                 name: feature.properties.nom };
+      this._deptLoading[code] = false;
+      this.requestUpdate();
+    };
+
+    if (this._geoJsonCache) {
+      processJson(this._geoJsonCache);
+    } else {
+      fetch(GEO_URL)
+        .then(r => r.json())
+        .then(json => { this._geoJsonCache = json; processJson(json); })
+        .catch(e => { console.warn('RE2: erreur chargement GeoJSON départements:', e); this._deptLoading[code]=false; });
+    }
+  }
+
   _initWeatherSky(canvas, animated) {
     if (!canvas) return null;
     if (canvas.__sky) return canvas.__sky;
@@ -2981,7 +3039,11 @@ class ResidentEvilCard extends LitElement {
     // ── Slot actif (0=Matin 1=Après-midi 2=Soirée 3=Nuit) ──
     if (!this._amSlots) this._amSlots = {};
     const wKey = wxId || 'am_default';
-    if (this._amSlots[wKey] == null) this._amSlots[wKey] = 0;
+    if (this._amSlots[wKey] == null) {
+      // Auto-sélection du créneau selon l'heure courante
+      const h = new Date().getHours();
+      this._amSlots[wKey] = (h >= 22 || h < 6) ? 3 : h >= 18 ? 2 : h >= 12 ? 1 : 0;
+    }
     const slot = this._amSlots[wKey];
     const SLOT_LABELS = ['MATIN', 'APRÈS-MIDI', 'SOIRÉE', 'NUIT'];
     const SLOT_HOURS  = [9, 15, 20, 3];
@@ -3065,22 +3127,59 @@ class ResidentEvilCard extends LitElement {
       { name:'Saverne',    x:0.372, y:0.201 },
       { name:'Sélestat',   x:0.437, y:0.493 },
       { name:'Colmar',     x:0.370, y:0.602 },
-      { name:'Ste-Croix',  x:0.403, y:0.645 },
+      { name:'Ste-Croix-en-Plaine', x:0.403, y:0.645 },
       { name:'Mulhouse',   x:0.353, y:0.801 },
     ];
-    const cities = CITIES_DEF;
-    const VW = 100, VH = Math.round(100 / ALSACE_ASPECT); // 100 × 179
-    const scaledPath = ALSACE_CLIP_PATH.replace(/([\d.]+) ([\d.]+)/g,
+    // ── Département / contour de la carte ──
+    const deptCode = (w.map_department || '').trim();
+    if (deptCode) this._refreshDepartmentPath(deptCode);
+    const deptData       = deptCode ? this._deptPaths?.[deptCode] : null;
+    const activeClipPath = deptData ? deptData.path : ALSACE_CLIP_PATH;
+    const activeAspect   = deptData ? deptData.aspect : ALSACE_ASPECT;
+    // Bbox pour convertir lat/lon → coordonnées SVG normalisées
+    const bbox = deptData
+      ? { lonMin:deptData.lonMin, dLon:deptData.lonMax-deptData.lonMin,
+          latMin:deptData.latMin, dLat:deptData.latMax-deptData.latMin }
+      : { lonMin:6.8462, dLon:1.3866, latMin:47.4222, dLat:1.6520 };
+
+    // Villes : config YAML si présente, sinon défauts (Alsace)
+    const cities = (w.cities && w.cities.length)
+      ? w.cities.map(c => ({
+          name:   c.name || c.label || '',
+          x:      (parseFloat(c.lon||0) - bbox.lonMin) / bbox.dLon,
+          y:      1 - ((parseFloat(c.lat||0) - bbox.latMin) / bbox.dLat),
+          entity: c.temp_entity || null,
+        }))
+      : CITIES_DEF;
+
+    // Température à afficher pour chaque ville (capteur dédié ou fallback créneau)
+    const mapTemp = slotTemp != null ? slotTemp+'°' : '';
+    const cityTempStr = (c) => {
+      if (c.entity) {
+        const st = this.hass?.states[c.entity];
+        if (st) { const v = parseFloat(st.state); if (!isNaN(v)) return Math.round(v)+'°'; }
+      }
+      return mapTemp;
+    };
+
+    // SVG de la carte
+    const VW = 100, VH = Math.round(100 / activeAspect);
+    const scaledPath = activeClipPath.replace(/([\d.]+) ([\d.]+)/g,
       (_, x, y) => `${(parseFloat(x)*VW).toFixed(1)} ${(parseFloat(y)*VH).toFixed(1)}`);
-    const mapTemp    = slotTemp != null ? slotTemp+'°' : '';
-    const dotR       = parseFloat(w.city_dot_size)  || 3;
-    const txtName    = parseFloat(w.city_text_size)  || 6;
-    const txtTemp    = txtName + 2;
+    const dotR    = parseFloat(w.city_dot_size)  || 3;
+    const txtName = parseFloat(w.city_text_size)  || 6;
+    const txtTemp = txtName + 2;
+    // Message de chargement si département en cours de fetch
+    const deptLoading = deptCode && !deptData && this._deptLoading?.[deptCode];
     //    dans lit-html : les html`<g>...</g>` imbriqués créent des éléments HTML
     //    et non SVG, donc circle/text ne s'affichaient pas).
     const mapSvg = `<svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg"
          style="width:100%;flex:1;max-height:100%;">
-      <path d="${scaledPath}" fill="#0c1f0e" stroke="#00cc44" stroke-width="0.8"/>
+      ${deptLoading
+        ? `<rect width="100" height="${VH}" fill="#0a1a0e" rx="4"/>
+           <text x="50" y="${VH/2}" text-anchor="middle" style="font-size:8px;fill:#00ff8866;
+             font-family:'Courier New',monospace;">Chargement…</text>`
+        : `<path d="${scaledPath}" fill="#0c1f0e" stroke="#00cc44" stroke-width="0.8"/>`}
       ${cities.map(c => `
         <circle cx="${(c.x*VW).toFixed(1)}" cy="${(c.y*VH).toFixed(1)}"
                 r="${dotR}" fill="#00ff88" opacity="0.95"/>
@@ -3089,7 +3188,7 @@ class ResidentEvilCard extends LitElement {
               font-family:'Courier New',monospace;font-weight:700;">${c.name}</text>
         <text x="${(c.x*VW + dotR + 1).toFixed(1)}" y="${(c.y*VH + txtTemp - 1).toFixed(1)}"
               text-anchor="start" style="font-size:${txtTemp}px;fill:#f0f8f0;
-              font-family:'Courier New',monospace;font-weight:900;">${mapTemp}</text>
+              font-family:'Courier New',monospace;font-weight:900;">${cityTempStr(c)}</text>
       `).join('')}
       <text x="${(0.38*VW).toFixed(1)}" y="${(0.50*VH).toFixed(1)}"
             text-anchor="middle" style="font-size:8px;fill:#00cc4444;
@@ -4786,6 +4885,7 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'clip',l:'Découpe en silhouette',t:'select',o:['','alsace']},
       ],
       alsace_meteo: [
+        {k:'map_department', l:'Code département (ex: 67, 13, 75, 33 — vide = Alsace par défaut)', t:'T'},
         {k:'weather_entity',       l:'Entité météo',                    t:E},
         {k:'uv_entity',            l:'UV (ex: sensor.colmar_uv)',        t:E},
         {k:'rain_entity',          l:'Pluie cumulée jour',               t:E},
@@ -4951,6 +5051,70 @@ class ResidentEvilCardEditor extends LitElement {
         <div style="margin-top:8px;">
           ${this._btn('＋ Ajouter un disque/capteur', () => editDisks(arr => arr.push({ label:'', entity:'', icon:'mdi:harddisk', unit:' %' })), '#22c55e')}
         </div>
+      </div>`;
+  }
+
+  _renderAlsaceCitiesEditor(ci, si, wi, wg) {
+    // Villes par défaut (mêmes que CITIES_DEF dans le rendu)
+    const DEFAULT_CITIES = [
+      { name:'Strasbourg',          lat:'48.574', lon:'7.752',  temp_entity:'' },
+      { name:'Saverne',             lat:'48.741', lon:'7.362',  temp_entity:'' },
+      { name:'Sélestat',            lat:'48.259', lon:'7.453',  temp_entity:'' },
+      { name:'Colmar',              lat:'48.079', lon:'7.359',  temp_entity:'' },
+      { name:'Ste-Croix-en-Plaine', lat:'48.009', lon:'7.405',  temp_entity:'' },
+      { name:'Mulhouse',            lat:'47.750', lon:'7.336',  temp_entity:'' },
+    ];
+    const cities = wg.cities && wg.cities.length ? wg.cities : [];
+    const editCities = (fn) => this._mutate(c => {
+      const w2 = c.categories[ci].submenus[si].widgets[wi];
+      if (!w2.cities || !w2.cities.length) w2.cities = DEFAULT_CITIES.map(d => ({...d}));
+      fn(w2.cities);
+    });
+    return html`
+      <div style="margin-top:10px;background:#0a140f;border:1px solid #00ff8833;border-radius:10px;padding:12px;">
+        ${this._lbl('🗺 VILLES SUR LA CARTE')}
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;">
+          Chaque ville peut avoir un capteur de température dédié. Sans capteur, la ville affiche
+          la temp du créneau horaire sélectionné. Lat/Lon en degrés décimaux.
+        </div>
+        ${cities.length === 0 ? html`
+          <div style="font-size:12px;color:#64748b;font-style:italic;margin-bottom:8px;">
+            Villes par défaut actives (Strasbourg, Saverne, Sélestat, Colmar,
+            Ste-Croix-en-Plaine, Mulhouse). Clique "Modifier les villes" pour personnaliser.
+          </div>
+          ${this._btn('✏ Modifier les villes', () => editCities(() => {}), '#334155')}` : html`
+          <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;padding-right:4px;">
+            ${cities.map((c, idx) => html`
+              <div style="background:#0b1a14;border:1px solid #1e3d2d;border-radius:8px;padding:9px;
+                          display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <div style="flex:1;">${this._txt(c.name, v => editCities(arr => { arr[idx].name = v; }), 'Nom de la ville')}</div>
+                  ${this._btn('▲', () => editCities(arr => { if(idx<1)return; [arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]]; }), '#334155')}
+                  ${this._btn('▼', () => editCities(arr => { if(idx>=arr.length-1)return; [arr[idx+1],arr[idx]]=[arr[idx],arr[idx+1]]; }), '#334155')}
+                  ${this._btn('🗑', () => { if(confirm('Supprimer cette ville ?')) editCities(arr => arr.splice(idx,1)); }, '#ef4444')}
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:6px;">
+                  <div>
+                    <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Latitude</div>
+                    ${this._txt(c.lat, v => editCities(arr => { arr[idx].lat = v; }), 'ex: 48.009')}
+                  </div>
+                  <div>
+                    <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Longitude</div>
+                    ${this._txt(c.lon, v => editCities(arr => { arr[idx].lon = v; }), 'ex: 7.405')}
+                  </div>
+                  <div>
+                    <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">Capteur température (optionnel)</div>
+                    ${this._txt(c.temp_entity, v => editCities(arr => { arr[idx].temp_entity = v; }), 'sensor.…', 're2ents')}
+                  </div>
+                </div>
+              </div>`)}
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;">
+            ${this._btn('＋ Ajouter une ville', () => editCities(arr => arr.push({ name:'', lat:'', lon:'', temp_entity:'' })), '#22c55e')}
+            ${this._btn('↺ Remettre les défauts', () => this._mutate(cat => {
+              cat.categories[ci].submenus[si].widgets[wi].cities = DEFAULT_CITIES.map(d=>({...d}));
+            }), '#334155')}
+          </div>`}
       </div>`;
   }
 
@@ -5302,6 +5466,7 @@ class ResidentEvilCardEditor extends LitElement {
                   ${wg.type==='solar' ? this._renderSolarConfigEditor(ci,si,wi,wg) : html``}
                   ${wg.type==='dossier' ? this._renderDossierSensorsEditor(ci,si,wi,wg) : html``}
                   ${wg.type==='server' ? this._renderServerDisksEditor(ci,si,wi,wg) : html``}
+                  ${wg.type==='alsace_meteo' ? this._renderAlsaceCitiesEditor(ci,si,wi,wg) : html``}
                 </div>`)}
               <div style="display:flex;gap:6px;margin-top:8px;align-items:center;">
                 <select id="re2-add-wtype" style="${selStyle}">
