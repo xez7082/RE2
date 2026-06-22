@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v173 (version RICHE : widgets)
+   RESIDENT EVIL CARD v176 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -313,6 +313,12 @@ const cardStyles = css`
   .re-wx-adot.dg { background: #4ade80; } .re-wx-adot.dy { background: #fbbf24; }
   .re-wx-adot.do { background: #fb923c; } .re-wx-adot.dr { background: #f87171; }
 `;
+
+
+// Contour réel de l'Alsace (fusion Bas-Rhin 67 + Haut-Rhin 68, IGN via france-geojson),
+// normalisé en coordonnées 0..1 pour un usage en clipPath SVG (clipPathUnits="objectBoundingBox").
+const ALSACE_CLIP_PATH = 'M 0.5445 0.5544 L 0.5232 0.6318 L 0.5596 0.667 L 0.5124 0.7229 L 0.5173 0.7397 L 0.4941 0.7793 L 0.5062 0.8079 L 0.4814 0.8301 L 0.4876 0.8546 L 0.538 0.8952 L 0.5326 0.9061 L 0.4759 0.9261 L 0.4897 0.9409 L 0.462 0.964 L 0.4243 0.9542 L 0.4158 0.9624 L 0.4356 0.9679 L 0.414 0.9859 L 0.2885 1.0 L 0.2788 0.9899 L 0.2341 0.9866 L 0.2455 0.9582 L 0.2049 0.9511 L 0.2089 0.9308 L 0.1875 0.9218 L 0.1731 0.8969 L 0.1293 0.8968 L 0.1145 0.8806 L 0.1443 0.8491 L 0.13 0.8312 L 0.1379 0.8187 L 0.0016 0.7702 L 0.0 0.7574 L 0.0533 0.7409 L 0.039 0.7161 L 0.0589 0.7058 L 0.0538 0.6848 L 0.0701 0.6515 L 0.1123 0.6367 L 0.1716 0.572 L 0.1528 0.5669 L 0.1725 0.5407 L 0.2353 0.4702 L 0.2539 0.4623 L 0.2442 0.4467 L 0.1978 0.4484 L 0.1676 0.4377 L 0.1888 0.422 L 0.1801 0.3917 L 0.1952 0.3567 L 0.1814 0.3551 L 0.1998 0.3393 L 0.1574 0.3334 L 0.1682 0.3255 L 0.232 0.3309 L 0.2684 0.3157 L 0.3304 0.2506 L 0.3017 0.2491 L 0.2856 0.2313 L 0.2986 0.2299 L 0.3319 0.1847 L 0.321 0.1696 L 0.2999 0.1673 L 0.2758 0.149 L 0.2528 0.1488 L 0.2522 0.1415 L 0.2187 0.1389 L 0.2167 0.1531 L 0.1745 0.1705 L 0.1681 0.1575 L 0.1502 0.1577 L 0.1479 0.1379 L 0.1734 0.1371 L 0.1695 0.1272 L 0.1472 0.13 L 0.0854 0.1027 L 0.0789 0.0919 L 0.0957 0.0852 L 0.1032 0.0691 L 0.1342 0.0715 L 0.1505 0.0264 L 0.1677 0.0144 L 0.16 0.0044 L 0.1858 0.0 L 0.205 0.0421 L 0.2366 0.041 L 0.2619 0.0569 L 0.2811 0.0523 L 0.3229 0.0621 L 0.3466 0.0792 L 0.4366 0.0643 L 0.4955 0.0851 L 0.528 0.0707 L 0.5691 0.0121 L 0.639 0.018 L 0.684 0.0051 L 0.7375 0.0242 L 0.7849 0.0099 L 0.8177 0.0291 L 0.8676 0.0363 L 0.898 0.0514 L 1.0 0.0649 L 0.9733 0.0714 L 0.9324 0.1097 L 0.9016 0.1597 L 0.8531 0.1741 L 0.8357 0.1909 L 0.8103 0.1929 L 0.8055 0.2136 L 0.7166 0.262 L 0.688 0.2999 L 0.6929 0.3348 L 0.6649 0.3538 L 0.6417 0.4056 L 0.6482 0.447 L 0.618 0.4633 L 0.5925 0.5147 L 0.5445 0.5544 Z';
+const ALSACE_ASPECT = 0.559; // largeur/hauteur réelle (corrigée latitude) — Alsace est ~1.79x plus haute que large
 
 class ResidentEvilCard extends LitElement {
   static get properties() {
@@ -850,6 +856,7 @@ class ResidentEvilCard extends LitElement {
       case 'progress':   return this._renderProgressWidget(w, sizeStyle, noBorder);
       case 'button':     return this._renderButtonWidget(w, sizeStyle, noBorder);
       case 'foundry':    return this._renderFoundryWidget(w, sizeStyle, noBorder);
+      case 'alsace_meteo': return this._renderAlsaceMeteoWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
       default:          return html``;
@@ -2724,6 +2731,26 @@ class ResidentEvilCard extends LitElement {
       .finally(() => { this._wxFcBusy = false; });
   }
 
+  // Prévisions HORAIRES (pour le bandeau matin/après-midi/soirée du widget Alsace Météo).
+  // Même logique anti-boucle (verrou 30 min, une requête à la fois) que _refreshForecast.
+  _refreshHourlyForecast(entityId) {
+    if (!entityId || !this.hass) return;
+    const now = Date.now();
+    if (this._wxHFcEntity !== entityId) { this._wxHFcEntity = entityId; this._wxHFcAt = 0; }
+    if (this._wxHFcBusy) return;
+    if (this._wxHFcAt && (now - this._wxHFcAt) < 1800000) return;
+    this._wxHFcBusy = true;
+    this._wxHFcAt = now;
+    this.hass.callService('weather', 'get_forecasts', { type: 'hourly' }, { entity_id: entityId }, false, true)
+      .then(res => {
+        const node = res && res.response ? res.response[entityId] : null;
+        const fc = node && Array.isArray(node.forecast) ? node.forecast : [];
+        if (fc.length) { this._wxHourlyForecast = fc; this.requestUpdate(); }
+      })
+      .catch(() => { /* verrou 30 min conservé : pas de boucle */ })
+      .finally(() => { this._wxHFcBusy = false; });
+  }
+
   _initWeatherSky(canvas, animated) {
     if (!canvas) return null;
     if (canvas.__sky) return canvas.__sky;
@@ -2937,6 +2964,284 @@ class ResidentEvilCard extends LitElement {
       </div>`;
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  WIDGET MÉTÉO ALSACE — badges de risques + bandeau matin/après-midi/soirée
+  //  dans l'esprit de meteosuivialsace.fr (conception originale, pas de copie
+  //  d'assets), avec un fond décoratif en silhouette réelle de l'Alsace.
+  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  WIDGET MÉTÉO ALSACE — Carte de l'Alsace + créneaux + badges de risques
+  //  + section allergènes/pollens. Inspiré de meteosuivialsace.fr, conception
+  //  entièrement originale (aucun asset copié), palette RE (dark/green).
+  // ═══════════════════════════════════════════════════════════════════════════
+  _renderAlsaceMeteoWidget(w, sizeStyle, noBorder=false) {
+    const wxId = w.weather_entity;
+    if (wxId) { this._refreshForecast(wxId); this._refreshHourlyForecast(wxId); }
+
+    // ── Slot actif (0=Matin 1=Après-midi 2=Soirée 3=Nuit) ──
+    if (!this._amSlots) this._amSlots = {};
+    const wKey = wxId || 'am_default';
+    if (this._amSlots[wKey] == null) this._amSlots[wKey] = 0;
+    const slot = this._amSlots[wKey];
+    const SLOT_LABELS = ['MATIN', 'APRÈS-MIDI', 'SOIRÉE', 'NUIT'];
+    const SLOT_HOURS  = [9, 15, 20, 3];
+    const nextSlot = () => { this._amSlots[wKey] = (slot+1)%4; this.requestUpdate(); };
+    const prevSlot = () => { this._amSlots[wKey] = (slot+3)%4; this.requestUpdate(); };
+
+    // ── Données météo courantes ──
+    const wxSt = wxId && this.hass?.states[wxId] ? this.hass.states[wxId] : null;
+    const att = wxSt?.attributes || {};
+    const curCond  = wxSt?.state || '';
+    const curTemp  = att.temperature != null ? parseFloat(att.temperature) : null;
+    const curWind  = att.wind_speed  != null ? parseFloat(att.wind_speed)  : null;
+    const curHum   = att.humidity    != null ? parseFloat(att.humidity)    : null;
+
+    // ── Prévisions journalières (min/max) ──
+    const daily   = this._wxForecast?.length ? this._wxForecast[0] : null;
+    const dayHigh = daily?.temperature != null ? parseFloat(daily.temperature) : curTemp;
+    const dayLow  = daily?.templow     != null ? parseFloat(daily.templow)     : curTemp;
+
+    // ── Créneau horaire sélectionné ──
+    const hourly = this._wxHourlyForecast || [];
+    const now    = new Date();
+    const tgt    = SLOT_HOURS[slot];
+    let slotFc   = null;
+    let bestDiff = Infinity;
+    hourly.forEach(h => {
+      const d = new Date(h.datetime);
+      if (d <= now) return;
+      const hh = d.getHours();
+      const diff = Math.abs(hh - tgt) + (d.getDate() !== now.getDate() ? 24 : 0);
+      if (diff < bestDiff) { bestDiff = diff; slotFc = h; }
+    });
+    const slotTemp  = slotFc?.temperature != null ? Math.round(parseFloat(slotFc.temperature)) : (curTemp!=null?Math.round(curTemp):null);
+    const slotCond  = slotFc?.condition || curCond;
+    const slotWind  = slotFc?.wind_speed != null ? parseFloat(slotFc.wind_speed) : curWind;
+    const slotPrec  = slotFc?.precipitation ?? daily?.precipitation ?? null;
+    const rainRaw   = w.rain_entity ? parseFloat(this.hass?.states[w.rain_entity]?.state) : NaN;
+    const precipMm  = !isNaN(rainRaw) ? rainRaw : (slotPrec != null ? parseFloat(slotPrec) : null);
+
+    // ── UV ──
+    const uvRaw = w.uv_entity ? parseFloat(this.hass?.states[w.uv_entity]?.state) : NaN;
+    const uvNum = !isNaN(uvRaw) ? Math.round(uvRaw) : null;
+    const uvColor = uvNum==null?'#22c55e' : uvNum>=8?'#ef4444' : uvNum>=6?'#f97316' : uvNum>=3?'#eab308':'#22c55e';
+
+    // ── Condition → icône mdi ──
+    const WX_ICON = {
+      'clear-night':'mdi:weather-night','cloudy':'mdi:weather-cloudy','fog':'mdi:weather-fog',
+      'hail':'mdi:weather-hail','lightning':'mdi:weather-lightning','lightning-rainy':'mdi:weather-lightning-rainy',
+      'partlycloudy':'mdi:weather-partly-cloudy','pouring':'mdi:weather-pouring','rainy':'mdi:weather-rainy',
+      'snowy':'mdi:weather-snowy','snowy-rainy':'mdi:weather-snowy-rainy','sunny':'mdi:weather-sunny',
+      'windy':'mdi:weather-windy','windy-variant':'mdi:weather-windy-variant','exceptional':'mdi:alert-circle',
+    };
+    const wxIcon = c => WX_ICON[c] || 'mdi:weather-partly-cloudy';
+    const condIcon = wxIcon(slotCond);
+
+    // ── Niveaux de risque (palette vigilance Météo-France) ──
+    const LV = {
+      none:{ label:'PAS DE RISQUE', col:'#22c55e', bg:'#060f07' },
+      low: { label:'RISQUE FAIBLE', col:'#eab308', bg:'#0e0c00' },
+      mod: { label:'RISQUE MODÉRÉ', col:'#f97316', bg:'#100700' },
+      high:{ label:'RISQUE FORT',   col:'#ef4444', bg:'#0f0000' },
+    };
+    const upTo   = (v,t1,t2,t3) => v==null||isNaN(v)?LV.none : v>=t3?LV.high:v>=t2?LV.mod:v>=t1?LV.low:LV.none;
+    const downTo = (v,t1,t2,t3) => v==null||isNaN(v)?LV.none : v<=t3?LV.high:v<=t2?LV.mod:v<=t1?LV.low:LV.none;
+
+    const risks = [
+      { icon:'mdi:thermometer-low',      name:'Grand froid',       lv: downTo(dayLow,   -5, -10, -15) },
+      { icon:'mdi:sun-thermometer',      name:'Canicule',          lv: upTo(dayHigh,    28,  33,  38) },
+      { icon:'mdi:home-flood',           name:'Pluie-inondation',  lv: upTo(precipMm,   15,  30,  50) },
+      { icon:'mdi:snowflake-alert',      name:'Neige/Grêle',       lv: slotCond.includes('snowy')||slotCond.includes('hail') ? LV.low : LV.none },
+      { icon:'mdi:car-traction-control', name:'Verglas',           lv: (slotTemp!=null&&slotTemp<=1&&slotTemp>=-8&&(slotCond.includes('rainy')||(curHum!=null&&curHum>=85))) ? LV.low : LV.none },
+      { icon:'mdi:pine-tree',            name:'Tempête/arbres',    lv: upTo(slotWind,   70,  90, 110) },
+      { icon:'mdi:weather-windy',        name:'Vent violent',      lv: upTo(slotWind,   50,  70,  90) },
+      { icon:'mdi:weather-lightning',    name:'Orage',             lv: slotCond.includes('lightning') ? (slotCond==='lightning-rainy'?LV.mod:LV.low) : LV.none },
+    ];
+
+    // ── Carte SVG Alsace avec villes ──
+    // Positions normalisées calculées depuis lat/lon (bornes IGN Bas+Haut Rhin)
+    const CITIES_DEF = [
+      { name:'Strasbourg', x:0.653, y:0.303 },
+      { name:'Saverne',    x:0.372, y:0.201 },
+      { name:'Sélestat',   x:0.437, y:0.493 },
+      { name:'Colmar',     x:0.370, y:0.602 },
+      { name:'Ste-Croix',  x:0.403, y:0.645 },
+      { name:'Mulhouse',   x:0.353, y:0.801 },
+    ];
+    const cities = CITIES_DEF;
+    const VW = 100, VH = Math.round(100 / ALSACE_ASPECT); // 100 × 179
+    const scaledPath = ALSACE_CLIP_PATH.replace(/([\d.]+) ([\d.]+)/g,
+      (_, x, y) => `${(parseFloat(x)*VW).toFixed(1)} ${(parseFloat(y)*VH).toFixed(1)}`);
+    // Température à afficher sur la carte = slotTemp (toutes villes ≈ même masse d'air)
+    const mapTemp = slotTemp != null ? slotTemp+'°' : '';
+
+    // ── Pollens/allergènes ──
+    const pollenLvColor = v => {
+      if (!v || ['unknown','unavailable',''].includes(String(v))) return '#22c55e';
+      const s = String(v).toLowerCase();
+      return s.includes('très')||s.includes('tres')||s==='4'||s==='5' ? '#ef4444'
+           : s.includes('élevé')||s.includes('eleve')||s==='3'        ? '#f97316'
+           : s.includes('modéré')||s.includes('modere')||s==='2'      ? '#eab308'
+           : '#22c55e';
+    };
+    const pollenLvLabel = v => {
+      if (!v || ['unknown','unavailable',''].includes(String(v))) return '—';
+      const s = String(v).toLowerCase();
+      if (s.includes('très')||s.includes('tres')) return 'TRÈS ÉLEVÉ';
+      if (s.includes('élevé')||s.includes('eleve')) return 'ÉLEVÉ';
+      if (s.includes('modéré')||s.includes('modere')) return 'MODÉRÉ';
+      if (s.includes('faible')||s==='1') return 'FAIBLE';
+      if (s==='nul'||s==='0') return 'NUL';
+      return String(v).toUpperCase();
+    };
+    const pollenCells = [
+      { key: w.pollen_g_entity, name:'Graminées' },
+      { key: w.pollen_b_entity, name:'Bouleau' },
+      { key: w.pollen_a_entity, name:'Ambroisie' },
+      { key: w.pollen_u_entity, name:'Aulne' },
+      { key: w.pollen_r_entity, name:'Armoise' },
+      { key: w.pollen_o_entity, name:'Olivier' },
+    ].filter(p => p.key);
+
+    const gV = w.pollen_global_entity ? this.hass?.states[w.pollen_global_entity]?.state : null;
+
+    // ── Jour de la semaine ──
+    const DAYS = ['DIMANCHE','LUNDI','MARDI','MERCREDI','JEUDI','VENDREDI','SAMEDI'];
+    const dayName = DAYS[new Date().getDay()];
+
+    // ── Rendu ──
+    const riskRow = r => html`
+      <div style="display:flex;align-items:center;gap:7px;padding:7px 8px;
+                  background:${r.lv.bg};border-left:3px solid ${r.lv.col};border-radius:0 5px 5px 0;">
+        <ha-icon icon="${r.icon}" style="--mdc-icon-size:17px;color:${r.lv.col};flex-shrink:0;"></ha-icon>
+        <span style="font-size:11px;font-weight:700;color:${r.lv.col};letter-spacing:.3px;white-space:nowrap;">${r.lv.label}</span>
+      </div>`;
+
+    const pollenRow = p => {
+      const v = p.key && this.hass?.states[p.key]?.state;
+      const col = pollenLvColor(v); const lbl = pollenLvLabel(v);
+      return html`
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:6px 8px;border-bottom:1px solid #0f200f;">
+          <span style="font-size:12px;color:#94a3b8;">${p.name}</span>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;"></div>
+            <span style="font-size:11px;font-weight:700;color:${col};">${lbl}</span>
+          </div>
+        </div>`;
+    };
+
+    return html`
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}padding:0;overflow:hidden;
+                  background:#040f08;display:flex;flex-direction:column;">
+        <!-- ── Bandeau créneau ── -->
+        <div style="display:flex;align-items:center;background:#0a1a0e;border-bottom:1px solid #1e3d2d;
+                    padding:0;flex-shrink:0;">
+          <button @click=${prevSlot} style="background:none;border:none;color:#00ff88;font-size:22px;
+                      padding:9px 14px;cursor:pointer;line-height:1;">‹</button>
+          <div style="flex:1;text-align:center;font-size:15px;font-weight:900;color:#f1f5f9;
+                      letter-spacing:2.5px;font-family:'Courier New',monospace;
+                      text-shadow:0 0 10px #00ff8833;">${dayName} ${SLOT_LABELS[slot]}</div>
+          <button @click=${nextSlot} style="background:none;border:none;color:#00ff88;font-size:22px;
+                      padding:9px 14px;cursor:pointer;line-height:1;">›</button>
+        </div>
+        <!-- ── Corps 3 colonnes ── -->
+        <div style="display:flex;flex:1;min-height:0;overflow:hidden;">
+          <!-- Colonne Gauche : carte Alsace -->
+          <div style="width:28%;min-width:110px;padding:8px 6px;display:flex;flex-direction:column;
+                      align-items:center;border-right:1px solid #1e3d2d;background:#040d06;">
+            <svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg"
+                 style="width:100%;flex:1;max-height:100%;">
+              <path d="${scaledPath}" fill="#0c1f0e" stroke="#00cc44" stroke-width="0.8"/>
+              <!-- Icône météo au centre de l'Alsace (≈ 45% 55%) -->
+              <text x="${(0.42*VW).toFixed(1)}" y="${(0.52*VH).toFixed(1)}"
+                    text-anchor="middle" dominant-baseline="middle"
+                    style="font-size:9px;fill:#00cc4488;font-family:'Courier New',monospace;">
+                ${slotCond.toUpperCase()}
+              </text>
+              <!-- Villes -->
+              ${cities.map(c => html`
+                <g>
+                  <circle cx="${(c.x*VW).toFixed(1)}" cy="${(c.y*VH).toFixed(1)}"
+                          r="2.2" fill="#00ff88" opacity="0.9"/>
+                  <text x="${(c.x*VW + 3.5).toFixed(1)}" y="${(c.y*VH - 1.5).toFixed(1)}"
+                        style="font-size:5.5px;fill:#a8e6c0;font-family:'Courier New',monospace;font-weight:700;">
+                    ${c.name}
+                  </text>
+                  <text x="${(c.x*VW + 3.5).toFixed(1)}" y="${(c.y*VH + 5).toFixed(1)}"
+                        style="font-size:7px;fill:#f1f5f9;font-family:'Courier New',monospace;font-weight:900;">
+                    ${mapTemp}
+                  </text>
+                </g>`)}
+            </svg>
+          </div>
+          <!-- Colonne Centre : UV + risques -->
+          <div style="flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
+            <!-- UV + temp créneau -->
+            <div style="display:flex;align-items:stretch;gap:8px;flex-shrink:0;">
+              ${uvNum != null ? html`
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                            background:#0a120e;border:1px solid ${uvColor}44;border-radius:8px;
+                            padding:8px 12px;min-width:62px;">
+                  <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.5px;margin-bottom:2px;">
+                    INDICE UV
+                  </div>
+                  <div style="font-size:26px;font-weight:900;color:${uvColor};
+                              font-family:'Courier New',monospace;line-height:1;
+                              text-shadow:0 0 8px ${uvColor}77;">${uvNum}</div>
+                </div>` : html``}
+              <div style="flex:1;display:flex;align-items:center;gap:10px;background:#0a120e;
+                          border:1px solid #1e3d2d;border-radius:8px;padding:8px 12px;">
+                <ha-icon icon="${condIcon}" style="--mdc-icon-size:34px;color:#00ff88;
+                          filter:drop-shadow(0 0 6px #00ff8866);flex-shrink:0;"></ha-icon>
+                <div>
+                  <div style="font-size:24px;font-weight:900;color:#f1f5f9;
+                              font-family:'Courier New',monospace;line-height:1;">
+                    ${slotTemp!=null ? slotTemp+'°C' : '--'}
+                  </div>
+                  <div style="font-size:11px;color:#475569;margin-top:2px;">
+                    ↓${dayLow!=null?Math.round(dayLow)+'°':'-'} ↑${dayHigh!=null?Math.round(dayHigh)+'°':'-'}
+                    ${slotWind!=null?' · '+Math.round(slotWind)+' km/h':''}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Risques (2 colonnes) -->
+            <div style="font-size:10px;font-weight:700;color:#00ff8866;
+                        letter-spacing:1.2px;flex-shrink:0;">◈ RISQUES DU CRÉNEAU</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;flex-shrink:0;">
+              ${risks.map(riskRow)}
+            </div>
+          </div>
+          <!-- Colonne Droite : allergènes -->
+          <div style="width:27%;min-width:100px;padding:8px 8px;display:flex;flex-direction:column;
+                      gap:6px;border-left:1px solid #1e3d2d;background:#040d06;overflow-y:auto;">
+            <div style="font-size:10px;font-weight:700;color:#00ff8866;
+                        letter-spacing:1.2px;flex-shrink:0;">◈ RISQUE ALLERGIES</div>
+            ${gV ? html`
+              <div style="background:#0a120e;border:1px solid ${pollenLvColor(gV)}44;border-radius:6px;
+                          padding:8px;display:flex;align-items:center;gap:7px;flex-shrink:0;">
+                <div style="width:10px;height:10px;border-radius:50%;background:${pollenLvColor(gV)};
+                            flex-shrink:0;box-shadow:0 0 5px ${pollenLvColor(gV)};"></div>
+                <div>
+                  <div style="font-size:10px;color:#64748b;">Indice global pollen</div>
+                  <div style="font-size:12px;font-weight:700;color:${pollenLvColor(gV)};">
+                    ${pollenLvLabel(gV)}
+                  </div>
+                </div>
+              </div>` : html``}
+            <div style="background:#0a120e;border:1px solid #1e3d2d;border-radius:6px;overflow:hidden;flex-shrink:0;">
+              ${pollenCells.length ? pollenCells.map(pollenRow) : html`
+                <div style="padding:10px;font-size:11px;color:#475569;font-style:italic;">
+                  Configure les entités de pollens dans l'éditeur du widget.
+                </div>`}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+
   _renderFoundryWidget(w, sizeStyle, noBorder=false) {
     // Affiche une carte Foundry (ou toute autre carte HA) à partir d'une config YAML/JSON.
     const raw = (w.foundry_yaml || '').trim();
@@ -2986,16 +3291,42 @@ class ResidentEvilCard extends LitElement {
       }
     }
 
+    if (!this._alsaceClipIds) this._alsaceClipIds = new Map();
+    if (!this._alsaceClipIds.has(key)) this._alsaceClipIds.set(key, this._alsaceClipIds.size);
+    const clipId = 'reclip-' + this._alsaceClipIds.get(key);
+    const isAlsaceClip = w.clip === 'alsace';
+
+    const cardBody = cur.state === 'error'
+      ? html`<div style="display:flex;flex-direction:column;gap:6px;height:100%;align-items:center;justify-content:center;color:#ef4444;font-size:13px;padding:14px;text-align:center;">
+               <div style="font-weight:700;">Carte Foundry — erreur</div>
+               <div style="color:#fca5a5;font-size:12px;">${cur.msg || 'Vérifie que Foundry est installé et que la config est correcte.'}</div>
+             </div>`
+      : cur.state !== 'ok' || !cur.el
+        ? html`<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#64748b;font-size:13px;">Chargement…</div>`
+        : cur.el;
+
+    if (!isAlsaceClip) {
+      return html`
+        <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}padding:0;overflow:auto;">
+          ${cardBody}
+        </div>`;
+    }
+
+    // ── Mode silhouette Alsace : la carte (ex: Windy) est découpée selon le
+    // vrai contour géographique de la région (IGN), avec le bon ratio largeur/hauteur. ──
     return html`
-      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}padding:0;overflow:auto;">
-        ${cur.state === 'error'
-          ? html`<div style="display:flex;flex-direction:column;gap:6px;height:100%;align-items:center;justify-content:center;color:#ef4444;font-size:13px;padding:14px;text-align:center;">
-                   <div style="font-weight:700;">Carte Foundry — erreur</div>
-                   <div style="color:#fca5a5;font-size:12px;">${cur.msg || 'Vérifie que Foundry est installé et que la config est correcte.'}</div>
-                 </div>`
-          : cur.state !== 'ok' || !cur.el
-            ? html`<div style="display:flex;height:100%;align-items:center;justify-content:center;color:#64748b;font-size:13px;">Chargement…</div>`
-            : cur.el}
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}padding:0;display:flex;
+                  align-items:center;justify-content:center;overflow:hidden;background:#020806;">
+        <svg width="0" height="0" style="position:absolute;">
+          <defs><clipPath id="${clipId}" clipPathUnits="objectBoundingBox">
+            <path d="${ALSACE_CLIP_PATH}"/>
+          </clipPath></defs>
+        </svg>
+        <div style="position:relative;width:100%;height:100%;max-width:100%;max-height:100%;
+                    aspect-ratio:${ALSACE_ASPECT};clip-path:url(#${clipId});
+                    filter:drop-shadow(0 0 12px rgba(0,255,136,.35));">
+          ${cardBody}
+        </div>
       </div>`;
   }
 
@@ -4450,6 +4781,19 @@ class ResidentEvilCardEditor extends LitElement {
       ],
       foundry: [
         {k:'foundry_yaml',l:'Configuration de la carte (YAML)',t:'textarea'},
+        {k:'clip',l:'Découpe en silhouette',t:'select',o:['','alsace']},
+      ],
+      alsace_meteo: [
+        {k:'weather_entity',       l:'Entité météo',                    t:E},
+        {k:'uv_entity',            l:'UV (ex: sensor.colmar_uv)',        t:E},
+        {k:'rain_entity',          l:'Pluie cumulée jour',               t:E},
+        {k:'pollen_global_entity', l:'Indice global pollen',             t:E},
+        {k:'pollen_g_entity',      l:'Pollens — Graminées',              t:E},
+        {k:'pollen_b_entity',      l:'Pollens — Bouleau',                t:E},
+        {k:'pollen_a_entity',      l:'Pollens — Ambroisie',              t:E},
+        {k:'pollen_u_entity',      l:'Pollens — Aulne',                  t:E},
+        {k:'pollen_r_entity',      l:'Pollens — Armoise',                t:E},
+        {k:'pollen_o_entity',      l:'Pollens — Olivier',                t:E},
       ],
       health: [],
       dossier: [
@@ -4962,6 +5306,7 @@ class ResidentEvilCardEditor extends LitElement {
                     {v:'badge',l:'Badge valeur'},{v:'progress',l:'Barre de progression'},{v:'shape',l:'Forme / cadre coloré'},
                     {v:'button',l:'Bouton ON/OFF'},
                     {v:'foundry',l:'Carte Foundry'},
+                    {v:'alsace_meteo',l:'Météo Alsace (risques + tendance)'},
                     {v:'spa_temp',l:'Spa'},{v:'tank',l:'Cuve / jardin'},{v:'server',l:'Serveur'},
                     {v:'plant',l:'Plante'},{v:'health',l:'Santé (multi-personnes)'},{v:'dossier',l:'Dossier santé (1 personne)'},{v:'solar',l:'Solaire'},{v:'weather',l:'Météo'},
                     {v:'energie',l:'Consommation'},{v:'appliance',l:'Équipements'},
@@ -4976,6 +5321,17 @@ class ResidentEvilCardEditor extends LitElement {
                     progress:{type:'progress',widthPct:100,heightPx:90,min:0,max:100,unit:'%',decimals:0,color:'#22c55e',label:'Progression'},
                     button:{type:'button',widthPct:24,heightPx:110,color:'#22d3ee',action:'toggle',show_state:true,style:'default'},
                     foundry:{type:'foundry',widthPct:100,heightPx:260,noBorder:true,foundry_yaml:''},
+                    alsace_meteo:{type:'alsace_meteo',widthPct:100,heightPx:420,noBorder:true,
+                      weather_entity:'weather.sainte_croix_en_plaine',
+                      uv_entity:'sensor.colmar_uv',
+                      rain_entity:'sensor.colmar_daily_precipitation',
+                      pollen_global_entity:'sensor.qualite_globale_pollen_sainte_croix_en_plaine',
+                      pollen_g_entity:'sensor.niveau_gramine_sainte_croix_en_plaine',
+                      pollen_b_entity:'sensor.niveau_bouleau_sainte_croix_en_plaine',
+                      pollen_a_entity:'sensor.niveau_ambroisie_sainte_croix_en_plaine',
+                      pollen_u_entity:'sensor.niveau_aulne_sainte_croix_en_plaine',
+                      pollen_r_entity:'sensor.niveau_armoise_sainte_croix_en_plaine',
+                      pollen_o_entity:'sensor.niveau_olivier_sainte_croix_en_plaine'},
                     shape:{type:'shape',widthPct:15,heightPx:120,shape:'hexagon',size:64,filled:true,color:'#ef4444',label:'Statut'},
                     weather:{type:'weather',widthPct:100,heightPx:530,noBorder:true,animated:true,weather_config:{weather:'weather.sainte_croix_en_plaine'}},
                     dossier:{type:'dossier',widthPct:48,heightPx:470,name:'Nouvelle personne',weight_entity:'',weight_start:'',weight_ideal:'',
