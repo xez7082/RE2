@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v187 (version RICHE : widgets)
+   RESIDENT EVIL CARD v188 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3087,6 +3087,11 @@ class ResidentEvilCard extends LitElement {
     const uvRaw = w.uv_entity ? parseFloat(this.hass?.states[w.uv_entity]?.state) : NaN;
     const uvNum = !isNaN(uvRaw) ? Math.round(uvRaw) : null;
     const uvColor = uvNum==null?'#22c55e' : uvNum>=8?'#ef4444' : uvNum>=6?'#f97316' : uvNum>=3?'#eab308':'#22c55e';
+    // Capteur de température locale (remplace la temp du créneau horaire dans l'affichage)
+    const localTempRaw = w.local_temp_entity ? parseFloat(this.hass?.states[w.local_temp_entity]?.state) : NaN;
+    const localTempVal = !isNaN(localTempRaw) ? localTempRaw : null;
+    const displayTemp  = localTempVal != null ? localTempVal.toFixed(2)+'°C'
+                       : slotTemp != null ? parseFloat(slotTemp).toFixed(2)+'°C' : '--';
 
     // ── Condition → icône mdi ──
     const WX_ICON = {
@@ -3307,7 +3312,7 @@ class ResidentEvilCard extends LitElement {
                 <div>
                   <div style="font-size:24px;font-weight:900;color:#f1f5f9;
                               font-family:'Courier New',monospace;line-height:1;">
-                    ${slotTemp!=null ? parseFloat(slotTemp).toFixed(2)+'°C' : '--'}
+                    ${displayTemp}
                   </div>
                   <div style="font-size:11px;color:#475569;margin-top:2px;">
                     ↓${dayLow!=null?Math.round(dayLow)+'°':'-'} ↑${dayHigh!=null?Math.round(dayHigh)+'°':'-'}
@@ -4895,7 +4900,8 @@ class ResidentEvilCardEditor extends LitElement {
       ],
       alsace_meteo: [
         {k:'map_department', l:'Code département (ex: 67, 13, 75, 33 — vide = Alsace par défaut)', t:'T'},
-        {k:'weather_entity',       l:'Entité météo',                    t:E},
+        {k:'weather_entity',       l:'Entité météo (weather.*) — pour prévisions + risques',     t:E},
+        {k:'local_temp_entity',    l:'Capteur temp. locale (sensor.*) — remplace la temp affichée', t:E},
         {k:'uv_entity',            l:'UV (ex: sensor.colmar_uv)',        t:E},
         {k:'rain_entity',          l:'Pluie cumulée jour',               t:E},
         {k:'pollen_global_entity', l:'Indice global pollen',             t:E},
