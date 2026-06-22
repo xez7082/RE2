@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v183 (version RICHE : widgets)
+   RESIDENT EVIL CARD v184 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3153,11 +3153,11 @@ class ResidentEvilCard extends LitElement {
       : CITIES_DEF;
 
     // Température à afficher pour chaque ville (capteur dédié ou fallback créneau)
-    const mapTemp = slotTemp != null ? slotTemp+'°' : '';
+    const mapTemp = slotTemp != null ? parseFloat(slotTemp).toFixed(2)+'°' : '';
     const cityTempStr = (c) => {
       if (c.entity) {
         const st = this.hass?.states[c.entity];
-        if (st) { const v = parseFloat(st.state); if (!isNaN(v)) return Math.round(v)+'°'; }
+        if (st) { const v = parseFloat(st.state); if (!isNaN(v)) return v.toFixed(2)+'°'; }
       }
       return mapTemp;
     };
@@ -3298,7 +3298,7 @@ class ResidentEvilCard extends LitElement {
                 <div>
                   <div style="font-size:24px;font-weight:900;color:#f1f5f9;
                               font-family:'Courier New',monospace;line-height:1;">
-                    ${slotTemp!=null ? slotTemp+'°C' : '--'}
+                    ${slotTemp!=null ? parseFloat(slotTemp).toFixed(2)+'°C' : '--'}
                   </div>
                   <div style="font-size:11px;color:#475569;margin-top:2px;">
                     ↓${dayLow!=null?Math.round(dayLow)+'°':'-'} ↑${dayHigh!=null?Math.round(dayHigh)+'°':'-'}
