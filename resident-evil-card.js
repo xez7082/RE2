@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v189 (version RICHE : widgets)
+   RESIDENT EVIL CARD v190 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -4177,8 +4177,8 @@ class ResidentEvilCard extends LitElement {
               <div style="font-size:30px;font-weight:900;color:#818cf8;line-height:1.1;">${fmt(num(c.batt_total_power),0)}<span style="font-size:14px;color:#94a3b8;"> ${uni(c.batt_total_power)||'W'}</span></div>
             </div>` : html``}
           <div style="flex:1;display:flex;flex-wrap:wrap;gap:10px;align-content:start;">
-            ${batts.map(b => battCard(b))}
-            ${batts.length===0 ? html`<div style="width:100%;text-align:center;color:#64748b;font-size:13px;padding:20px;">Aucune batterie configurée</div>` : html``}
+            ${c.hide_battery_cards ? html`` : batts.map(b => battCard(b))}
+            ${(!c.hide_battery_cards && batts.length===0) ? html`<div style="width:100%;text-align:center;color:#64748b;font-size:13px;padding:20px;">Aucune batterie configurée</div>` : html``}
           </div>
         </div>`;
     };
