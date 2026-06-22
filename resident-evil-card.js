@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v188 (version RICHE : widgets)
+   RESIDENT EVIL CARD v189 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -857,6 +857,7 @@ class ResidentEvilCard extends LitElement {
       case 'button':     return this._renderButtonWidget(w, sizeStyle, noBorder);
       case 'foundry':    return this._renderFoundryWidget(w, sizeStyle, noBorder);
       case 'alsace_meteo': return this._renderAlsaceMeteoWidget(w, sizeStyle, noBorder);
+      case 'power_cell':   return this._renderPowerCellWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
       default:          return html``;
@@ -2749,6 +2750,171 @@ class ResidentEvilCard extends LitElement {
       })
       .catch(() => { /* verrou 30 min conservé : pas de boucle */ })
       .finally(() => { this._wxHFcBusy = false; });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  WIDGET POWER CELL — tubes ADN style Umbrella Corp (batteries)
+  // ═══════════════════════════════════════════════════════════════════════
+  _initPcell(canvas, socFn, colorFn) {
+    if (!canvas || canvas.__pcell) return;
+    const W = canvas.width, H = canvas.height;
+    const ctx = canvas.getContext('2d');
+    let t = 0, raf;
+    const TUBE_TOP = 8, TUBE_BOT = H - 8, TUBE_H = TUBE_BOT - TUBE_TOP;
+    const CX = W / 2, AMP = W * 0.30, PER = H * 0.13, STEPS = 180;
+    const draw = () => {
+      const pct = Math.max(0, Math.min(100, socFn()));
+      const col = colorFn(pct);
+      const thY = TUBE_BOT - (pct / 100) * TUBE_H;
+      const ph = t * 0.022;
+      ctx.clearRect(0, 0, W, H);
+      // fond tube
+      ctx.fillStyle = '#050a0e'; ctx.beginPath();
+      ctx.roundRect(2, 2, W-4, H-4, 8); ctx.fill();
+      for (let s = 0; s < 2; s++) {
+        const off = s === 1 ? Math.PI : 0;
+        for (let i = 0; i < STEPS; i++) {
+          const t1 = i / STEPS, t2 = (i+1) / STEPS;
+          const y1 = TUBE_TOP + t1*TUBE_H, y2 = TUBE_TOP + t2*TUBE_H;
+          const a1 = (t1*TUBE_H/PER)*Math.PI*2 + ph + off;
+          const a2 = (t2*TUBE_H/PER)*Math.PI*2 + ph + off;
+          const x1 = CX + Math.sin(a1)*AMP, x2 = CX + Math.sin(a2)*AMP;
+          const lit = (y1+y2)/2 >= thY;
+          // halo
+          if (lit) {
+            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+            ctx.lineWidth=12; ctx.strokeStyle=col.glo; ctx.globalAlpha=0.10;
+            ctx.lineCap='round'; ctx.stroke();
+          }
+          // brin principal
+          ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+          ctx.lineWidth = lit ? 6 : 3.5;
+          ctx.strokeStyle = lit ? col.lit : col.dim;
+          ctx.globalAlpha = lit ? 0.92 : 0.22;
+          ctx.lineCap='round'; ctx.stroke();
+          // surbrillance blanche
+          if (lit) {
+            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+            ctx.lineWidth=1.6; ctx.strokeStyle='white'; ctx.globalAlpha=0.45; ctx.stroke();
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+      // ligne de seuil animée
+      if (pct > 0 && pct < 100) {
+        ctx.strokeStyle = col.lit; ctx.globalAlpha = 0.4 + 0.25*Math.sin(t*0.08);
+        ctx.lineWidth = 1.2; ctx.setLineDash([4,4]); ctx.lineDashOffset = -t*0.5;
+        ctx.beginPath(); ctx.moveTo(4,thY); ctx.lineTo(W-4,thY); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.globalAlpha = 1;
+      t++; raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    canvas.__pcell = { stop: () => cancelAnimationFrame(raf) };
+  }
+
+  _renderPowerCellWidget(w, sizeStyle, noBorder) {
+    const cells = w.cells || [];
+    const hass = this.hass;
+    const st = (eid) => eid ? hass?.states[eid] : null;
+    const fv = (eid) => { const s=st(eid); if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const pcCol = (pct) => {
+      if (pct > 50) return { lit:'#00eeff', glo:'#00aaff', dim:'#002233' };
+      if (pct > 20) return { lit:'#ffdd00', glo:'#ff8800', dim:'#332200' };
+      return               { lit:'#ff5500', glo:'#cc0000', dim:'#1a0300' };
+    };
+    const TUBE_W = 72, TUBE_H = 260;
+    setTimeout(() => {
+      cells.forEach((cell, idx) => {
+        const canvas = this.shadowRoot?.querySelector(`#pcell-${idx}-${w._wid||0}`);
+        if (!canvas) return;
+        const socFn = () => fv(cell.soc_entity) ?? 0;
+        const colFn = (p) => pcCol(p);
+        this._initPcell(canvas, socFn, colFn);
+      });
+    }, 80);
+    return html`
+      <div style="${sizeStyle}background:#050505;display:flex;flex-direction:column;
+                  gap:10px;padding:12px;overflow:hidden;${noBorder?'':'border:1px solid #00ff0022;border-radius:12px;'}">
+        ${w.title ? html`<div style="font-size:11px;letter-spacing:3px;color:#00ff0066;
+            text-align:center;border-bottom:1px solid #00ff0018;padding-bottom:8px;">
+            ${w.title.toUpperCase()}</div>` : html``}
+        <div style="display:flex;gap:10px;flex:1;align-items:stretch;">
+          ${cells.map((cell, idx) => {
+            const soc     = fv(cell.soc_entity);
+            const power   = fv(cell.power_entity);
+            const temp    = fv(cell.temp_entity);
+            const stored  = fv(cell.stored_entity);
+            const storedU = (cell.stored_unit||'').toLowerCase()==='kwh' ? 'kWh' : 'Wh';
+            const storedV = stored!=null ? (storedU==='kWh' ? stored.toFixed(2)+' kWh' : Math.round(stored)+' Wh') : '--';
+            const capWh   = parseFloat(cell.capacity_wh) || null;
+            const socPct  = soc ?? 0;
+            const col     = pcCol(socPct);
+            const userCol = cell.color || col.lit;
+            const charging = power != null && power < 0;
+            const discharging = power != null && power > 0;
+            const pwrAbs = power != null ? Math.abs(power).toFixed(0) : '--';
+            const pwrDir = charging ? '▼ CHARGE' : discharging ? '▲ DÉCHARGE' : '◉ STABLE';
+            const pwrCol = charging ? '#22c55e' : discharging ? '#f97316' : '#64748b';
+            const statusTxt = soc==null ? 'HORS LIGNE' : soc>50?'NOMINAL':soc>20?'FAIBLE':'CRITIQUE';
+            const statusCol = soc==null ? '#ef4444' : soc>50?'#22c55e':soc>20?'#f59e0b':'#ef4444';
+            return html`
+              <div style="flex:1;display:flex;gap:8px;background:#080e0e;border:1px solid ${userCol}22;
+                          border-radius:10px;padding:10px;min-width:0;">
+                <!-- TUBE CANVAS -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+                  <canvas id="pcell-${idx}-${w._wid||0}"
+                          width="${TUBE_W}" height="${TUBE_H}"
+                          style="border-radius:8px;display:block;"></canvas>
+                  <div style="font-size:18px;font-weight:900;color:${col.lit};
+                               text-shadow:0 0 10px ${col.glo};letter-spacing:1px;">
+                    ${soc!=null ? Math.round(soc)+'%' : '--'}
+                  </div>
+                </div>
+                <!-- INFOS -->
+                <div style="flex:1;display:flex;flex-direction:column;gap:7px;min-width:0;padding-top:4px;">
+                  <!-- Nom -->
+                  <div style="font-size:11px;font-weight:900;color:${userCol};letter-spacing:2px;
+                               text-shadow:0 0 8px ${userCol}88;white-space:nowrap;overflow:hidden;
+                               text-overflow:ellipsis;">${(cell.name||'BATTERIE').toUpperCase()}</div>
+                  <!-- Statut -->
+                  <div style="font-size:9px;color:${statusCol};letter-spacing:1px;">${statusTxt}</div>
+                  <!-- Barre SOC -->
+                  <div style="background:#0d1a0d;border-radius:4px;height:6px;overflow:hidden;">
+                    <div style="height:100%;width:${socPct}%;background:linear-gradient(90deg,${col.dim},${col.lit});
+                                border-radius:4px;transition:width .8s;"></div>
+                  </div>
+                  <!-- Puissance -->
+                  <div style="background:#050d05;border-radius:8px;padding:8px 10px;">
+                    <div style="font-size:9px;color:#64748b;letter-spacing:1px;margin-bottom:4px;">PUISSANCE</div>
+                    <div style="font-size:11px;color:${pwrCol};letter-spacing:1px;">${pwrDir}</div>
+                    <div style="font-size:20px;font-weight:900;color:${power!=null?pwrCol:'#334155'};
+                                 line-height:1.1;">${pwrAbs}<span style="font-size:10px;color:#64748b;"> W</span></div>
+                  </div>
+                  <!-- Stockage -->
+                  ${stored!=null ? html`
+                  <div style="background:#05090d;border-radius:8px;padding:8px 10px;">
+                    <div style="font-size:9px;color:#64748b;letter-spacing:1px;margin-bottom:3px;">STOCKÉ</div>
+                    <div style="font-size:16px;font-weight:900;color:#00ccff;">${storedV}</div>
+                    ${capWh ? html`
+                    <div style="font-size:9px;color:#334155;margin-top:2px;">/ ${capWh<2000?capWh+' Wh':(capWh/1000).toFixed(1)+' kWh'} max</div>
+                    ` : html``}
+                  </div>` : html``}
+                  <!-- Température -->
+                  ${temp!=null ? html`
+                  <div style="display:flex;align-items:center;gap:6px;background:#080808;
+                               border-radius:8px;padding:7px 10px;">
+                    <span style="font-size:14px;">🌡</span>
+                    <span style="font-size:18px;font-weight:900;color:${temp>45?'#ef4444':temp>35?'#f59e0b':'#22d3ee'};">
+                      ${temp.toFixed(1)}</span>
+                    <span style="font-size:10px;color:#475569;">°C</span>
+                  </div>` : html``}
+                </div>
+              </div>`;
+          })}
+        </div>
+      </div>`;
   }
 
   // ── Chargement dynamique du contour d'un département français (code INSEE 01-976).
@@ -4913,6 +5079,9 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'pollen_o_entity',      l:'Pollens — Olivier',                t:E},
         {k:'city_dot_size',        l:'Carte — taille des points (défaut 3)',    t:'number'},
         {k:'city_text_size',       l:'Carte — taille du texte ville (défaut 6)',t:'number'},
+      ],
+      power_cell: [
+        {k:'title', l:'Titre (optionnel)', t:T},
       ],
       health: [],
       dossier: [
