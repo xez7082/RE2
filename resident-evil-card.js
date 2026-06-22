@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v176 (version RICHE : widgets)
+   RESIDENT EVIL CARD v177 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3069,11 +3069,26 @@ class ResidentEvilCard extends LitElement {
       { name:'Mulhouse',   x:0.353, y:0.801 },
     ];
     const cities = CITIES_DEF;
-    const VW = 100, VH = Math.round(100 / ALSACE_ASPECT); // 100 × 179
-    const scaledPath = ALSACE_CLIP_PATH.replace(/([\d.]+) ([\d.]+)/g,
-      (_, x, y) => `${(parseFloat(x)*VW).toFixed(1)} ${(parseFloat(y)*VH).toFixed(1)}`);
-    // Température à afficher sur la carte = slotTemp (toutes villes ≈ même masse d'air)
-    const mapTemp = slotTemp != null ? slotTemp+'°' : '';
+    // ── Carte SVG générée en string pure (contourne le problème de namespace SVG
+    //    dans lit-html : les html`<g>...</g>` imbriqués créent des éléments HTML
+    //    et non SVG, donc circle/text ne s'affichaient pas).
+    const mapSvg = `<svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg"
+         style="width:100%;flex:1;max-height:100%;">
+      <path d="${scaledPath}" fill="#0c1f0e" stroke="#00cc44" stroke-width="0.8"/>
+      ${cities.map(c => `
+        <circle cx="${(c.x*VW).toFixed(1)}" cy="${(c.y*VH).toFixed(1)}"
+                r="3" fill="#00ff88" opacity="0.95"/>
+        <text x="${(c.x*VW + 4).toFixed(1)}" y="${(c.y*VH - 2).toFixed(1)}"
+              text-anchor="start" style="font-size:6px;fill:#a8e6c0;
+              font-family:'Courier New',monospace;font-weight:700;">${c.name}</text>
+        <text x="${(c.x*VW + 4).toFixed(1)}" y="${(c.y*VH + 5.5).toFixed(1)}"
+              text-anchor="start" style="font-size:8px;fill:#f0f8f0;
+              font-family:'Courier New',monospace;font-weight:900;">${mapTemp}</text>
+      `).join('')}
+      <text x="${(0.38*VW).toFixed(1)}" y="${(0.50*VH).toFixed(1)}"
+            text-anchor="middle" style="font-size:8px;fill:#00cc4444;
+            font-family:'Courier New',monospace;letter-spacing:1px;">${slotCond.toUpperCase()}</text>
+    </svg>`;
 
     // ── Pollens/allergènes ──
     const pollenLvColor = v => {
@@ -3111,10 +3126,14 @@ class ResidentEvilCard extends LitElement {
 
     // ── Rendu ──
     const riskRow = r => html`
-      <div style="display:flex;align-items:center;gap:7px;padding:7px 8px;
+      <div style="display:flex;flex-direction:column;gap:2px;padding:7px 8px;
                   background:${r.lv.bg};border-left:3px solid ${r.lv.col};border-radius:0 5px 5px 0;">
-        <ha-icon icon="${r.icon}" style="--mdc-icon-size:17px;color:${r.lv.col};flex-shrink:0;"></ha-icon>
-        <span style="font-size:11px;font-weight:700;color:${r.lv.col};letter-spacing:.3px;white-space:nowrap;">${r.lv.label}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <ha-icon icon="${r.icon}" style="--mdc-icon-size:15px;color:${r.lv.col};flex-shrink:0;"></ha-icon>
+          <span style="font-size:11px;color:#7a8a9a;letter-spacing:.2px;white-space:nowrap;">${r.name}</span>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${r.lv.col};letter-spacing:.3px;
+                     padding-left:21px;white-space:nowrap;">${r.lv.label}</span>
       </div>`;
 
     const pollenRow = p => {
@@ -3147,33 +3166,10 @@ class ResidentEvilCard extends LitElement {
         </div>
         <!-- ── Corps 3 colonnes ── -->
         <div style="display:flex;flex:1;min-height:0;overflow:hidden;">
-          <!-- Colonne Gauche : carte Alsace -->
+          <!-- Colonne Gauche : carte Alsace (innerHTML = namespace SVG correct) -->
           <div style="width:28%;min-width:110px;padding:8px 6px;display:flex;flex-direction:column;
                       align-items:center;border-right:1px solid #1e3d2d;background:#040d06;">
-            <svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg"
-                 style="width:100%;flex:1;max-height:100%;">
-              <path d="${scaledPath}" fill="#0c1f0e" stroke="#00cc44" stroke-width="0.8"/>
-              <!-- Icône météo au centre de l'Alsace (≈ 45% 55%) -->
-              <text x="${(0.42*VW).toFixed(1)}" y="${(0.52*VH).toFixed(1)}"
-                    text-anchor="middle" dominant-baseline="middle"
-                    style="font-size:9px;fill:#00cc4488;font-family:'Courier New',monospace;">
-                ${slotCond.toUpperCase()}
-              </text>
-              <!-- Villes -->
-              ${cities.map(c => html`
-                <g>
-                  <circle cx="${(c.x*VW).toFixed(1)}" cy="${(c.y*VH).toFixed(1)}"
-                          r="2.2" fill="#00ff88" opacity="0.9"/>
-                  <text x="${(c.x*VW + 3.5).toFixed(1)}" y="${(c.y*VH - 1.5).toFixed(1)}"
-                        style="font-size:5.5px;fill:#a8e6c0;font-family:'Courier New',monospace;font-weight:700;">
-                    ${c.name}
-                  </text>
-                  <text x="${(c.x*VW + 3.5).toFixed(1)}" y="${(c.y*VH + 5).toFixed(1)}"
-                        style="font-size:7px;fill:#f1f5f9;font-family:'Courier New',monospace;font-weight:900;">
-                    ${mapTemp}
-                  </text>
-                </g>`)}
-            </svg>
+            <div style="width:100%;flex:1;" .innerHTML="${mapSvg}"></div>
           </div>
           <!-- Colonne Centre : UV + risques -->
           <div style="flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
