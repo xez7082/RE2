@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v186 (version RICHE : widgets)
+   RESIDENT EVIL CARD v187 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3200,8 +3200,8 @@ class ResidentEvilCard extends LitElement {
               font-family:'Courier New',monospace;font-weight:900;">${cityTempStr(c)}</text>
       `).join('')}
       <text x="${(0.38*VW).toFixed(1)}" y="${(0.50*VH).toFixed(1)}"
-            text-anchor="middle" style="font-size:8px;fill:#00cc4444;
-            font-family:'Courier New',monospace;letter-spacing:1px;">${slotCond.toUpperCase()}</text>
+            text-anchor="middle" style="font-size:8px;fill:#00cc4455;
+            font-family:'Courier New',monospace;letter-spacing:1px;">${(deptData?.name || 'ALSACE').toUpperCase()}</text>
     </svg>`;
 
     // ── Pollens/allergènes ──
