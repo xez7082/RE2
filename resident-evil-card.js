@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v177 (version RICHE : widgets)
+   RESIDENT EVIL CARD v178 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3069,7 +3069,10 @@ class ResidentEvilCard extends LitElement {
       { name:'Mulhouse',   x:0.353, y:0.801 },
     ];
     const cities = CITIES_DEF;
-    // ── Carte SVG générée en string pure (contourne le problème de namespace SVG
+    const VW = 100, VH = Math.round(100 / ALSACE_ASPECT); // 100 × 179
+    const scaledPath = ALSACE_CLIP_PATH.replace(/([\d.]+) ([\d.]+)/g,
+      (_, x, y) => `${(parseFloat(x)*VW).toFixed(1)} ${(parseFloat(y)*VH).toFixed(1)}`);
+    const mapTemp = slotTemp != null ? slotTemp+'°' : '';
     //    dans lit-html : les html`<g>...</g>` imbriqués créent des éléments HTML
     //    et non SVG, donc circle/text ne s'affichaient pas).
     const mapSvg = `<svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg"
