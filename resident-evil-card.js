@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v178 (version RICHE : widgets)
+   RESIDENT EVIL CARD v179 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3072,7 +3072,10 @@ class ResidentEvilCard extends LitElement {
     const VW = 100, VH = Math.round(100 / ALSACE_ASPECT); // 100 × 179
     const scaledPath = ALSACE_CLIP_PATH.replace(/([\d.]+) ([\d.]+)/g,
       (_, x, y) => `${(parseFloat(x)*VW).toFixed(1)} ${(parseFloat(y)*VH).toFixed(1)}`);
-    const mapTemp = slotTemp != null ? slotTemp+'°' : '';
+    const mapTemp    = slotTemp != null ? slotTemp+'°' : '';
+    const dotR       = parseFloat(w.city_dot_size)  || 3;
+    const txtName    = parseFloat(w.city_text_size)  || 6;
+    const txtTemp    = txtName + 2;
     //    dans lit-html : les html`<g>...</g>` imbriqués créent des éléments HTML
     //    et non SVG, donc circle/text ne s'affichaient pas).
     const mapSvg = `<svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg"
@@ -3080,12 +3083,12 @@ class ResidentEvilCard extends LitElement {
       <path d="${scaledPath}" fill="#0c1f0e" stroke="#00cc44" stroke-width="0.8"/>
       ${cities.map(c => `
         <circle cx="${(c.x*VW).toFixed(1)}" cy="${(c.y*VH).toFixed(1)}"
-                r="3" fill="#00ff88" opacity="0.95"/>
-        <text x="${(c.x*VW + 4).toFixed(1)}" y="${(c.y*VH - 2).toFixed(1)}"
-              text-anchor="start" style="font-size:6px;fill:#a8e6c0;
+                r="${dotR}" fill="#00ff88" opacity="0.95"/>
+        <text x="${(c.x*VW + dotR + 1).toFixed(1)}" y="${(c.y*VH - 1).toFixed(1)}"
+              text-anchor="start" style="font-size:${txtName}px;fill:#a8e6c0;
               font-family:'Courier New',monospace;font-weight:700;">${c.name}</text>
-        <text x="${(c.x*VW + 4).toFixed(1)}" y="${(c.y*VH + 5.5).toFixed(1)}"
-              text-anchor="start" style="font-size:8px;fill:#f0f8f0;
+        <text x="${(c.x*VW + dotR + 1).toFixed(1)}" y="${(c.y*VH + txtTemp - 1).toFixed(1)}"
+              text-anchor="start" style="font-size:${txtTemp}px;fill:#f0f8f0;
               font-family:'Courier New',monospace;font-weight:900;">${mapTemp}</text>
       `).join('')}
       <text x="${(0.38*VW).toFixed(1)}" y="${(0.50*VH).toFixed(1)}"
@@ -4793,6 +4796,8 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'pollen_u_entity',      l:'Pollens — Aulne',                  t:E},
         {k:'pollen_r_entity',      l:'Pollens — Armoise',                t:E},
         {k:'pollen_o_entity',      l:'Pollens — Olivier',                t:E},
+        {k:'city_dot_size',        l:'Carte — taille des points (défaut 3)',    t:'number'},
+        {k:'city_text_size',       l:'Carte — taille du texte ville (défaut 6)',t:'number'},
       ],
       health: [],
       dossier: [
