@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v185 (version RICHE : widgets)
+   RESIDENT EVIL CARD v186 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3143,6 +3143,9 @@ class ResidentEvilCard extends LitElement {
       : { lonMin:6.8462, dLon:1.3866, latMin:47.4222, dLat:1.6520 };
 
     // Villes : config YAML si présente, sinon défauts (Alsace)
+    // Nettoie les valeurs (supprime tabulations/espaces parasites avant parseFloat)
+    const cleanF = (v) => parseFloat(String(v || '').trim().replace(/[^\d.\-]/g,'') || '0');
+
     const cities = (w.cities && w.cities.length)
       ? w.cities.map(c => ({
           name:   c.name || c.label || '',
@@ -3154,8 +3157,6 @@ class ResidentEvilCard extends LitElement {
 
     // Température à afficher pour chaque ville (capteur dédié ou fallback créneau)
     const mapTemp = slotTemp != null ? parseFloat(slotTemp).toFixed(2)+'°' : '';
-    // Nettoie les valeurs (supprime tabulations/espaces parasites avant parseFloat)
-    const cleanF = (v) => parseFloat(String(v || '').trim().replace(/[^\d.\-]/g,'') || '0');
     const cityTempStr = (c) => {
       const eid = (c.entity || '').trim();
       if (eid) {
