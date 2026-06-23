@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v196 (version RICHE : widgets)
+   RESIDENT EVIL CARD v197 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -995,7 +995,27 @@ class ResidentEvilCard extends LitElement {
     return icons[domain] || 'mdi:eye';
   }
 
-  _renderBadge(w, color, glow, sizeStyle, noBorder=false) {
+  // ─── Sparkline : buffer circulaire + rendu SVG inline ─────────────
+  _trackSpark(eid, val) {
+    if (!this._sparks) this._sparks = {};
+    if (!this._sparks[eid]) this._sparks[eid] = [];
+    if (val !== null && !isNaN(val)) {
+      this._sparks[eid].push(val);
+      if (this._sparks[eid].length > 40) this._sparks[eid].shift();
+    }
+  }
+  _spark(eid, col) {
+    const arr = this._sparks?.[eid];
+    if (!arr || arr.length < 3) return html``;
+    const W=100, H=22;
+    const mn=Math.min(...arr), mx=Math.max(...arr), rng=mx-mn||1;
+    const pts=arr.map((v,i)=>`${(i/(arr.length-1))*W},${H-2-((v-mn)/rng)*(H-4)}`).join(' ');
+    return html`<svg width="${W}" height="${H}" style="flex:none;opacity:0.55;display:block;margin-top:4px;" preserveAspectRatio="none">
+      <polyline fill="none" stroke="${col}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" points="${pts}"/>
+    </svg>`;
+  }
+
+    _renderBadge(w, color, glow, sizeStyle, noBorder=false) {
     const { value, unit, name } = this._getDesignState(w);
     const label    = w.label || name;
     const icon     = w.icon  || this._getEntityIcon(w.entity);
@@ -1025,6 +1045,8 @@ class ResidentEvilCard extends LitElement {
     const terState  = terEntity && this.hass?.states[terEntity] ? this.hass.states[terEntity].state : null;
     const terText = (terState != null && !['unavailable','unknown',''].includes(String(terState))) ? terState : null;
 
+    const numVal = typeof value === 'number' ? value : parseFloat(value);
+    if (!isNaN(numVal)) this._trackSpark(w.entity, numVal);
     return html`
       <div class="dw-card ${noBorder?'no-border':''} ${hudClass}" style="border-color:${color}33; ${sizeStyle}">
         <div class="dw-badge-wrap icon-${iconPos}" @click="${() => w.entity && this._handleAction(w.entity)}">
@@ -1040,6 +1062,7 @@ class ResidentEvilCard extends LitElement {
             </div>
             ${secText ? html`<div class="dw-badge-secondary">${secText}</div>` : html``}
             ${terText ? html`<div class="dw-badge-tertiary">${terText}</div>` : html``}
+            ${this._spark(w.entity, color)}
           </div>
         </div>
       </div>`;
@@ -1874,6 +1897,7 @@ class ResidentEvilCard extends LitElement {
   }
 
   _renderServerWidget(w, sizeStyle, noBorder=false) {
+    const scanStyle=`@keyframes _re_scan{0%{top:0}100%{top:100%}}`;
     const getSt  = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
     const getObj = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid] : null;
     const fmt    = (v, dec=2) => { const n=parseFloat(v); return isNaN(n)?String(v||'--'):n.toFixed(dec); };
@@ -1950,9 +1974,11 @@ class ResidentEvilCard extends LitElement {
     };
 
     return html`
+      <style>@keyframes _re_scan{0%{top:0}100%{top:100%}}</style>
       <div class="dw-card ${noBorder?'no-border':''}"
            style="${sizeStyle}; background:#050a14; border-color:#00ff8822;
                   overflow:hidden; position:relative; font-family:'Courier New',monospace;">
+        <div style="position:absolute;left:0;right:0;height:1px;background:#00ff8825;z-index:10;pointer-events:none;animation:_re_scan 5s linear infinite;"></div>
         <div style="position:absolute;inset:0;pointer-events:none;z-index:0;
           background-image:linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px),
                            linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);
@@ -2007,6 +2033,7 @@ class ResidentEvilCard extends LitElement {
           <div style="flex-shrink:0;display:flex;justify-content:space-around;
                       background:rgba(0,0,0,.4);border:1px solid #0f1f0f;
                       border-radius:8px;padding:6px 0;">
+            ${(() => { this._trackSpark(w.cpu_entity||'_cpu', cpuVal); this._trackSpark(w.ram_entity||'_ram', ramVal); return html``; })()}
             ${radialGauge(cpuVal, cpuColor, 'CPU', fmt(cpuVal,2), '%', gSize)}
             ${radialGauge(ramVal, ramColor, 'RAM', fmt(ramVal,2), '%', gSize)}
             ${hddVal ? radialGauge(hddVal, hddColor, 'HDD', fmt(hddVal,2), '%', gSize) : html``}
