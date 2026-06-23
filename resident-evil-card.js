@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v192 (version RICHE : widgets)
+   RESIDENT EVIL CARD v193 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2895,43 +2895,43 @@ class ResidentEvilCard extends LitElement {
             const statusTxt = soc==null?'HORS LIGNE':soc>50?'NOMINAL':soc>20?'FAIBLE':'CRITIQUE';
             const statusCol = soc==null?'#ef4444':soc>50?'#22c55e':soc>20?'#f59e0b':'#ef4444';
             return html`
-              <div style="flex:1;display:flex;gap:8px;background:#080e0e;border:1px solid ${userCol}22;
-                          border-radius:10px;padding:10px;min-width:0;">
-                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+              <div style="flex:1;display:flex;gap:10px;background:#080e0e;border:1px solid ${userCol}22;
+                          border-radius:10px;padding:12px;min-width:0;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;">
                   <canvas id="pcell-${idx}-${wid}" width="150" height="410"
-                          style="width:72px;height:197px;display:block;"></canvas>
-                  <div style="font-size:18px;font-weight:900;color:${col.lit};
-                               text-shadow:0 0 10px ${col.glo};letter-spacing:1px;">
+                          style="width:100px;height:273px;display:block;"></canvas>
+                  <div style="font-size:22px;font-weight:900;color:${col.lit};
+                               text-shadow:0 0 12px ${col.glo};letter-spacing:2px;">
                     ${soc!=null ? Math.round(soc)+'%' : '--'}</div>
                 </div>
-                <div style="flex:1;display:flex;flex-direction:column;gap:7px;min-width:0;padding-top:4px;">
-                  <div style="font-size:11px;font-weight:900;color:${userCol};letter-spacing:2px;
+                <div style="flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;padding-top:4px;">
+                  <div style="font-size:14px;font-weight:900;color:${userCol};letter-spacing:2px;
                                text-shadow:0 0 8px ${userCol}88;white-space:nowrap;overflow:hidden;
                                text-overflow:ellipsis;">${(cell.name||'BATTERIE').toUpperCase()}</div>
-                  <div style="font-size:9px;color:${statusCol};letter-spacing:1px;">${statusTxt}</div>
-                  <div style="background:#0d1a0d;border-radius:4px;height:6px;overflow:hidden;">
+                  <div style="font-size:12px;color:${statusCol};letter-spacing:1px;font-weight:700;">${statusTxt}</div>
+                  <div style="background:#0d1a0d;border-radius:4px;height:8px;overflow:hidden;">
                     <div style="height:100%;width:${socPct}%;background:linear-gradient(90deg,${col.dim},${col.lit});
                                 border-radius:4px;transition:width .8s;"></div>
                   </div>
-                  <div style="background:#050d05;border-radius:8px;padding:8px 10px;">
-                    <div style="font-size:9px;color:#64748b;letter-spacing:1px;margin-bottom:4px;">PUISSANCE</div>
-                    <div style="font-size:11px;color:${pwrCol};letter-spacing:1px;">${pwrDir}</div>
-                    <div style="font-size:20px;font-weight:900;color:${power!=null?pwrCol:'#334155'};
-                                 line-height:1.1;">${pwrAbs}<span style="font-size:10px;color:#64748b;"> W</span></div>
+                  <div style="background:#050d05;border-radius:8px;padding:10px 12px;">
+                    <div style="font-size:12px;color:#ffffff;letter-spacing:1px;margin-bottom:4px;">PUISSANCE</div>
+                    <div style="font-size:13px;color:${pwrCol};letter-spacing:1px;font-weight:700;">${pwrDir}</div>
+                    <div style="font-size:26px;font-weight:900;color:${power!=null?pwrCol:'#64748b'};
+                                 line-height:1.1;">${pwrAbs}<span style="font-size:14px;color:#ffffff;"> W</span></div>
                   </div>
                   ${stored!=null ? html`
-                  <div style="background:#05090d;border-radius:8px;padding:8px 10px;">
-                    <div style="font-size:9px;color:#64748b;letter-spacing:1px;margin-bottom:3px;">STOCKÉ</div>
-                    <div style="font-size:16px;font-weight:900;color:#00ccff;">${storedV}</div>
-                    ${capWh ? html`<div style="font-size:9px;color:#334155;margin-top:2px;">/ ${capWh<2000?capWh+' Wh':(capWh/1000).toFixed(1)+' kWh'} max</div>` : html``}
+                  <div style="background:#05090d;border-radius:8px;padding:10px 12px;">
+                    <div style="font-size:12px;color:#ffffff;letter-spacing:1px;margin-bottom:3px;">STOCKÉ</div>
+                    <div style="font-size:20px;font-weight:900;color:#00ccff;">${storedV}</div>
+                    ${capWh ? html`<div style="font-size:12px;color:#e2e8f0;margin-top:2px;">/ ${capWh<2000?capWh+' Wh':(capWh/1000).toFixed(1)+' kWh'} max</div>` : html``}
                   </div>` : html``}
                   ${temp!=null ? html`
-                  <div style="display:flex;align-items:center;gap:6px;background:#080808;
-                               border-radius:8px;padding:7px 10px;">
-                    <span style="font-size:14px;">🌡</span>
-                    <span style="font-size:18px;font-weight:900;color:${temp>45?'#ef4444':temp>35?'#f59e0b':'#22d3ee'};">
+                  <div style="display:flex;align-items:center;gap:8px;background:#080808;
+                               border-radius:8px;padding:9px 12px;">
+                    <span style="font-size:16px;">🌡</span>
+                    <span style="font-size:22px;font-weight:900;color:${temp>45?'#ef4444':temp>35?'#f59e0b':'#22d3ee'};">
                       ${temp.toFixed(1)}</span>
-                    <span style="font-size:10px;color:#475569;">°C</span>
+                    <span style="font-size:14px;color:#ffffff;">°C</span>
                   </div>` : html``}
                 </div>
               </div>`;
