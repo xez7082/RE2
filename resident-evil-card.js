@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v198 (version RICHE : widgets)
+   RESIDENT EVIL CARD v199 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2385,7 +2385,7 @@ class ResidentEvilCard extends LitElement {
   // ═══════════════════════════════════════════════════════════
   //  RADAR OVERLAY sur carte — vrai GPS bearing/distance
   // ═══════════════════════════════════════════════════════════
-  _initMapRadar(canvas, getPersonsFn, getHomeFn) {
+  _initMapRadar(canvas, getPersonsFn, getHomeFn, onPing) {
     if (!canvas || canvas.__anim) return;
     const ctx = canvas.getContext('2d');
     let sweep = 0, pings = [], raf;
@@ -2450,7 +2450,8 @@ class ResidentEvilCard extends LitElement {
           const pr=Math.min(0.94,dist/maxD)*R;
           const px=CX+Math.cos(cAngle)*pr, py=CY+Math.sin(cAngle)*pr;
           const diff=((sweep-cAngle)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
-          if(diff<0.13) pings.push({x:px,y:py,col:p.color||'#00ff00',life:120,name:p.name||''});
+          if(diff<0.13){ pings.push({x:px,y:py,col:p.color||'#00ff00',life:120,name:p.name||''});
+          if(onPing) onPing({name:p.name,lat:p.lat,lon:p.lon,color:p.color||'#00ff00'}); }
           // Point statique très discret
           ctx.beginPath(); ctx.arc(px,py,2.5,0,Math.PI*2);
           ctx.fillStyle=p.color||'#00ff00'; ctx.globalAlpha=0.25; ctx.fill();
@@ -2566,7 +2567,23 @@ class ResidentEvilCard extends LitElement {
           lon: st?.attributes?.longitude,
         };
       });
-      this._initMapRadar(cv, getPersons, getHome);
+      const onPing = (person) => {
+        if (!person.lat || !person.lon) return;
+        // Trouver le card element de la carte HA
+        const mapWrap = this.shadowRoot?.querySelector(`#map-wrap-${wid}`);
+        const cardEl = mapWrap ? Array.from(mapWrap.children).find(el => el.tagName && el.tagName.toLowerCase() !== 'canvas') : null;
+        if (!cardEl) return;
+        const haMap = cardEl.shadowRoot?.querySelector('ha-map');
+        const lMap = haMap?._map || haMap?._leafletMap || haMap?.leafletMap || haMap?.map;
+        if (lMap && typeof lMap.setView === 'function') {
+          lMap.setView([person.lat, person.lon], 16, { animate:true, duration:0.8 });
+          clearTimeout(this._mapZoomReset);
+          this._mapZoomReset = setTimeout(() => {
+            try { if (haMap?.fitMap) haMap.fitMap(); } catch(e) {}
+          }, 5000);
+        }
+      };
+      this._initMapRadar(cv, getPersons, getHome, onPing);
     }, 300);
 
     // ── Bandeau d'infos par personne ─────────────────────────────
@@ -2611,8 +2628,10 @@ class ResidentEvilCard extends LitElement {
       <div class="dw-card ${noBorder?'no-border':''}"
            style="${sizeStyle} padding:0;overflow:hidden;position:relative;display:flex;flex-direction:column;">
         <div style="flex:1;min-height:0;position:relative;" id="map-wrap-${w._wid||0}">
-          <canvas id="map-radar-cv-${w._wid||0}" width="800" height="500"
-            style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;border-radius:0;"></canvas>
+          <canvas id="map-radar-cv-${w._wid||0}" width="200" height="200"
+            style="position:absolute;top:12px;right:12px;width:180px;height:180px;
+                   pointer-events:none;z-index:6;border-radius:50%;
+                   box-shadow:0 0 0 1px rgba(0,255,0,0.18);"></canvas>
           ${card === 'loading' ? html`
             <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">CHARGEMENT DE LA CARTE…</div>
           ` : card === 'error' ? html`
