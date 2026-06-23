@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v199 (version RICHE : widgets)
+   RESIDENT EVIL CARD v200 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2256,14 +2256,26 @@ class ResidentEvilCard extends LitElement {
 
     const renderPerson = (p) => {
       const pObj  = getObj(p.person);
-      const home  = pObj ? pObj.state === 'home' : false;
-      const stateLabel = pObj ? (home ? 'À DOMICILE' : (pObj.state === 'not_home' ? 'ABSENT' : pObj.state)) : '--';
+      const distRaw = parseFloat(getSt(p.distance_entity));
+      const distVal = isNaN(distRaw) ? null : distRaw;
+      const distNearHome = distVal !== null && distVal < 0.3;
+      // Présence : état HA OU distance < 300m
+      const homeByHA   = pObj ? pObj.state === 'home' : false;
+      const home       = homeByHA || distNearHome;
+      const stateLabel = homeByHA       ? 'À DOMICILE' :
+                         distNearHome   ? 'À DOMICILE' :
+                         pObj?.state === 'not_home' ? 'ABSENT' :
+                         pObj ? pObj.state.toUpperCase() : '--';
       const stCol = home ? '#22c55e' : '#f59e0b';
       const bat   = (() => { const v = parseFloat(getSt(p.battery_entity)); return isNaN(v) ? null : v; })();
       const batCol= bat == null ? '#475569' : bat <= 20 ? '#ef4444' : bat <= 50 ? '#f59e0b' : '#22c55e';
       const batState = getSt(p.battery_state_entity);
-      const dist  = getSt(p.distance_entity);
-      const geo   = getSt(p.geocoded_entity);
+      const dist  = distVal != null ? distVal.toFixed(2) : getSt(p.distance_entity);
+      // Adresse : domicile quand proche, sinon geocodé GPS
+      const geoRaw = getSt(p.geocoded_entity);
+      const homeZone = this.hass?.states['zone.home'];
+      const homeAddr = homeZone?.attributes?.friendly_name || 'Domicile';
+      const geo = home ? homeAddr : geoRaw;
       const wifi  = getSt(p.wifi_entity);
       const wifiSig = getSt(p.wifi_signal_entity);
       const bt    = getSt(p.bluetooth_entity);
@@ -2590,10 +2602,18 @@ class ResidentEvilCard extends LitElement {
     const getSt = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
     const footRows = persons.map(p => {
       const pObj  = p.person && this.hass?.states[p.person] ? this.hass.states[p.person] : null;
-      const home  = pObj ? pObj.state === 'home' : false;
-      const stLbl = pObj ? (home ? 'À DOMICILE' : (pObj.state === 'not_home' ? 'ABSENT' : pObj.state.toUpperCase())) : '--';
+      const homeByHA = pObj ? pObj.state === 'home' : false;
+      const distRaw2 = parseFloat(getSt(p.distance_entity));
+      const distNear2 = !isNaN(distRaw2) && distRaw2 < 0.3;
+      const home  = homeByHA || distNear2;
+      const stLbl = homeByHA ? 'À DOMICILE' : distNear2 ? 'À DOMICILE' :
+                    pObj?.state === 'not_home' ? 'ABSENT' :
+                    pObj ? pObj.state.toUpperCase() : '--';
       const stCol = home ? '#22c55e' : '#f59e0b';
-      const geo   = getSt(p.geocoded_entity);
+      const geoRaw2 = getSt(p.geocoded_entity);
+      const homeZone2 = this.hass?.states['zone.home'];
+      const homeAddr2 = homeZone2?.attributes?.friendly_name || 'Domicile';
+      const geo   = home ? homeAddr2 : geoRaw2;
       const dist  = (() => { const v = parseFloat(getSt(p.distance_entity)); return isNaN(v) ? null : v; })();
       const loc1  = getSt(p.location_1_entity);
       const pic   = pObj?.attributes?.entity_picture;
