@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v202 (version RICHE : widgets)
+   RESIDENT EVIL CARD v203 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2609,13 +2609,20 @@ class ResidentEvilCard extends LitElement {
       const onPing = (person) => {
         // Lire le GPS réel au moment du ping (pas mis en cache)
         const pSt = this.hass?.states[person.personEid];
-        const pingLat = pSt?.attributes?.latitude || person.zoomLat;
-        const pingLon = pSt?.attributes?.longitude || person.zoomLon;
-        if (!pingLat || !pingLon) return;
-        // Vérifier si vraiment near home — si oui, zoom 18 sur le GPS exact
+        // Vérifier si vraiment near home
         const distV = parseFloat(this.hass?.states[person.distanceEid]?.state);
         const nearHome = !isNaN(distV) && distV < 0.3;
         const zoomLevel = nearHome ? 18 : 16;
+        // Coordonnées : home_lat/lon configuré > GPS téléphone > fallback
+        let pingLat, pingLon;
+        if (nearHome && w.home_lat && w.home_lon) {
+          pingLat = parseFloat(w.home_lat);
+          pingLon = parseFloat(w.home_lon);
+        } else {
+          pingLat = pSt?.attributes?.latitude || person.zoomLat;
+          pingLon = pSt?.attributes?.longitude || person.zoomLon;
+        }
+        if (!pingLat || !pingLon) return;
         const mapWrap = this.shadowRoot?.querySelector(`#map-wrap-${wid}`);
         const cardEl = mapWrap ? Array.from(mapWrap.children).find(el => el.tagName && el.tagName.toLowerCase() !== 'canvas') : null;
         if (!cardEl) return;
