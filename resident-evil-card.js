@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v193 (version RICHE : widgets)
+   RESIDENT EVIL CARD v194 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -334,8 +334,15 @@ class ResidentEvilCard extends LitElement {
 
   constructor() {
     super();
-    this._activeMainMenu = 0;
-    this._activeSubMenu = 0;
+    // Restaurer la dernière navigation depuis localStorage
+    try {
+      const saved = JSON.parse(localStorage.getItem('re2_nav') || 'null');
+      this._activeMainMenu = saved?.cat ?? 0;
+      this._activeSubMenu  = saved?.sub ?? 0;
+    } catch(e) {
+      this._activeMainMenu = 0;
+      this._activeSubMenu  = 0;
+    }
     this._activeFilter = null;
     this._booted = false;
     setTimeout(() => { this._booted = true; this.requestUpdate(); }, 1600);
@@ -2862,9 +2869,16 @@ class ResidentEvilCard extends LitElement {
     };
     const wid = w._wid || 0;
     setTimeout(() => {
+      if (!this._pcellCanvases) this._pcellCanvases = {};
       cells.forEach((cell, idx) => {
         const canvas = this.shadowRoot?.querySelector(`#pcell-${idx}-${wid}`);
-        if (!canvas || canvas.__pcell) return;
+        if (!canvas) return;
+        const key = `${idx}-${wid}`;
+        // Même élément DOM → animation déjà active, on ne touche pas
+        if (this._pcellCanvases[key] === canvas) return;
+        // Nouvel élément → arrêter l'ancien RAF si existant et démarrer un nouveau
+        if (this._pcellCanvases[key]?.__pcell) this._pcellCanvases[key].__pcell.stop();
+        this._pcellCanvases[key] = canvas;
         const socFn = () => fv(cell.soc_entity) ?? 0;
         this._initPcell(canvas, socFn, pcCol);
       });
@@ -4416,7 +4430,7 @@ class ResidentEvilCard extends LitElement {
             const emoji = catIcons[cat.name] || '▸';
             return html`
               <div class="main-nav-item ${this._activeMainMenu === index ? 'active' : ''}"
-                   @click="${() => { this._activeMainMenu = index; this._activeSubMenu = 0; this._activeFilter = null; this._beep(880); this._triggerGlitch(); this.requestUpdate(); }}">
+                   @click="${() => { this._activeMainMenu = index; this._activeSubMenu = 0; this._activeFilter = null; try{localStorage.setItem('re2_nav',JSON.stringify({cat:index,sub:0}));}catch(e){} this._beep(880); this._triggerGlitch(); this.requestUpdate(); }}">
                 <span style="margin-right:4px;font-size:12px;">${emoji}</span>${cat.name}
               </div>`;
           })}
@@ -4426,7 +4440,7 @@ class ResidentEvilCard extends LitElement {
           <div class="re-sidebar"><span class="re-hud-cut-tl"></span><span class="re-hud-cut-br"></span>
             ${activeCategory.submenus ? activeCategory.submenus.map((sub, index) => html`
               <button class="submenu-btn ${this._activeSubMenu === index ? 'active' : ''}"
-                      @click="${() => { this._activeSubMenu = index; this._activeFilter = null; this._beep(660); this.requestUpdate(); }}">
+                      @click="${() => { this._activeSubMenu = index; this._activeFilter = null; try{localStorage.setItem('re2_nav',JSON.stringify({cat:this._activeMainMenu,sub:index}));}catch(e){} this._beep(660); this.requestUpdate(); }}">
                 <ha-icon icon="${sub.icon || 'mdi:chevron-right'}"></ha-icon>
                 <span>${sub.name}</span>
               </button>
