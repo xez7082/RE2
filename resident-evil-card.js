@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v201 (version RICHE : widgets)
+   RESIDENT EVIL CARD v202 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2476,7 +2476,7 @@ class ResidentEvilCard extends LitElement {
           const px=CX+Math.cos(cAngle)*pr, py=CY+Math.sin(cAngle)*pr;
           const diff=((sweep-cAngle)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
           if(diff<0.13){ pings.push({x:px,y:py,col:p.color||'#00ff00',life:120,name:p.name||''});
-          if(onPing) onPing({name:p.name,lat:p.lat,lon:p.lon,color:p.color||'#00ff00'}); }
+          if(onPing) onPing({name:p.name,lat:p.lat,lon:p.lon,color:p.color||'#00ff00',personEid:p.personEid,distanceEid:p.distanceEid,zoomLat:p.zoomLat,zoomLon:p.zoomLon}); }
           // Point statique très discret
           ctx.beginPath(); ctx.arc(px,py,2.5,0,Math.PI*2);
           ctx.fillStyle=p.color||'#00ff00'; ctx.globalAlpha=0.25; ctx.fill();
@@ -2585,23 +2585,44 @@ class ResidentEvilCard extends LitElement {
       };
       const getPersons = () => (w.persons||[]).map(p => {
         const st = this.hass?.states[p.person];
+        // GPS réel depuis les attributs de l'entité person (= GPS téléphone quand not_home)
+        const realLat = st?.attributes?.latitude;
+        const realLon = st?.attributes?.longitude;
+        const distV = parseFloat(this.hass?.states[p.distance_entity]?.state);
+        const nearHome = !isNaN(distV) && distV < 0.3;
+        // Zone home pour la visualisation radar quand le person n'a pas de GPS
+        const homeZ = this.hass?.states['zone.home'];
         return {
           name: p.name||'',
           color: p.color||'#00ff00',
-          lat: st?.attributes?.latitude,
-          lon: st?.attributes?.longitude,
+          personEid: p.person,
+          distanceEid: p.distance_entity,
+          nearHome,
+          // Pour le radar : GPS réel si dispo, sinon zone.home
+          lat: realLat || homeZ?.attributes?.latitude,
+          lon: realLon || homeZ?.attributes?.longitude,
+          // GPS précis pour le zoom (toujours le vrai GPS téléphone)
+          zoomLat: realLat,
+          zoomLon: realLon,
         };
       });
       const onPing = (person) => {
-        if (!person.lat || !person.lon) return;
-        // Trouver le card element de la carte HA
+        // Lire le GPS réel au moment du ping (pas mis en cache)
+        const pSt = this.hass?.states[person.personEid];
+        const pingLat = pSt?.attributes?.latitude || person.zoomLat;
+        const pingLon = pSt?.attributes?.longitude || person.zoomLon;
+        if (!pingLat || !pingLon) return;
+        // Vérifier si vraiment near home — si oui, zoom 18 sur le GPS exact
+        const distV = parseFloat(this.hass?.states[person.distanceEid]?.state);
+        const nearHome = !isNaN(distV) && distV < 0.3;
+        const zoomLevel = nearHome ? 18 : 16;
         const mapWrap = this.shadowRoot?.querySelector(`#map-wrap-${wid}`);
         const cardEl = mapWrap ? Array.from(mapWrap.children).find(el => el.tagName && el.tagName.toLowerCase() !== 'canvas') : null;
         if (!cardEl) return;
         const haMap = cardEl.shadowRoot?.querySelector('ha-map');
         const lMap = haMap?._map || haMap?._leafletMap || haMap?.leafletMap || haMap?.map;
         if (lMap && typeof lMap.setView === 'function') {
-          lMap.setView([person.lat, person.lon], 16, { animate:true, duration:0.8 });
+          lMap.setView([pingLat, pingLon], zoomLevel, { animate:true, duration:0.8 });
           clearTimeout(this._mapZoomReset);
           this._mapZoomReset = setTimeout(() => {
             try { if (haMap?.fitMap) haMap.fitMap(); } catch(e) {}
