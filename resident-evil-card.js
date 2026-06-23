@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v200 (version RICHE : widgets)
+   RESIDENT EVIL CARD v201 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2358,38 +2358,51 @@ class ResidentEvilCard extends LitElement {
     let fbIndex = 0;
     persons.forEach(p => {
       if (!p.person) return;
-      const st = this.hass?.states[p.person];
+      const st  = this.hass?.states[p.person];
       const key = p.person;
+
+      // Vérifier si la personne est proche du domicile via le capteur distance
+      const distV = parseFloat(this.hass?.states[p.distance_entity]?.state);
+      const nearHome = !isNaN(distV) && distV < 0.3;
+
       const hasCoords = st && st.attributes.latitude != null && st.attributes.longitude != null;
 
-      // La personne a des coords → la carte HA gère son marqueur, on retire le fallback
-      if (!st || hasCoords) {
+      // Si la personne est loin ET a des coords → la carte HA gère, on retire le fallback
+      if (!nearHome && (!st || hasCoords)) {
         if (this._fbMarkers[key]) { try { map.removeLayer(this._fbMarkers[key]); } catch(_e) {} delete this._fbMarkers[key]; }
         return;
       }
 
-      // Coords de repli : zone correspondant à l'état, sinon zone.home
-      const zone = this.hass.states['zone.' + st.state] || this.hass.states['zone.home'];
+      // Forcer à zone.home quand proche du domicile, sinon zone de l'état
+      const zone = nearHome
+        ? this.hass.states['zone.home']
+        : (this.hass.states['zone.' + st?.state] || this.hass.states['zone.home']);
       const lat = zone?.attributes?.latitude;
       const lon = zone?.attributes?.longitude;
       if (lat == null || lon == null) return;
 
-      // Léger décalage si plusieurs fallbacks au même endroit
-      const offset = fbIndex * 0.0006;
+      // Décalage léger si plusieurs personnes au même endroit
+      const offsets = [[-0.00035,0.0005],[0.0004,-0.0004],[0,-0.0006],[0.0005,0.0003]];
+      const [oLat, oLon] = offsets[fbIndex % offsets.length];
       fbIndex++;
 
-      const pic = st.attributes.entity_picture;
-      const initial = (p.name || st.attributes.friendly_name || '?')[0].toUpperCase();
+      const pic     = st?.attributes?.entity_picture;
+      const initial = (p.name || st?.attributes?.friendly_name || '?')[0].toUpperCase();
+      const border  = nearHome ? '#22c55e' : '#f59e0b';
       const iconHtml = pic
-        ? `<div style="width:40px;height:40px;border-radius:50%;border:2px solid #22c55e;overflow:hidden;background:#000;box-shadow:0 2px 8px rgba(0,0,0,.6);"><img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/></div>`
-        : `<div style="width:40px;height:40px;border-radius:50%;border:2px solid #22c55e;background:#1e2d3d;color:#22c55e;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.6);">${initial}</div>`;
-      const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [40, 40], iconAnchor: [20, 20] });
+        ? `<div style="width:44px;height:44px;border-radius:50%;border:3px solid ${border};overflow:hidden;background:#000;box-shadow:0 2px 10px rgba(0,0,0,.7);"><img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/></div>`
+        : `<div style="width:44px;height:44px;border-radius:50%;border:3px solid ${border};background:#1e2d3d;color:${border};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,.7);">${initial}</div>`;
+      const labelHtml = `<div style="margin-top:3px;font-size:11px;font-weight:700;color:#fff;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,0.9);white-space:nowrap;">${p.name||''}</div>`;
+      const icon = L.divIcon({
+        html: `<div style="display:flex;flex-direction:column;align-items:center;">${iconHtml}${labelHtml}</div>`,
+        className: '', iconSize: [60, 60], iconAnchor: [30, 22]
+      });
 
       if (this._fbMarkers[key]) {
-        this._fbMarkers[key].setLatLng([lat + offset, lon + offset]);
+        this._fbMarkers[key].setLatLng([lat + oLat, lon + oLon]);
         this._fbMarkers[key].setIcon(icon);
       } else {
-        this._fbMarkers[key] = L.marker([lat + offset, lon + offset], { icon, zIndexOffset: 1000 }).addTo(map);
+        this._fbMarkers[key] = L.marker([lat + oLat, lon + oLon], { icon, zIndexOffset: 1000 }).addTo(map);
       }
     });
   }
@@ -2612,8 +2625,20 @@ class ResidentEvilCard extends LitElement {
       const stCol = home ? '#22c55e' : '#f59e0b';
       const geoRaw2 = getSt(p.geocoded_entity);
       const homeZone2 = this.hass?.states['zone.home'];
-      const homeAddr2 = homeZone2?.attributes?.friendly_name || 'Domicile';
-      const geo   = home ? homeAddr2 : geoRaw2;
+      // Adresse : reverse geocode zone.home (mis en cache) ou geocoded GPS
+      if (!this._homeAddr && homeZone2?.attributes?.latitude) {
+        this._homeAddr = 'Chargement…';
+        const hLat = homeZone2.attributes.latitude, hLon = homeZone2.attributes.longitude;
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${hLat}&lon=${hLon}&format=json`)
+          .then(r=>r.json()).then(d=>{
+            const a=d.address||{};
+            this._homeAddr=[a.house_number,a.road].filter(Boolean).join(' ')
+              +', '+(a.postcode||'')+' '+(a.village||a.town||a.city||'');
+            this.requestUpdate();
+          }).catch(()=>{ this._homeAddr = homeZone2?.attributes?.friendly_name||'Domicile'; });
+      }
+      const homeAddrFull = (this._homeAddr && this._homeAddr!=='Chargement…') ? this._homeAddr : (homeZone2?.attributes?.friendly_name||'Domicile');
+      const geo   = home ? homeAddrFull : geoRaw2;
       const dist  = (() => { const v = parseFloat(getSt(p.distance_entity)); return isNaN(v) ? null : v; })();
       const loc1  = getSt(p.location_1_entity);
       const pic   = pObj?.attributes?.entity_picture;
