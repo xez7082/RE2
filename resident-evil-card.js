@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v195 (version RICHE : widgets)
+   RESIDENT EVIL CARD v196 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2942,9 +2942,9 @@ class ResidentEvilCard extends LitElement {
       for(let i=0;i<=4;i++){
         const gy=H*i/4;
         ctx.strokeStyle=col+'18'; ctx.lineWidth=0.5;
-        ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(10,gy); ctx.stroke();
-        ctx.fillStyle=col+'55'; ctx.font=`${Math.max(9,W*0.065)}px "Courier New"`;
-        ctx.textAlign='left'; ctx.fillText(`${100-i*25}%`,12,gy+4);
+        ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(16,gy); ctx.stroke();
+        ctx.fillStyle=col+'66'; ctx.font=`${Math.max(10,H*0.07)}px "Courier New"`;
+        ctx.textAlign='left'; ctx.fillText(`${100-i*25}%`,18,gy+4);
       }
       ctx.beginPath(); ctx.moveTo(0,H);
       for(let x=0;x<=W;x++){
@@ -2975,7 +2975,7 @@ class ResidentEvilCard extends LitElement {
           ctx.globalAlpha=1;
         }
       }
-      ctx.fillStyle='#fff'; ctx.font=`bold ${Math.max(14,W*0.1)}px "Courier New"`;
+      ctx.fillStyle='#fff'; ctx.font=`bold ${Math.max(14,H*0.18)}px "Courier New"`;
       ctx.textAlign='center'; ctx.globalAlpha=0.88;
       ctx.fillText(`${Math.round(pct)}%`,W/2,Math.max(waterY-8,18));
       ctx.globalAlpha=1;
@@ -3001,7 +3001,7 @@ class ResidentEvilCard extends LitElement {
                   padding:10px;${noBorder?'':'border:1px solid #00aaff22;border-radius:12px;'}">
         ${w.title?html`<div style="font-size:11px;letter-spacing:3px;color:${w.color||'#00aaff'}88;">${w.title.toUpperCase()}</div>`:html``}
         <div style="display:flex;gap:10px;align-items:flex-end;">
-          <canvas id="wave-cv-${wid}" width="400" height="${H}" style="flex:1;height:${H}px;display:block;border-radius:6px;"></canvas>
+          <canvas id="wave-cv-${wid}" width="1200" height="${H}" style="flex:1;height:${H}px;display:block;border-radius:6px;"></canvas>
           ${vol?html`<div style="font-size:22px;font-weight:900;color:${w.color||'#00aaff'};padding-bottom:8px;">${vol}</div>`:html``}
         </div>
       </div>`;
