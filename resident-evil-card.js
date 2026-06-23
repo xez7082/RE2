@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v197 (version RICHE : widgets)
+   RESIDENT EVIL CARD v198 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2382,7 +2382,118 @@ class ResidentEvilCard extends LitElement {
     });
   }
 
-  _renderMapWidget(w, sizeStyle, noBorder=false) {
+  // ═══════════════════════════════════════════════════════════
+  //  RADAR OVERLAY sur carte — vrai GPS bearing/distance
+  // ═══════════════════════════════════════════════════════════
+  _initMapRadar(canvas, getPersonsFn, getHomeFn) {
+    if (!canvas || canvas.__anim) return;
+    const ctx = canvas.getContext('2d');
+    let sweep = 0, pings = [], raf;
+    const toR = d => d * Math.PI / 180;
+
+    const geoCalc = (hLat, hLon, pLat, pLon) => {
+      const φ1=toR(hLat), φ2=toR(pLat), Δλ=toR(pLon-hLon);
+      const y=Math.sin(Δλ)*Math.cos(φ2);
+      const x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+      const bearing=(Math.atan2(y,x)*180/Math.PI+360)%360;
+      const dLat=toR(pLat-hLat);
+      const a=Math.sin(dLat/2)**2+Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+      const dist=6371*2*Math.asin(Math.sqrt(a));
+      return { bearing, dist };
+    };
+
+    const draw = () => {
+      const W=canvas.width, H=canvas.height, CX=W/2, CY=H/2;
+      const R=Math.min(W,H)*0.46;
+      ctx.clearRect(0,0,W,H);
+
+      // Fond circulaire semi-transparent
+      ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,8,2,0.52)'; ctx.fill();
+
+      // Anneaux
+      [0.25,0.5,0.75,1].forEach((r,i) => {
+        ctx.beginPath(); ctx.arc(CX,CY,R*r,0,Math.PI*2);
+        ctx.strokeStyle='#00ff00'; ctx.globalAlpha=0.07+i*0.04; ctx.lineWidth=0.8; ctx.stroke();
+      });
+      ctx.globalAlpha=1;
+
+      // Axes
+      ctx.strokeStyle='#00ff0015'; ctx.lineWidth=0.5;
+      [[CX,CY-R,CX,CY+R],[CX-R,CY,CX+R,CY]].forEach(([x1,y1,x2,y2])=>{
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      });
+
+      // Traînée sweep
+      for(let i=0;i<60;i++){
+        const a=sweep-(i/60)*Math.PI*0.6;
+        ctx.beginPath(); ctx.moveTo(CX,CY);
+        ctx.arc(CX,CY,R,a-0.05,a+0.05); ctx.closePath();
+        ctx.fillStyle=`rgba(0,255,0,${(1-i/60)*0.2})`; ctx.fill();
+      }
+      // Ligne sweep
+      ctx.beginPath(); ctx.moveTo(CX,CY);
+      ctx.lineTo(CX+Math.cos(sweep)*R, CY+Math.sin(sweep)*R);
+      ctx.strokeStyle='#00ff00'; ctx.lineWidth=1.2; ctx.globalAlpha=0.9; ctx.stroke();
+      ctx.globalAlpha=1;
+
+      // Calcul GPS
+      const home=getHomeFn();
+      const persons=getPersonsFn();
+      if(home?.lat && home?.lon) {
+        const dists=persons.filter(p=>p.lat&&p.lon).map(p=>geoCalc(home.lat,home.lon,p.lat,p.lon).dist);
+        const maxD=Math.max(0.3,...dists)*1.25;
+        persons.forEach(p=>{
+          if(!p.lat||!p.lon) return;
+          const {bearing,dist}=geoCalc(home.lat,home.lon,p.lat,p.lon);
+          const cAngle=(bearing-90)*Math.PI/180;
+          const pr=Math.min(0.94,dist/maxD)*R;
+          const px=CX+Math.cos(cAngle)*pr, py=CY+Math.sin(cAngle)*pr;
+          const diff=((sweep-cAngle)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+          if(diff<0.13) pings.push({x:px,y:py,col:p.color||'#00ff00',life:120,name:p.name||''});
+          // Point statique très discret
+          ctx.beginPath(); ctx.arc(px,py,2.5,0,Math.PI*2);
+          ctx.fillStyle=p.color||'#00ff00'; ctx.globalAlpha=0.25; ctx.fill();
+          ctx.globalAlpha=1;
+        });
+        // Labels distances anneaux
+        ctx.fillStyle='#00ff0045'; ctx.font='9px "Courier New"'; ctx.textAlign='center';
+        [0.25,0.5,0.75].forEach(r=>{
+          const km=(r*maxD).toFixed(1);
+          ctx.fillText(`${km}km`,CX,CY-R*r-3);
+        });
+      }
+
+      // Pings
+      pings=pings.filter(b=>b.life>0);
+      pings.forEach(b=>{
+        const a=b.life/120;
+        const ringR=(1-a)*22;
+        ctx.beginPath(); ctx.arc(b.x,b.y,ringR,0,Math.PI*2);
+        ctx.strokeStyle=b.col; ctx.globalAlpha=a*0.7; ctx.lineWidth=1.2; ctx.stroke();
+        ctx.beginPath(); ctx.arc(b.x,b.y,4,0,Math.PI*2);
+        ctx.fillStyle=b.col; ctx.globalAlpha=a; ctx.fill();
+        ctx.fillStyle='#fff'; ctx.font=`bold 12px "Courier New"`;
+        ctx.textAlign=b.x>CX?'left':'right';
+        ctx.globalAlpha=Math.min(1,a*1.4);
+        ctx.fillText(b.name, b.x+(b.x>CX?10:-10), b.y-10);
+        b.life--;
+      });
+      ctx.globalAlpha=1;
+
+      // Centre = domicile
+      ctx.beginPath(); ctx.arc(CX,CY,4,0,Math.PI*2);
+      ctx.fillStyle='#00ff00'; ctx.globalAlpha=0.85; ctx.fill();
+      ctx.globalAlpha=1;
+
+      sweep+=0.020; if(sweep>Math.PI*2) sweep-=Math.PI*2;
+      raf=requestAnimationFrame(draw);
+    };
+    raf=requestAnimationFrame(draw);
+    canvas.__anim={stop:()=>cancelAnimationFrame(raf)};
+  }
+
+    _renderMapWidget(w, sizeStyle, noBorder=false) {
     // Carte Lovelace "map" via card helpers + auto_fit (recadre sur les marqueurs)
     // + bandeau d'infos par personne sous la carte.
     const persons = w.persons || [];
@@ -2432,6 +2543,31 @@ class ResidentEvilCard extends LitElement {
       card.hass = this.hass;
       this._syncFallbackMarkers(card, persons);
     }
+    // Init radar overlay
+    const wid = w._wid || 0;
+    setTimeout(() => {
+      const cv = this.shadowRoot?.querySelector(`#map-radar-cv-${wid}`);
+      if (!cv) return;
+      const key = `map-radar-${wid}`;
+      if (!this._animCanvases) this._animCanvases = {};
+      if (this._animCanvases[key] === cv) return;
+      if (this._animCanvases[key]?.__anim) this._animCanvases[key].__anim.stop();
+      this._animCanvases[key] = cv;
+      const getHome = () => {
+        const z = this.hass?.states['zone.home'];
+        return z ? { lat: z.attributes?.latitude, lon: z.attributes?.longitude } : null;
+      };
+      const getPersons = () => (w.persons||[]).map(p => {
+        const st = this.hass?.states[p.person];
+        return {
+          name: p.name||'',
+          color: p.color||'#00ff00',
+          lat: st?.attributes?.latitude,
+          lon: st?.attributes?.longitude,
+        };
+      });
+      this._initMapRadar(cv, getPersons, getHome);
+    }, 300);
 
     // ── Bandeau d'infos par personne ─────────────────────────────
     const getSt = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
@@ -2474,7 +2610,9 @@ class ResidentEvilCard extends LitElement {
     return html`
       <div class="dw-card ${noBorder?'no-border':''}"
            style="${sizeStyle} padding:0;overflow:hidden;position:relative;display:flex;flex-direction:column;">
-        <div style="flex:1;min-height:0;position:relative;">
+        <div style="flex:1;min-height:0;position:relative;" id="map-wrap-${w._wid||0}">
+          <canvas id="map-radar-cv-${w._wid||0}" width="800" height="500"
+            style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;border-radius:0;"></canvas>
           ${card === 'loading' ? html`
             <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">CHARGEMENT DE LA CARTE…</div>
           ` : card === 'error' ? html`
