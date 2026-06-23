@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v204 (version RICHE : widgets)
+   RESIDENT EVIL CARD v205 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2629,6 +2629,42 @@ class ResidentEvilCard extends LitElement {
     });
 
     const wid = w._wid || 0;
+    const mapKey = key; // capturer la clé pour accès dynamique
+    const zoomToperson = (p) => {
+      // Accès direct à la carte stockée (mise à jour à chaque render)
+      const currentCard = this._mapCards[mapKey];
+      if (!currentCard || currentCard === 'loading' || currentCard === 'error') return;
+
+      // Chercher ha-map dans le shadow DOM du card
+      const haMap = currentCard.shadowRoot?.querySelector('ha-map');
+      if (!haMap) return;
+
+      // Chercher l'instance Leaflet par toutes les propriétés connues
+      let lMap = haMap._map || haMap._leafletMap || haMap.leafletMap || haMap.map || haMap._l;
+      if (!lMap) {
+        // Recherche exhaustive : trouver un objet avec setView()
+        for (const k of Object.getOwnPropertyNames(haMap)) {
+          try {
+            const v = haMap[k];
+            if (v && typeof v === 'object' && typeof v.setView === 'function') { lMap = v; break; }
+          } catch(_) {}
+        }
+      }
+      if (!lMap) return;
+
+      // Coordonnées : home configuré si near home, sinon GPS personne
+      const curSt = this.hass?.states[p.person];
+      const dV = parseFloat(this.hass?.states[p.distance_entity]?.state);
+      const isNear = !isNaN(dV) && dV < 0.3;
+      let lat, lon;
+      if (isNear && w.home_lat && w.home_lon) {
+        lat = parseFloat(w.home_lat); lon = parseFloat(w.home_lon);
+      } else {
+        lat = curSt?.attributes?.latitude; lon = curSt?.attributes?.longitude;
+      }
+      if (lat && lon) lMap.setView([lat, lon], isNear ? 18 : 16, { animate:true, duration:0.7 });
+    };
+
     const personButtons = persons.map(p => {
       const pSt = this.hass?.states[p.person];
       const distV = parseFloat(this.hass?.states[p.distance_entity]?.state);
@@ -2637,30 +2673,13 @@ class ResidentEvilCard extends LitElement {
       const col = pHome ? '#22c55e' : '#f59e0b';
       const pic = pSt?.attributes?.entity_picture;
       const init = (p.name||'?')[0].toUpperCase();
-      const clickFn = () => {
-        const mapWrap = this.shadowRoot?.querySelector(`#map-wrap-${wid}`);
-        const allChildren = mapWrap ? Array.from(mapWrap.children) : [];
-        const cEl = allChildren.find(el => el && el.tagName && !['CANVAS','BUTTON','DIV','STYLE'].includes(el.tagName.toUpperCase()));
-        const haMap = cEl?.shadowRoot?.querySelector('ha-map');
-        const lMap = haMap?._map || haMap?._leafletMap || haMap?.leafletMap || haMap?.map;
-        if (!lMap) return;
-        const curSt = this.hass?.states[p.person];
-        const dV = parseFloat(this.hass?.states[p.distance_entity]?.state);
-        const isNear = !isNaN(dV) && dV < 0.3;
-        let lat = curSt?.attributes?.latitude;
-        let lon = curSt?.attributes?.longitude;
-        if (isNear && w.home_lat && w.home_lon) {
-          lat = parseFloat(w.home_lat); lon = parseFloat(w.home_lon);
-        }
-        if (lat && lon) lMap.setView([lat, lon], isNear ? 18 : 16, { animate:true, duration:0.7 });
-      };
       return html`
         <button style="display:flex;align-items:center;gap:7px;
                        background:rgba(5,8,20,0.85);border:1px solid ${col}55;
                        color:${col};font-family:'Courier New',monospace;font-size:12px;
                        font-weight:700;letter-spacing:1px;padding:5px 10px 5px 6px;
                        border-radius:20px;cursor:pointer;transition:border-color .2s;"
-          @click="${clickFn}">
+          @click="${() => zoomToperson(p)}">
           <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${col};overflow:hidden;
                        background:#1e2d3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             ${pic ? html`<img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/>`
