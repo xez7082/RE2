@@ -2931,54 +2931,47 @@ class ResidentEvilCard extends LitElement {
     const W=canvas.width, H=canvas.height;
     const ctx=canvas.getContext('2d');
     let t=0, raf;
+    const wave1=(x)=>Math.sin((x/W)*Math.PI*4+t*0.04)*(H*0.015);
+    const wave2=(x)=>Math.sin((x/W)*Math.PI*7+t*0.07+1)*(H*0.008);
     const draw=()=>{
       ctx.clearRect(0,0,W,H);
       const pct=Math.max(0,Math.min(100,levelFn()||0));
       const col=colorFn()||'#00aaff';
       const waterY=H*(1-pct/100);
+      // Fond
       ctx.fillStyle='#010810'; ctx.fillRect(0,0,W,H);
-      ctx.strokeStyle=col+'22'; ctx.lineWidth=2;
-      ctx.strokeRect(2,2,W-4,H-4);
-      for(let i=0;i<=4;i++){
-        const gy=H*i/4;
-        ctx.strokeStyle=col+'18'; ctx.lineWidth=0.5;
-        ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(16,gy); ctx.stroke();
-        ctx.fillStyle=col+'66'; ctx.font=`${Math.max(10,H*0.07)}px "Courier New"`;
-        ctx.textAlign='left'; ctx.fillText(`${100-i*25}%`,18,gy+4);
-      }
+      ctx.strokeStyle=col+'22'; ctx.lineWidth=1.5; ctx.strokeRect(1,1,W-2,H-2);
+      // Remplissage eau
       ctx.beginPath(); ctx.moveTo(0,H);
-      for(let x=0;x<=W;x++){
-        const y=waterY+Math.sin((x/W)*Math.PI*3+t*0.04)*(H*0.018)
-                      +Math.sin((x/W)*Math.PI*5+t*0.07+1)*(H*0.01);
-        ctx.lineTo(x,y);
-      }
+      for(let x=0;x<=W;x++) ctx.lineTo(x,waterY+wave1(x)+wave2(x));
       ctx.lineTo(W,H); ctx.closePath();
       const [r,g,b]=[parseInt(col.slice(1,3)||'00',16),parseInt(col.slice(3,5)||'aa',16),parseInt(col.slice(5,7)||'ff',16)];
       const grad=ctx.createLinearGradient(0,waterY,0,H);
-      grad.addColorStop(0,`rgba(${r},${g},${b},0.72)`);
-      grad.addColorStop(1,`rgba(${r},${g},${b},0.28)`);
+      grad.addColorStop(0,`rgba(${r},${g},${b},0.65)`);
+      grad.addColorStop(1,`rgba(${r},${g},${b},0.22)`);
       ctx.fillStyle=grad; ctx.fill();
+      // Surface vague
       ctx.beginPath();
       for(let x=0;x<=W;x++){
-        const y=waterY+Math.sin((x/W)*Math.PI*3+t*0.04)*(H*0.018)
-                      +Math.sin((x/W)*Math.PI*5+t*0.07+1)*(H*0.01);
+        const y=waterY+wave1(x)+wave2(x);
         x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
       }
-      ctx.strokeStyle=col; ctx.lineWidth=2; ctx.globalAlpha=0.85; ctx.stroke();
-      ctx.globalAlpha=1;
+      ctx.strokeStyle=col; ctx.lineWidth=2; ctx.globalAlpha=0.8; ctx.stroke(); ctx.globalAlpha=1;
+      // Bulles
       if(pct>5){
-        for(let i=0;i<4;i++){
-          const bx=((i*W/4+t*0.4+i*40)%W);
-          const by=waterY+5+((t*0.6+i*35)%(H-waterY-10));
+        for(let i=0;i<5;i++){
+          const bx=((i*W/5+t*0.5+i*60)%W);
+          const by=waterY+4+((t*0.7+i*40)%Math.max(1,H-waterY-8));
           ctx.beginPath(); ctx.arc(bx,by,2+i%2,0,Math.PI*2);
-          ctx.strokeStyle=col; ctx.globalAlpha=0.25+Math.sin(t*0.08+i)*0.1; ctx.lineWidth=0.8; ctx.stroke();
-          ctx.globalAlpha=1;
+          ctx.strokeStyle=col; ctx.globalAlpha=0.18+Math.sin(t*0.1+i)*0.08; ctx.lineWidth=0.8; ctx.stroke(); ctx.globalAlpha=1;
         }
       }
-      ctx.fillStyle='#fff'; ctx.font=`bold ${Math.max(14,H*0.18)}px "Courier New"`;
-      ctx.textAlign='center'; ctx.globalAlpha=0.88;
-      ctx.fillText(`${Math.round(pct)}%`,W/2,Math.max(waterY-8,18));
-      ctx.globalAlpha=1;
+      // % niveau — grand, centré
+      const fs=Math.max(16,H*0.28);
+      const ty=pct>25?waterY-fs*0.3:Math.min(waterY+fs,H-6);
+      ctx.fillStyle='#fff'; ctx.font=`bold ${fs}px "Courier New"`;
+      ctx.textAlign='center'; ctx.globalAlpha=0.92;
+      ctx.fillText(`${Math.round(pct)}%`,W/2,ty); ctx.globalAlpha=1;
       t++; raf=requestAnimationFrame(draw);
     };
     raf=requestAnimationFrame(draw);
@@ -2986,7 +2979,10 @@ class ResidentEvilCard extends LitElement {
   }
 
   _renderWaterWaveWidget(w, sizeStyle, noBorder) {
-    const wid=w._wid||0; const H=parseInt(w.heightPx)||200;
+    const wid=w._wid||0;
+    const H=parseInt(w.heightPx)||200;
+    const hasTitle=!!w.title;
+    const canH=Math.max(60, H-(hasTitle?42:20));
     const volSt=this.hass?.states[w.volume_entity];
     const vol=volSt?`${parseFloat(volSt.state).toFixed(0)} ${volSt.attributes?.unit_of_measurement||'L'}`:null;
     setTimeout(()=>{
@@ -2997,17 +2993,18 @@ class ResidentEvilCard extends LitElement {
         ()=>w.color||'#00aaff'));
     },80);
     return html`
-      <div style="${sizeStyle}background:#010810;display:flex;flex-direction:column;gap:8px;
-                  padding:10px;${noBorder?'':'border:1px solid #00aaff22;border-radius:12px;'}">
+      <div style="${sizeStyle}background:#010810;display:flex;flex-direction:column;gap:6px;
+                  padding:10px;overflow:hidden;${noBorder?'':'border:1px solid #00aaff22;border-radius:12px;'}">
         ${w.title?html`<div style="font-size:11px;letter-spacing:3px;color:${w.color||'#00aaff'}88;">${w.title.toUpperCase()}</div>`:html``}
-        <div style="display:flex;gap:10px;align-items:flex-end;">
-          <canvas id="wave-cv-${wid}" width="1200" height="${H}" style="flex:1;height:${H}px;display:block;border-radius:6px;"></canvas>
-          ${vol?html`<div style="font-size:22px;font-weight:900;color:${w.color||'#00aaff'};padding-bottom:8px;">${vol}</div>`:html``}
+        <div style="display:flex;gap:12px;align-items:center;">
+          <canvas id="wave-cv-${wid}" width="1200" height="${canH}"
+                  style="flex:1;height:${canH}px;display:block;border-radius:6px;"></canvas>
+          ${vol?html`<div style="font-size:22px;font-weight:900;color:${w.color||'#00aaff'};min-width:80px;text-align:right;">${vol}</div>`:html``}
         </div>
       </div>`;
   }
 
-  // ════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
   //  WIDGET MATRIX RAIN — Pluie de caractères
   // ════════════════════════════════════════════════════════════════
   _initMatrixRain(canvas, colorFn) {
