@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v194 (version RICHE : widgets)
+   RESIDENT EVIL CARD v195 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -863,8 +863,15 @@ class ResidentEvilCard extends LitElement {
       case 'progress':   return this._renderProgressWidget(w, sizeStyle, noBorder);
       case 'button':     return this._renderButtonWidget(w, sizeStyle, noBorder);
       case 'foundry':    return this._renderFoundryWidget(w, sizeStyle, noBorder);
-      case 'alsace_meteo': return this._renderAlsaceMeteoWidget(w, sizeStyle, noBorder);
-      case 'power_cell':   return this._renderPowerCellWidget(w, sizeStyle, noBorder);
+      case 'alsace_meteo':    return this._renderAlsaceMeteoWidget(w, sizeStyle, noBorder);
+      case 'power_cell':      return this._renderPowerCellWidget(w, sizeStyle, noBorder);
+      case 'radar':           return this._renderRadarWidget(w, sizeStyle, noBorder);
+      case 'ekg':             return this._renderEkgWidget(w, sizeStyle, noBorder);
+      case 'water_wave':      return this._renderWaterWaveWidget(w, sizeStyle, noBorder);
+      case 'matrix_rain':     return this._renderMatrixRainWidget(w, sizeStyle, noBorder);
+      case 'tvirus':          return this._renderTVirusWidget(w, sizeStyle, noBorder);
+      case 'gauge_arc':       return this._renderGaugeArcWidget(w, sizeStyle, noBorder);
+      case 'oscilloscope':    return this._renderOscilloscopeWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
       default:          return html``;
@@ -2759,7 +2766,521 @@ class ResidentEvilCard extends LitElement {
       .finally(() => { this._wxHFcBusy = false; });
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
+  //  HELPER — animation canvas tracking (évite redémarrages)
+  // ════════════════════════════════════════════════════════════════
+  _startAnim(key, canvas, initFn) {
+    if (!this._animCanvases) this._animCanvases = {};
+    if (this._animCanvases[key] === canvas) return;
+    if (this._animCanvases[key]?.__anim) this._animCanvases[key].__anim.stop();
+    this._animCanvases[key] = canvas;
+    initFn(canvas);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  WIDGET RADAR — Sonar de présence
+  // ════════════════════════════════════════════════════════════════
+  _initRadar(canvas, peopleFn) {
+    if (!canvas || canvas.__anim) return;
+    const W=canvas.width, H=canvas.height, CX=W/2, CY=H/2, R=Math.min(W,H)/2-10;
+    const ctx=canvas.getContext('2d');
+    let sweep=0, blips=[], raf;
+    const draw=()=>{
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle='#000a03'; ctx.beginPath(); ctx.arc(CX,CY,R+8,0,Math.PI*2); ctx.fill();
+      [0.25,0.5,0.75,1].forEach((r,i)=>{
+        ctx.beginPath(); ctx.arc(CX,CY,R*r,0,Math.PI*2);
+        ctx.strokeStyle='#00ff00'; ctx.globalAlpha=0.12+i*0.06; ctx.lineWidth=0.8; ctx.stroke();
+      });
+      ctx.globalAlpha=1;
+      [[CX,CY-R,CX,CY+R],[CX-R,CY,CX+R,CY]].forEach(([x1,y1,x2,y2])=>{
+        ctx.strokeStyle='#00ff0020'; ctx.lineWidth=0.6;
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      });
+      const TRAIL=Math.PI*0.55;
+      for(let i=0;i<50;i++){
+        const a=sweep-(i/50)*TRAIL;
+        ctx.beginPath(); ctx.moveTo(CX,CY);
+        ctx.arc(CX,CY,R,a-0.04,a+0.04); ctx.closePath();
+        ctx.fillStyle=`rgba(0,255,0,${(1-i/50)*0.22})`; ctx.fill();
+      }
+      ctx.beginPath(); ctx.moveTo(CX,CY);
+      ctx.lineTo(CX+Math.cos(sweep)*R,CY+Math.sin(sweep)*R);
+      ctx.strokeStyle='#00ff00'; ctx.globalAlpha=0.9; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.globalAlpha=1;
+      const people=peopleFn(); const n=Math.max(1,people.length);
+      people.forEach((p,i)=>{
+        const pAngle=(i/n)*Math.PI*2;
+        const maxD=Math.max(1,...people.map(pp=>pp.distance||0));
+        const pr=Math.min(0.92,(p.distance||0)/maxD)*R;
+        const px=CX+Math.cos(pAngle)*pr, py=CY+Math.sin(pAngle)*pr;
+        const diff=((sweep-pAngle)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+        if(diff<0.18) blips.push({x:px,y:py,col:p.color||'#00ff00',life:80,name:p.name||''});
+      });
+      blips=blips.filter(b=>b.life>0);
+      blips.forEach(b=>{
+        const a=b.life/80;
+        ctx.beginPath(); ctx.arc(b.x,b.y,4,0,Math.PI*2);
+        ctx.fillStyle=b.col; ctx.globalAlpha=a; ctx.fill();
+        ctx.beginPath(); ctx.arc(b.x,b.y,9,0,Math.PI*2);
+        ctx.strokeStyle=b.col; ctx.globalAlpha=a*0.4; ctx.lineWidth=1; ctx.stroke();
+        ctx.globalAlpha=a*0.9; ctx.fillStyle='#fff';
+        ctx.font=`bold ${Math.max(10,W*0.042)}px "Courier New"`;
+        ctx.textAlign=b.x>CX?'left':'right';
+        ctx.fillText(b.name,b.x+(b.x>CX?11:-11),b.y-9); b.life--;
+      });
+      ctx.globalAlpha=1;
+      ctx.beginPath(); ctx.arc(CX,CY,5,0,Math.PI*2);
+      ctx.fillStyle='#00ff00'; ctx.fill();
+      sweep+=0.025; if(sweep>Math.PI*2) sweep-=Math.PI*2;
+      raf=requestAnimationFrame(draw);
+    };
+    raf=requestAnimationFrame(draw);
+    canvas.__anim={stop:()=>cancelAnimationFrame(raf)};
+  }
+
+  _renderRadarWidget(w, sizeStyle, noBorder) {
+    const wid=w._wid||0;
+    const sz=parseInt(w.size)||280;
+    setTimeout(()=>{
+      const cv=this.shadowRoot?.querySelector(`#radar-cv-${wid}`);
+      if(!cv) return;
+      this._startAnim(`radar-${wid}`,cv,c=>this._initRadar(c,()=>(w.persons||[]).map(p=>{
+        const st=this.hass?.states[p.distance_entity];
+        return {name:p.name||'',color:p.color||'#00ff00',
+                distance:st?parseFloat(st.state)||0:0};
+      })));
+    },80);
+    return html`
+      <div style="${sizeStyle}background:#000a03;display:flex;flex-direction:column;align-items:center;
+                  gap:10px;padding:14px;${noBorder?'':'border:1px solid #00ff0022;border-radius:12px;'}">
+        ${w.title?html`<div style="font-size:12px;letter-spacing:3px;color:#00ff0066;">${w.title.toUpperCase()}</div>`:html``}
+        <canvas id="radar-cv-${wid}" width="${sz}" height="${sz}" style="width:${sz}px;height:${sz}px;border-radius:50%;"></canvas>
+      </div>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  WIDGET EKG — Tracé cardiaque
+  // ════════════════════════════════════════════════════════════════
+  _initEkg(canvas, bpmFn, colorFn) {
+    if (!canvas||canvas.__anim) return;
+    const W=canvas.width, H=canvas.height;
+    const ctx=canvas.getContext('2d');
+    const buf=new Float32Array(W).fill(0);
+    let head=0, t=0, raf;
+    const WAVE=[0,0,0.08,0.08,0,-0.12,-0.12,0,1.0,1.15,-0.32,-0.22,0,0.08,0.08,0,0,0,0,0];
+    const draw=()=>{
+      const bpm=bpmFn()||72; const col=colorFn()||'#00ff00';
+      const speed=Math.max(1,Math.round(W*bpm/600));
+      for(let s=0;s<speed;s++){
+        const cyc=Math.round(W*60/bpm);
+        const pos=t%cyc, ws=Math.round(cyc*0.2), wl=WAVE.length;
+        let val=0;
+        if(pos>=ws&&pos<ws+wl){
+          const fi=(pos-ws)/(cyc/wl);
+          const i0=Math.floor(fi), i1=Math.min(wl-1,i0+1);
+          val=WAVE[i0]+(WAVE[i1]-WAVE[i0])*(fi-i0);
+        }
+        buf[head%W]=val; head++; t++;
+      }
+      ctx.fillStyle='rgba(0,10,2,0.12)'; ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='#00ff0012'; ctx.lineWidth=0.5;
+      for(let gx=0;gx<W;gx+=50){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+      for(let gy=0;gy<H;gy+=H/5){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
+      ctx.strokeStyle=col+'40'; ctx.lineWidth=0.8;
+      ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
+      ctx.beginPath();
+      for(let i=0;i<W;i++){
+        const bx=(head+i)%W, by=H/2-buf[bx]*H*0.38;
+        i===0?ctx.moveTo(i,by):ctx.lineTo(i,by);
+      }
+      ctx.strokeStyle=col; ctx.lineWidth=2; ctx.globalAlpha=0.95;
+      ctx.shadowColor=col; ctx.shadowBlur=8; ctx.stroke();
+      ctx.shadowBlur=0; ctx.globalAlpha=1;
+      ctx.fillStyle=col; ctx.font=`bold ${Math.max(13,H*0.22)}px "Courier New"`;
+      ctx.textAlign='right'; ctx.globalAlpha=0.85;
+      ctx.fillText(`${Math.round(bpm)} BPM`,W-8,H-8); ctx.globalAlpha=1;
+      raf=requestAnimationFrame(draw);
+    };
+    raf=requestAnimationFrame(draw);
+    canvas.__anim={stop:()=>cancelAnimationFrame(raf)};
+  }
+
+  _renderEkgWidget(w, sizeStyle, noBorder) {
+    const wid=w._wid||0; const H=parseInt(w.heightPx)||120;
+    setTimeout(()=>{
+      const cv=this.shadowRoot?.querySelector(`#ekg-cv-${wid}`);
+      if(!cv) return;
+      this._startAnim(`ekg-${wid}`,cv,c=>this._initEkg(c,
+        ()=>{const s=this.hass?.states[w.entity];return s?parseFloat(s.state)||72:w.default_bpm||72;},
+        ()=>w.color||'#00ff00'));
+    },80);
+    return html`
+      <div style="${sizeStyle}background:#000a02;display:flex;flex-direction:column;gap:8px;
+                  padding:10px;${noBorder?'':'border:1px solid #00ff0022;border-radius:12px;'}">
+        ${w.title?html`<div style="font-size:11px;letter-spacing:3px;color:${w.color||'#00ff00'}88;">${w.title.toUpperCase()}</div>`:html``}
+        <canvas id="ekg-cv-${wid}" width="600" height="${H}" style="width:100%;height:${H}px;display:block;border-radius:4px;"></canvas>
+      </div>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  WIDGET WATER WAVE — Ondulation eau
+  // ════════════════════════════════════════════════════════════════
+  _initWaterWave(canvas, levelFn, colorFn) {
+    if (!canvas||canvas.__anim) return;
+    const W=canvas.width, H=canvas.height;
+    const ctx=canvas.getContext('2d');
+    let t=0, raf;
+    const draw=()=>{
+      ctx.clearRect(0,0,W,H);
+      const pct=Math.max(0,Math.min(100,levelFn()||0));
+      const col=colorFn()||'#00aaff';
+      const waterY=H*(1-pct/100);
+      ctx.fillStyle='#010810'; ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle=col+'22'; ctx.lineWidth=2;
+      ctx.strokeRect(2,2,W-4,H-4);
+      for(let i=0;i<=4;i++){
+        const gy=H*i/4;
+        ctx.strokeStyle=col+'18'; ctx.lineWidth=0.5;
+        ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(10,gy); ctx.stroke();
+        ctx.fillStyle=col+'55'; ctx.font=`${Math.max(9,W*0.065)}px "Courier New"`;
+        ctx.textAlign='left'; ctx.fillText(`${100-i*25}%`,12,gy+4);
+      }
+      ctx.beginPath(); ctx.moveTo(0,H);
+      for(let x=0;x<=W;x++){
+        const y=waterY+Math.sin((x/W)*Math.PI*3+t*0.04)*(H*0.018)
+                      +Math.sin((x/W)*Math.PI*5+t*0.07+1)*(H*0.01);
+        ctx.lineTo(x,y);
+      }
+      ctx.lineTo(W,H); ctx.closePath();
+      const [r,g,b]=[parseInt(col.slice(1,3)||'00',16),parseInt(col.slice(3,5)||'aa',16),parseInt(col.slice(5,7)||'ff',16)];
+      const grad=ctx.createLinearGradient(0,waterY,0,H);
+      grad.addColorStop(0,`rgba(${r},${g},${b},0.72)`);
+      grad.addColorStop(1,`rgba(${r},${g},${b},0.28)`);
+      ctx.fillStyle=grad; ctx.fill();
+      ctx.beginPath();
+      for(let x=0;x<=W;x++){
+        const y=waterY+Math.sin((x/W)*Math.PI*3+t*0.04)*(H*0.018)
+                      +Math.sin((x/W)*Math.PI*5+t*0.07+1)*(H*0.01);
+        x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle=col; ctx.lineWidth=2; ctx.globalAlpha=0.85; ctx.stroke();
+      ctx.globalAlpha=1;
+      if(pct>5){
+        for(let i=0;i<4;i++){
+          const bx=((i*W/4+t*0.4+i*40)%W);
+          const by=waterY+5+((t*0.6+i*35)%(H-waterY-10));
+          ctx.beginPath(); ctx.arc(bx,by,2+i%2,0,Math.PI*2);
+          ctx.strokeStyle=col; ctx.globalAlpha=0.25+Math.sin(t*0.08+i)*0.1; ctx.lineWidth=0.8; ctx.stroke();
+          ctx.globalAlpha=1;
+        }
+      }
+      ctx.fillStyle='#fff'; ctx.font=`bold ${Math.max(14,W*0.1)}px "Courier New"`;
+      ctx.textAlign='center'; ctx.globalAlpha=0.88;
+      ctx.fillText(`${Math.round(pct)}%`,W/2,Math.max(waterY-8,18));
+      ctx.globalAlpha=1;
+      t++; raf=requestAnimationFrame(draw);
+    };
+    raf=requestAnimationFrame(draw);
+    canvas.__anim={stop:()=>cancelAnimationFrame(raf)};
+  }
+
+  _renderWaterWaveWidget(w, sizeStyle, noBorder) {
+    const wid=w._wid||0; const H=parseInt(w.heightPx)||200;
+    const volSt=this.hass?.states[w.volume_entity];
+    const vol=volSt?`${parseFloat(volSt.state).toFixed(0)} ${volSt.attributes?.unit_of_measurement||'L'}`:null;
+    setTimeout(()=>{
+      const cv=this.shadowRoot?.querySelector(`#wave-cv-${wid}`);
+      if(!cv) return;
+      this._startAnim(`wave-${wid}`,cv,c=>this._initWaterWave(c,
+        ()=>{const s=this.hass?.states[w.level_entity];return s?parseFloat(s.state)||0:0;},
+        ()=>w.color||'#00aaff'));
+    },80);
+    return html`
+      <div style="${sizeStyle}background:#010810;display:flex;flex-direction:column;gap:8px;
+                  padding:10px;${noBorder?'':'border:1px solid #00aaff22;border-radius:12px;'}">
+        ${w.title?html`<div style="font-size:11px;letter-spacing:3px;color:${w.color||'#00aaff'}88;">${w.title.toUpperCase()}</div>`:html``}
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <canvas id="wave-cv-${wid}" width="400" height="${H}" style="flex:1;height:${H}px;display:block;border-radius:6px;"></canvas>
+          ${vol?html`<div style="font-size:22px;font-weight:900;color:${w.color||'#00aaff'};padding-bottom:8px;">${vol}</div>`:html``}
+        </div>
+      </div>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  WIDGET MATRIX RAIN — Pluie de caractères
+  // ════════════════════════════════════════════════════════════════
+  _initMatrixRain(canvas, colorFn) {
+    if (!canvas||canvas.__anim) return;
+    const W=canvas.width, H=canvas.height;
+    const ctx=canvas.getContext('2d');
+    const COLS=Math.floor(W/14);
+    const drops=Array.from({length:COLS},()=>Math.random()*H/14|0);
+    const chars='アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%';
+    let raf;
+    const draw=()=>{
+      const col=colorFn()||'#00ff00';
+      ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,W,H);
+      const [r,g,b]=[parseInt(col.slice(1,3)||'00',16),parseInt(col.slice(3,5)||'ff',16),parseInt(col.slice(5,7)||'00',16)];
+      ctx.font='bold 13px "Courier New"';
+      drops.forEach((y,i)=>{
+        const ch=chars[Math.random()*chars.length|0], x=i*14;
+        ctx.fillStyle=`rgb(${Math.min(255,r+120)},${Math.min(255,g+120)},${Math.min(255,b+120)})`;
+        ctx.fillText(ch,x,y*14);
+        ctx.fillStyle=`rgba(${r},${g},${b},0.8)`;
+        if(y>1) ctx.fillText(chars[Math.random()*chars.length|0],x,(y-1)*14);
+        if(y*14>H&&Math.random()>0.975) drops[i]=0;
+        drops[i]++;
+      });
+      raf=requestAnimationFrame(draw);
+    };
+    raf=requestAnimationFrame(draw);
+    canvas.__anim={stop:()=>cancelAnimationFrame(raf)};
+  }
+
+  _renderMatrixRainWidget(w, sizeStyle, noBorder) {
+    const wid=w._wid||0; const H=parseInt(w.heightPx)||200;
+    setTimeout(()=>{
+      const cv=this.shadowRoot?.querySelector(`#matrix-cv-${wid}`);
+      if(!cv) return;
+      this._startAnim(`matrix-${wid}`,cv,c=>this._initMatrixRain(c,()=>w.color||'#00ff00'));
+    },80);
+    return html`
+      <div style="${sizeStyle}background:#000;display:flex;flex-direction:column;
+                  overflow:hidden;padding:0;${noBorder?'':'border:1px solid #00ff0022;border-radius:12px;'}">
+        ${w.title?html`<div style="font-size:11px;letter-spacing:3px;color:${w.color||'#00ff00'}88;padding:10px 10px 4px;">${w.title.toUpperCase()}</div>`:html``}
+        <canvas id="matrix-cv-${wid}" width="600" height="${H}" style="width:100%;height:${H}px;display:block;"></canvas>
+      </div>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  WIDGET T-VIRUS — Cellule animée
+  // ════════════════════════════════════════════════════════════════
+  _initTVirus(canvas, stateFn) {
+    if (!canvas||canvas.__anim) return;
+    const W=canvas.width, H=canvas.height, CX=W/2, CY=H/2;
+    const R=Math.min(W,H)*0.24;
+    const ctx=canvas.getContext('2d');
+    let t=0, raf;
+    const draw=()=>{
+      ctx.clearRect(0,0,W,H);
+      const {color,level}=stateFn();
+      const [r,g,b]=[parseInt(color.slice(1,3)||'00',16),parseInt(color.slice(3,5)||'ff',16),parseInt(color.slice(5,7)||'44',16)];
+      // Halo externe pulsant
+      const pulse=0.12+Math.sin(t*0.04)*0.06;
+      ctx.beginPath(); ctx.arc(CX,CY,R*(1.5+Math.sin(t*0.025)*0.08),0,Math.PI*2);
+      ctx.strokeStyle=color; ctx.globalAlpha=pulse; ctx.lineWidth=1; ctx.stroke();
+      ctx.globalAlpha=1;
+      // Corps principal
+      const grad=ctx.createRadialGradient(CX-R*0.2,CY-R*0.2,R*0.05,CX,CY,R);
+      grad.addColorStop(0,`rgba(${r},${g},${b},0.85)`);
+      grad.addColorStop(0.65,`rgba(${r},${g},${b},0.5)`);
+      grad.addColorStop(1,`rgba(${r},${g},${b},0.08)`);
+      ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2);
+      ctx.fillStyle=grad; ctx.fill();
+      ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.globalAlpha=0.55; ctx.stroke();
+      ctx.globalAlpha=1;
+      // Spikes / flagelles (12)
+      for(let i=0;i<12;i++){
+        const base=(i/12)*Math.PI*2+t*0.018;
+        const wob=Math.sin(t*0.06+i*0.9)*0.12;
+        const a=base+wob;
+        const sLen=R*(0.55+Math.sin(t*0.04+i*0.7)*0.12);
+        const x1=CX+Math.cos(a)*R, y1=CY+Math.sin(a)*R;
+        const x2=CX+Math.cos(a)*(R+sLen), y2=CY+Math.sin(a)*(R+sLen);
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+        ctx.strokeStyle=color; ctx.lineWidth=1; ctx.globalAlpha=0.65; ctx.stroke();
+        ctx.beginPath(); ctx.arc(x2,y2,3.5,0,Math.PI*2);
+        ctx.fillStyle=color; ctx.globalAlpha=0.8; ctx.fill();
+        ctx.globalAlpha=1;
+      }
+      // Noyau
+      const iGrad=ctx.createRadialGradient(CX,CY,0,CX,CY,R*0.38);
+      iGrad.addColorStop(0,'rgba(255,255,255,0.45)');
+      iGrad.addColorStop(1,`rgba(${r},${g},${b},0.25)`);
+      ctx.beginPath(); ctx.arc(CX,CY,R*0.32,0,Math.PI*2);
+      ctx.fillStyle=iGrad; ctx.fill();
+      // Chromatine rotative
+      ctx.save(); ctx.translate(CX,CY); ctx.rotate(t*0.025);
+      for(let i=0;i<3;i++){
+        const a=(i/3)*Math.PI*2;
+        ctx.beginPath(); ctx.arc(Math.cos(a)*R*0.13,Math.sin(a)*R*0.13,R*0.075,0,Math.PI*2);
+        ctx.fillStyle=`rgba(${r},${g},${b},0.55)`; ctx.fill();
+      }
+      ctx.restore();
+      // Texte état
+      ctx.fillStyle='#fff'; ctx.font=`bold ${Math.max(11,W*0.065)}px "Courier New"`;
+      ctx.textAlign='center'; ctx.globalAlpha=0.88;
+      ctx.fillText(level,CX,H-10); ctx.globalAlpha=1;
+      t++; raf=requestAnimationFrame(draw);
+    };
+    raf=requestAnimationFrame(draw);
+    canvas.__anim={stop:()=>cancelAnimationFrame(raf)};
+  }
+
+  _renderTVirusWidget(w, sizeStyle, noBorder) {
+    const wid=w._wid||0;
+    const getState=()=>{
+      const fv=(eid)=>{const s=this.hass?.states[eid];return s?parseFloat(s.state)||null:null;};
+      const ph=fv(w.ph_entity),orp=fv(w.orp_entity),salt=fv(w.salt_entity);
+      const issues=[];
+      if(ph!=null&&(ph<7.0||ph>7.6)) issues.push(`pH ${ph.toFixed(1)}`);
+      if(orp!=null&&(orp<650||orp>800)) issues.push(`ORP ${Math.round(orp)}`);
+      if(salt!=null&&(salt<300||salt>500)) issues.push(`SEL ${Math.round(salt)}`);
+      if(issues.length===0) return {color:'#00ff44',level:'STABLE'};
+      if(issues.length===1) return {color:'#ffaa00',level:issues[0]};
+      return {color:'#ff3300',level:'ALERTE'};
+    };
+    const sz=parseInt(w.size)||220;
+    setTimeout(()=>{
+      const cv=this.shadowRoot?.querySelector(`#tvirus-cv-${wid}`);
+      if(!cv) return;
+      this._startAnim(`tvirus-${wid}`,cv,c=>this._initTVirus(c,getState));
+    },80);
+    return html`
+      <div style="${sizeStyle}background:#03000a;display:flex;flex-direction:column;align-items:center;
+                  gap:8px;padding:12px;${noBorder?'':'border:1px solid #ff000022;border-radius:12px;'}">
+        ${w.title?html`<div style="font-size:11px;letter-spacing:3px;color:#ff330066;">${w.title.toUpperCase()}</div>`:html``}
+        <canvas id="tvirus-cv-${wid}" width="${sz}" height="${sz}" style="width:${sz}px;height:${sz}px;display:block;"></canvas>
+      </div>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  WIDGET GAUGE ARC — Jauges semi-circulaires
+  // ════════════════════════════════════════════════════════════════
+  _initGaugeArc(canvas, gaugesFn) {
+    if (!canvas||canvas.__anim) return;
+    const W=canvas.width, H=canvas.height;
+    const ctx=canvas.getContext('2d');
+    let needles={}, t=0, raf;
+    const S=Math.PI*0.75, E=Math.PI*2.25, RANGE=E-S;
+    const drawOne=(cx,cy,R,g,idx)=>{
+      const pct=Math.max(0,Math.min(100,((g.value||0)-g.min)/(g.max-g.min)*100));
+      ctx.beginPath(); ctx.arc(cx,cy,R,S,E);
+      ctx.strokeStyle='#ffffff18'; ctx.lineWidth=R*0.17; ctx.lineCap='round'; ctx.stroke();
+      if(pct>0){
+        const endA=S+(pct/100)*RANGE;
+        const aGrad=ctx.createLinearGradient(cx-R,cy,cx+R,cy);
+        aGrad.addColorStop(0,'#22c55e'); aGrad.addColorStop(0.5,'#eab308'); aGrad.addColorStop(1,'#ef4444');
+        ctx.beginPath(); ctx.arc(cx,cy,R,S,endA);
+        ctx.strokeStyle=aGrad; ctx.lineWidth=R*0.17; ctx.lineCap='round'; ctx.stroke();
+      }
+      for(let i=0;i<=10;i++){
+        const a=S+(i/10)*RANGE;
+        const inner=R*(i%5===0?0.74:0.84);
+        ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*inner,cy+Math.sin(a)*inner);
+        ctx.lineTo(cx+Math.cos(a)*(R*0.65),cy+Math.sin(a)*(R*0.65));
+        ctx.strokeStyle='#ffffff35'; ctx.lineWidth=i%5===0?1.5:0.7; ctx.lineCap='butt'; ctx.stroke();
+      }
+      if(!needles[idx]) needles[idx]={cur:S};
+      const target=S+(pct/100)*RANGE;
+      needles[idx].cur+=(target-needles[idx].cur)*0.07;
+      const na=needles[idx].cur;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(na)*R*0.72,cy+Math.sin(na)*R*0.72);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy,R*0.07,0,Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill();
+      ctx.fillStyle='#fff'; ctx.textAlign='center';
+      ctx.font=`bold ${Math.max(12,R*0.3)}px "Courier New"`;
+      ctx.fillText(`${Math.round(g.value||0)}${g.unit||''}`,cx,cy+R*0.18);
+      ctx.font=`${Math.max(9,R*0.17)}px "Courier New"`;
+      ctx.fillStyle='#ffffff88';
+      ctx.fillText((g.label||'').toUpperCase(),cx,cy+R*0.48);
+    };
+    const draw=()=>{
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle='#050505'; ctx.fillRect(0,0,W,H);
+      const gauges=gaugesFn(); const n=Math.max(1,gauges.length);
+      const R=Math.min(W/(n*2.2),H*0.44);
+      const topY=H*0.54;
+      gauges.forEach((g,i)=>drawOne((i+0.5)*(W/n),topY,R,g,i));
+      t++; raf=requestAnimationFrame(draw);
+    };
+    raf=requestAnimationFrame(draw);
+    canvas.__anim={stop:()=>cancelAnimationFrame(raf)};
+  }
+
+  _renderGaugeArcWidget(w, sizeStyle, noBorder) {
+    const wid=w._wid||0; const H=parseInt(w.heightPx)||180;
+    setTimeout(()=>{
+      const cv=this.shadowRoot?.querySelector(`#gauge-cv-${wid}`);
+      if(!cv) return;
+      this._startAnim(`gauge-${wid}`,cv,c=>this._initGaugeArc(c,()=>(w.gauges||[]).map(g=>{
+        const s=this.hass?.states[g.entity];
+        return {label:g.label||'',min:parseFloat(g.min)||0,max:parseFloat(g.max)||100,
+                unit:g.unit||'%',value:s?parseFloat(s.state)||0:0};
+      })));
+    },80);
+    return html`
+      <div style="${sizeStyle}background:#050505;display:flex;flex-direction:column;gap:8px;
+                  padding:10px;${noBorder?'':'border:1px solid #ffffff11;border-radius:12px;'}">
+        ${w.title?html`<div style="font-size:11px;letter-spacing:3px;color:#ffffff44;">${w.title.toUpperCase()}</div>`:html``}
+        <canvas id="gauge-cv-${wid}" width="600" height="${H}" style="width:100%;height:${H}px;display:block;"></canvas>
+      </div>`;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  WIDGET OSCILLOSCOPE — Courbe puissance live
+  // ════════════════════════════════════════════════════════════════
+  _initOscilloscope(canvas, valueFn, opts) {
+    if (!canvas||canvas.__anim) return;
+    const W=canvas.width, H=canvas.height;
+    const ctx=canvas.getContext('2d');
+    const buf=new Float32Array(W).fill(0.5);
+    let head=0, raf;
+    const draw=()=>{
+      const val=valueFn()||0;
+      const col=opts.color||'#00ff00';
+      const minV=opts.min??-3000, maxV=opts.max??3000;
+      buf[head%W]=Math.max(0,Math.min(1,(val-minV)/(maxV-minV)));
+      head++;
+      ctx.fillStyle='rgba(0,6,0,0.12)'; ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='#00ff0012'; ctx.lineWidth=0.5;
+      for(let gx=0;gx<W;gx+=50){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+      for(let gy=0;gy<H;gy+=H/6){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
+      const zY=H*(1-(0-minV)/(maxV-minV));
+      ctx.strokeStyle=col+'30'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(0,zY); ctx.lineTo(W,zY); ctx.stroke();
+      const h=head;
+      ctx.beginPath();
+      for(let i=0;i<W;i++){
+        const bx=(h+i)%W, by=H-buf[bx]*H;
+        i===0?ctx.moveTo(i,by):ctx.lineTo(i,by);
+      }
+      ctx.strokeStyle=col; ctx.lineWidth=1.8; ctx.globalAlpha=0.92;
+      ctx.shadowColor=col; ctx.shadowBlur=7; ctx.stroke();
+      ctx.shadowBlur=0; ctx.globalAlpha=1;
+      ctx.fillStyle=col; ctx.font=`bold ${Math.max(13,H*0.17)}px "Courier New"`;
+      ctx.textAlign='left'; ctx.globalAlpha=0.88;
+      ctx.fillText(`${val>=0?'+':''}${Math.round(val)} ${opts.unit||'W'}`,8,H-8);
+      ctx.textAlign='right'; ctx.font=`${Math.max(9,H*0.1)}px "Courier New"`;
+      ctx.fillStyle=col+'88';
+      [[maxV,4],[0,zY+4],[minV,H-2]].forEach(([v,y])=>ctx.fillText(`${v>0?'+':''}${Math.round(v)}`,W-4,y));
+      ctx.globalAlpha=1;
+      raf=requestAnimationFrame(draw);
+    };
+    raf=requestAnimationFrame(draw);
+    canvas.__anim={stop:()=>cancelAnimationFrame(raf)};
+  }
+
+  _renderOscilloscopeWidget(w, sizeStyle, noBorder) {
+    const wid=w._wid||0; const H=parseInt(w.heightPx)||140;
+    setTimeout(()=>{
+      const cv=this.shadowRoot?.querySelector(`#oscillo-cv-${wid}`);
+      if(!cv) return;
+      this._startAnim(`oscillo-${wid}`,cv,c=>this._initOscilloscope(c,
+        ()=>{const s=this.hass?.states[w.entity];return s?parseFloat(s.state)||0:0;},
+        {color:w.color||'#00ff00',min:parseFloat(w.min??-3000),max:parseFloat(w.max??3000),unit:w.unit||'W'}));
+    },80);
+    return html`
+      <div style="${sizeStyle}background:#000600;display:flex;flex-direction:column;gap:8px;
+                  padding:10px;${noBorder?'':'border:1px solid #00ff0022;border-radius:12px;'}">
+        ${w.title?html`<div style="font-size:11px;letter-spacing:3px;color:${w.color||'#00ff00'}88;">${w.title.toUpperCase()}</div>`:html``}
+        <canvas id="oscillo-cv-${wid}" width="600" height="${H}" style="width:100%;height:${H}px;display:block;border-radius:4px;"></canvas>
+      </div>`;
+  }
+
+    // ═══════════════════════════════════════════════════════════════════════
   //  WIDGET POWER CELL — tubes ADN style Umbrella Corp (batteries)
   // ═══════════════════════════════════════════════════════════════════════
   _initPcell(canvas, socFn, colorFn) {
@@ -5118,9 +5639,14 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'city_dot_size',        l:'Carte — taille des points (défaut 3)',    t:'number'},
         {k:'city_text_size',       l:'Carte — taille du texte ville (défaut 6)',t:'number'},
       ],
-      power_cell: [
-        {k:'title', l:'Titre (optionnel)', t:T},
-      ],
+      power_cell:    [ {k:'title',l:'Titre',t:T} ],
+      radar:         [ {k:'title',l:'Titre',t:T}, {k:'range_km',l:'Portée km',t:N} ],
+      ekg:           [ {k:'title',l:'Titre',t:T}, {k:'entity',l:'Capteur BPM',t:E}, {k:'color',l:'Couleur',t:T}, {k:'default_bpm',l:'BPM défaut',t:N} ],
+      water_wave:    [ {k:'title',l:'Titre',t:T}, {k:'level_entity',l:'Niveau %',t:E}, {k:'volume_entity',l:'Volume (optionnel)',t:E}, {k:'color',l:'Couleur',t:T} ],
+      matrix_rain:   [ {k:'title',l:'Titre',t:T}, {k:'color',l:'Couleur',t:T} ],
+      tvirus:        [ {k:'title',l:'Titre',t:T}, {k:'ph_entity',l:'pH',t:E}, {k:'orp_entity',l:'ORP',t:E}, {k:'salt_entity',l:'Sel',t:E}, {k:'size',l:'Taille px',t:N} ],
+      gauge_arc:     [ {k:'title',l:'Titre',t:T} ],
+      oscilloscope:  [ {k:'title',l:'Titre',t:T}, {k:'entity',l:'Entité',t:E}, {k:'color',l:'Couleur',t:T}, {k:'min',l:'Min',t:N}, {k:'max',l:'Max',t:N}, {k:'unit',l:'Unité',t:T} ],
       health: [],
       dossier: [
         {k:'name',l:'Nom',t:T},{k:'image',l:'Photo (URL)',t:T},{k:'archiveId',l:'N° de dossier (ex: #0734)',t:T},
