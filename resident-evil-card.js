@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v190 (version RICHE : widgets)
+   RESIDENT EVIL CARD v191 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2755,66 +2755,198 @@ class ResidentEvilCard extends LitElement {
   // ═══════════════════════════════════════════════════════════════════════
   //  WIDGET POWER CELL — tubes ADN style Umbrella Corp (batteries)
   // ═══════════════════════════════════════════════════════════════════════
-  _initPcell(canvas, socFn, colorFn) {
-    if (!canvas || canvas.__pcell) return;
-    const W = canvas.width, H = canvas.height;
-    const ctx = canvas.getContext('2d');
-    let t = 0, raf;
-    const TUBE_TOP = 8, TUBE_BOT = H - 8, TUBE_H = TUBE_BOT - TUBE_TOP;
-    const CX = W / 2, AMP = W * 0.30, PER = H * 0.13, STEPS = 180;
+  _initPcell(dnaEl, socFn, colorFn) {
+    if (!dnaEl || dnaEl.__pcell) return;
+    const TUBE_TOP=80, TUBE_BOT=338, TUBE_H=TUBE_BOT-TUBE_TOP;
+    const CX=75, AMP=28, PER=50, STEPS=200;
+    let animT=0, raf;
     const draw = () => {
       const pct = Math.max(0, Math.min(100, socFn()));
       const col = colorFn(pct);
-      const thY = TUBE_BOT - (pct / 100) * TUBE_H;
-      const ph = t * 0.022;
-      ctx.clearRect(0, 0, W, H);
-      // fond tube
-      ctx.fillStyle = '#050a0e'; ctx.beginPath();
-      ctx.roundRect(2, 2, W-4, H-4, 8); ctx.fill();
-      for (let s = 0; s < 2; s++) {
-        const off = s === 1 ? Math.PI : 0;
-        for (let i = 0; i < STEPS; i++) {
-          const t1 = i / STEPS, t2 = (i+1) / STEPS;
-          const y1 = TUBE_TOP + t1*TUBE_H, y2 = TUBE_TOP + t2*TUBE_H;
-          const a1 = (t1*TUBE_H/PER)*Math.PI*2 + ph + off;
-          const a2 = (t2*TUBE_H/PER)*Math.PI*2 + ph + off;
-          const x1 = CX + Math.sin(a1)*AMP, x2 = CX + Math.sin(a2)*AMP;
-          const lit = (y1+y2)/2 >= thY;
-          // halo
+      const thY = TUBE_BOT - (pct/100)*TUBE_H;
+      const ph  = animT * 0.02;
+      const out = [];
+      const pts1=[], pts2=[];
+      for (let i=0; i<=STEPS; i++) {
+        const t=i/STEPS, y=TUBE_TOP+t*TUBE_H;
+        const a=(t*TUBE_H/PER)*Math.PI*2+ph;
+        pts1.push({ x:CX+Math.sin(a)*AMP, y });
+        pts2.push({ x:CX+Math.sin(a+Math.PI)*AMP, y });
+      }
+      const strand = (pts) => {
+        for (let i=0; i<STEPS; i++) {
+          const p=pts[i], q=pts[i+1];
+          const lit=(p.y+q.y)/2 >= thY;
+          const x1=p.x.toFixed(1),y1=p.y.toFixed(1),x2=q.x.toFixed(1),y2=q.y.toFixed(1);
+          const dx=q.x-p.x,dy=q.y-p.y,len=Math.sqrt(dx*dx+dy*dy)||1;
+          const ox=((-dy/len)*2.5).toFixed(1), oy=((dx/len)*2.5).toFixed(1);
           if (lit) {
-            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
-            ctx.lineWidth=12; ctx.strokeStyle=col.glo; ctx.globalAlpha=0.10;
-            ctx.lineCap='round'; ctx.stroke();
-          }
-          // brin principal
-          ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
-          ctx.lineWidth = lit ? 6 : 3.5;
-          ctx.strokeStyle = lit ? col.lit : col.dim;
-          ctx.globalAlpha = lit ? 0.92 : 0.22;
-          ctx.lineCap='round'; ctx.stroke();
-          // surbrillance blanche
-          if (lit) {
-            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
-            ctx.lineWidth=1.6; ctx.strokeStyle='white'; ctx.globalAlpha=0.45; ctx.stroke();
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col.glo}" stroke-width="16" stroke-opacity="0.12" stroke-linecap="round"/>`);
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#000a10" stroke-width="11" stroke-linecap="round"/>`);
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col.lit}" stroke-width="9" stroke-opacity="0.55" stroke-linecap="round"/>`);
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#001a2a" stroke-width="6.5" stroke-opacity="0.95" stroke-linecap="round"/>`);
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col.lit}" stroke-width="4" stroke-opacity="0.9" stroke-linecap="round"/>`);
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="white" stroke-width="1.8" stroke-opacity="0.55" stroke-linecap="round"/>`);
+            out.push(`<line x1="${(+x1+ +ox).toFixed(1)}" y1="${(+y1+ +oy).toFixed(1)}" x2="${(+x2+ +ox).toFixed(1)}" y2="${(+y2+ +oy).toFixed(1)}" stroke="white" stroke-width="1.2" stroke-opacity="0.35" stroke-linecap="round"/>`);
+          } else {
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#05080a" stroke-width="11" stroke-linecap="round"/>`);
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col.dim}" stroke-width="9" stroke-opacity="0.5" stroke-linecap="round"/>`);
+            out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#020508" stroke-width="6.5" stroke-opacity="0.95" stroke-linecap="round"/>`);
+            out.push(`<line x1="${(+x1+ +ox).toFixed(1)}" y1="${(+y1+ +oy).toFixed(1)}" x2="${(+x2+ +ox).toFixed(1)}" y2="${(+y2+ +oy).toFixed(1)}" stroke="white" stroke-width="0.8" stroke-opacity="0.15" stroke-linecap="round"/>`);
           }
         }
-      }
-      ctx.globalAlpha = 1;
-      // ligne de seuil animée
-      if (pct > 0 && pct < 100) {
-        ctx.strokeStyle = col.lit; ctx.globalAlpha = 0.4 + 0.25*Math.sin(t*0.08);
-        ctx.lineWidth = 1.2; ctx.setLineDash([4,4]); ctx.lineDashOffset = -t*0.5;
-        ctx.beginPath(); ctx.moveTo(4,thY); ctx.lineTo(W-4,thY); ctx.stroke();
-        ctx.setLineDash([]);
-      }
-      ctx.globalAlpha = 1;
-      t++; raf = requestAnimationFrame(draw);
+      };
+      strand(pts1); strand(pts2);
+      dnaEl.innerHTML = out.join('');
+      animT++; raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
-    canvas.__pcell = { stop: () => cancelAnimationFrame(raf) };
+    dnaEl.__pcell = { stop: () => cancelAnimationFrame(raf) };
   }
 
-  _renderPowerCellWidget(w, sizeStyle, noBorder) {
+    _renderPowerCellWidget(w, sizeStyle, noBorder) {
+    const cells = w.cells || [];
+    const hass = this.hass;
+    const st = (eid) => eid ? hass?.states[eid] : null;
+    const fv = (eid) => { const s=st(eid); if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const pcCol = (pct) => {
+      if (pct > 50) return { lit:'#00eeff', glo:'#00aaff', dim:'#003344' };
+      if (pct > 20) return { lit:'#ffdd00', glo:'#ff8800', dim:'#332200' };
+      return               { lit:'#ff5500', glo:'#cc0000', dim:'#2a0500' };
+    };
+    const wid = w._wid || 0;
+    setTimeout(() => {
+      cells.forEach((cell, idx) => {
+        const did = `pcell-dna-${idx}-${wid}`;
+        // Injecter le SVG tube dans le conteneur
+        const wrap = this.shadowRoot?.querySelector(`#pcell-wrap-${idx}-${wid}`);
+        if (wrap && !wrap.__tubeInjected) {
+          const uid = `${idx}-${wid}`;
+          wrap.innerHTML = `<svg width="120" height="330" viewBox="0 0 150 410" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pc-metal-${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0d0d1f"/><stop offset="20%" stop-color="#2a2a4a"/>
+      <stop offset="40%" stop-color="#5555a0"/><stop offset="50%" stop-color="#9090c8"/>
+      <stop offset="60%" stop-color="#5555a0"/><stop offset="80%" stop-color="#2a2a4a"/>
+      <stop offset="100%" stop-color="#0d0d1f"/>
+    </linearGradient>
+    <linearGradient id="pc-glass-${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06060f" stop-opacity="0.95"/>
+      <stop offset="25%" stop-color="#0d1030" stop-opacity="0.6"/>
+      <stop offset="75%" stop-color="#0d1030" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#06060f" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="pc-shine-${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="white" stop-opacity="0"/>
+      <stop offset="18%" stop-color="white" stop-opacity="0.12"/>
+      <stop offset="38%" stop-color="white" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="pc-clip-${uid}"><rect x="24" y="76" width="102" height="268" rx="5"/></clipPath>
+  </defs>
+  <rect x="6" y="36" width="138" height="16" rx="5" fill="url(#pc-metal-${uid})"/>
+  <rect x="14" y="40" width="122" height="36" rx="9" fill="url(#pc-metal-${uid})"/>
+  <rect x="19" y="44" width="112" height="28" rx="7" fill="#10102a"/>
+  <rect x="14" y="68" width="122" height="8" rx="3" fill="url(#pc-metal-${uid})"/>
+  <rect x="14" y="72" width="122" height="272" rx="11" fill="url(#pc-metal-${uid})"/>
+  <rect x="24" y="76" width="102" height="268" rx="5" fill="url(#pc-glass-${uid})"/>
+  <g clip-path="url(#pc-clip-${uid})"><g id="${did}"></g></g>
+  <rect x="24" y="76" width="102" height="268" rx="5" fill="url(#pc-shine-${uid})" pointer-events="none"/>
+  <rect x="114" y="80" width="8" height="260" rx="4" fill="white" opacity="0.05" pointer-events="none"/>
+  <g stroke="#00ccff" stroke-width="0.8" opacity="0.35">
+    <line x1="24" y1="90" x2="33" y2="90"/><line x1="24" y1="124" x2="30" y2="124"/>
+    <line x1="24" y1="158" x2="33" y2="158"/><line x1="24" y1="192" x2="30" y2="192"/>
+    <line x1="24" y1="226" x2="33" y2="226"/><line x1="24" y1="260" x2="30" y2="260"/>
+    <line x1="24" y1="294" x2="33" y2="294"/><line x1="24" y1="340" x2="33" y2="340"/>
+  </g>
+  <g fill="#00ccff" font-size="7" font-family="Courier New" opacity="0.4" text-anchor="end">
+    <text x="23" y="93">100</text><text x="23" y="161">75</text>
+    <text x="23" y="229">50</text><text x="23" y="297">25</text><text x="23" y="343">0</text>
+  </g>
+  <rect x="14" y="340" width="122" height="30" rx="11" fill="url(#pc-metal-${uid})"/>
+  <rect x="19" y="344" width="112" height="22" rx="7" fill="#10102a"/>
+  <rect x="8" y="358" width="134" height="14" rx="6" fill="url(#pc-metal-${uid})"/>
+</svg>`;
+          wrap.__tubeInjected = true;
+        }
+        const dnaEl = this.shadowRoot?.querySelector(`#${did}`);
+        if (dnaEl) {
+          const socFn = () => fv(cell.soc_entity) ?? 0;
+          this._initPcell(dnaEl, socFn, pcCol);
+        }
+      });
+    }, 80);
+    return html`
+      <div style="${sizeStyle}background:#050505;display:flex;flex-direction:column;
+                  gap:10px;padding:12px;overflow:hidden;${noBorder?'':'border:1px solid #00ff0022;border-radius:12px;'}">
+        ${w.title ? html`<div style="font-size:11px;letter-spacing:3px;color:#00ff0066;
+            text-align:center;border-bottom:1px solid #00ff0018;padding-bottom:8px;">
+            ${w.title.toUpperCase()}</div>` : html``}
+        <div style="display:flex;gap:10px;flex:1;align-items:stretch;">
+          ${cells.map((cell, idx) => {
+            const soc     = fv(cell.soc_entity);
+            const power   = fv(cell.power_entity);
+            const temp    = fv(cell.temp_entity);
+            const stored  = fv(cell.stored_entity);
+            const storedU = (cell.stored_unit||'').toLowerCase()==='kwh' ? 'kWh' : 'Wh';
+            const storedV = stored!=null ? (storedU==='kWh' ? stored.toFixed(2)+' kWh' : Math.round(stored)+' Wh') : '--';
+            const capWh   = parseFloat(cell.capacity_wh) || null;
+            const socPct  = soc ?? 0;
+            const col     = pcCol(socPct);
+            const userCol = cell.color || col.lit;
+            const charging    = power != null && power < 0;
+            const discharging = power != null && power > 0;
+            const pwrAbs = power != null ? Math.abs(power).toFixed(0) : '--';
+            const pwrDir = charging ? '▼ CHARGE' : discharging ? '▲ DÉCHARGE' : '◉ STABLE';
+            const pwrCol = charging ? '#22c55e' : discharging ? '#f97316' : '#64748b';
+            const statusTxt = soc==null?'HORS LIGNE':soc>50?'NOMINAL':soc>20?'FAIBLE':'CRITIQUE';
+            const statusCol = soc==null?'#ef4444':soc>50?'#22c55e':soc>20?'#f59e0b':'#ef4444';
+            return html`
+              <div style="flex:1;display:flex;gap:8px;background:#080e0e;border:1px solid ${userCol}22;
+                          border-radius:10px;padding:10px;min-width:0;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+                  <div id="pcell-wrap-${idx}-${wid}" style="display:block;"></div>
+                  <div style="font-size:18px;font-weight:900;color:${col.lit};
+                               text-shadow:0 0 10px ${col.glo};letter-spacing:1px;">
+                    ${soc!=null ? Math.round(soc)+'%' : '--'}</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:7px;min-width:0;padding-top:4px;">
+                  <div style="font-size:11px;font-weight:900;color:${userCol};letter-spacing:2px;
+                               text-shadow:0 0 8px ${userCol}88;white-space:nowrap;overflow:hidden;
+                               text-overflow:ellipsis;">${(cell.name||'BATTERIE').toUpperCase()}</div>
+                  <div style="font-size:9px;color:${statusCol};letter-spacing:1px;">${statusTxt}</div>
+                  <div style="background:#0d1a0d;border-radius:4px;height:6px;overflow:hidden;">
+                    <div style="height:100%;width:${socPct}%;background:linear-gradient(90deg,${col.dim},${col.lit});
+                                border-radius:4px;transition:width .8s;"></div>
+                  </div>
+                  <div style="background:#050d05;border-radius:8px;padding:8px 10px;">
+                    <div style="font-size:9px;color:#64748b;letter-spacing:1px;margin-bottom:4px;">PUISSANCE</div>
+                    <div style="font-size:11px;color:${pwrCol};letter-spacing:1px;">${pwrDir}</div>
+                    <div style="font-size:20px;font-weight:900;color:${power!=null?pwrCol:'#334155'};
+                                 line-height:1.1;">${pwrAbs}<span style="font-size:10px;color:#64748b;"> W</span></div>
+                  </div>
+                  ${stored!=null ? html`
+                  <div style="background:#05090d;border-radius:8px;padding:8px 10px;">
+                    <div style="font-size:9px;color:#64748b;letter-spacing:1px;margin-bottom:3px;">STOCKÉ</div>
+                    <div style="font-size:16px;font-weight:900;color:#00ccff;">${storedV}</div>
+                    ${capWh ? html`<div style="font-size:9px;color:#334155;margin-top:2px;">/ ${capWh<2000?capWh+' Wh':(capWh/1000).toFixed(1)+' kWh'} max</div>` : html``}
+                  </div>` : html``}
+                  ${temp!=null ? html`
+                  <div style="display:flex;align-items:center;gap:6px;background:#080808;
+                               border-radius:8px;padding:7px 10px;">
+                    <span style="font-size:14px;">🌡</span>
+                    <span style="font-size:18px;font-weight:900;color:${temp>45?'#ef4444':temp>35?'#f59e0b':'#22d3ee'};">
+                      ${temp.toFixed(1)}</span>
+                    <span style="font-size:10px;color:#475569;">°C</span>
+                  </div>` : html``}
+                </div>
+              </div>`;
+          })}
+        </div>
+      </div>`;
+  }
+
+    _renderPowerCellWidget(w, sizeStyle, noBorder) {
     const cells = w.cells || [];
     const hass = this.hass;
     const st = (eid) => eid ? hass?.states[eid] : null;
