@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v227 (version RICHE : widgets)
+   RESIDENT EVIL CARD v228 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -5183,66 +5183,56 @@ class ResidentEvilCard extends LitElement {
           </div>
         </div>
 
-        <!-- ZONE PRINCIPALE : ARC + DONNÉES -->
-        <div style="display:flex;">
-          <!-- ARC TRAJECTOIRE SOLAIRE -->
-          <div style="padding:12px 10px;border-right:1px solid var(--re-wa)12;flex-shrink:0;">
-            <div style="font-size:14px;color:var(--re-wa);letter-spacing:2px;margin-bottom:6px;text-align:center;">TRAJECTOIRE</div>
-            <svg width="150" height="100" viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg">
-              <!-- Zone panneau estimée (sud, azimut 150-210°) -->
-              <path d="M 58,75 Q 80,30 102,75 Z" fill="rgba(34,197,94,0.06)" stroke="rgba(34,197,94,0.2)" stroke-width="0.8"/>
-              <!-- Arc de trajectoire en pointillés -->
-              <path d="M 10,85 Q 80,5 150,85" fill="none" stroke="rgba(245,158,11,0.25)" stroke-width="1.5" stroke-dasharray="5,4"/>
-              <!-- Ligne horizon -->
-              <line x1="5" y1="87" x2="155" y2="87" stroke="#1a2010" stroke-width="1"/>
-              <!-- Labels horizon -->
-              <text x="6" y="97" fill="#334455" font-size="9" font-family="Courier New">06h</text>
-              <text x="132" y="97" fill="#334455" font-size="9" font-family="Courier New">21h</text>
-              <text x="70" y="97" fill="#334455" font-size="9" font-family="Courier New">13h</text>
-              ${sunVisible ? html`
-              <!-- Halo externe -->
-              <circle cx="${svgX}" cy="${svgY}" r="14" fill="rgba(245,158,11,0.1)"/>
-              <!-- Soleil -->
-              <circle cx="${svgX}" cy="${svgY}" r="8" fill="rgba(245,158,11,0.3)" stroke="var(--re-wa)" stroke-width="1.5"/>
-              <circle cx="${svgX}" cy="${svgY}" r="4" fill="var(--re-wa)"/>
-              <!-- Rayons -->
-              <line x1="${svgX}" y1="${svgY-12}" x2="${svgX}" y2="${svgY-16}" stroke="rgba(245,158,11,0.6)" stroke-width="1"/>
-              <line x1="${svgX+11}" y1="${svgY-6}" x2="${svgX+14}" y2="${svgY-8}" stroke="rgba(245,158,11,0.6)" stroke-width="1"/>
-              <line x1="${svgX-11}" y1="${svgY-6}" x2="${svgX-14}" y2="${svgY-8}" stroke="rgba(245,158,11,0.6)" stroke-width="1"/>
-              <line x1="${svgX+12}" y1="${svgY+2}" x2="${svgX+16}" y2="${svgY+3}" stroke="rgba(245,158,11,0.4)" stroke-width="1"/>
-              <line x1="${svgX-12}" y1="${svgY+2}" x2="${svgX-16}" y2="${svgY+3}" stroke="rgba(245,158,11,0.4)" stroke-width="1"/>
-              <!-- Élévation label -->
-              <text x="${Math.min(140,svgX+10)}" y="${Math.max(16,svgY-6)}" fill="rgba(245,158,11,0.8)" font-size="10" font-family="Courier New">${elev!=null?elev.toFixed(0)+'°':''}</text>` : html`
-              <!-- Soleil sous l'horizon -->
-              <circle cx="${svgX}" cy="90" r="6" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.3)" stroke-width="1" stroke-dasharray="2,2"/>
-              <text x="50" y="65" fill="rgba(245,158,11,0.3)" font-size="10" font-family="Courier New">NUIT</text>`}
-              <!-- Label panneau -->
-              <text x="66" y="72" fill="rgba(34,197,94,0.5)" font-size="8" font-family="Courier New">SUD</text>
-            </svg>
-          </div>
+        <!-- ARC TRAJECTOIRE SOLAIRE — pleine largeur -->
+        <div style="padding:16px 20px 8px;border-bottom:1px solid var(--re-wa)12;">
+          <div style="font-size:13px;color:var(--re-wa);letter-spacing:2px;margin-bottom:10px;text-align:center;opacity:0.7;">TRAJECTOIRE SOLAIRE — AUJOURD'HUI</div>
+          <svg width="100%" viewBox="0 0 400 160" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+            <path d="M 150,130 Q 200,60 250,130 Z" fill="rgba(34,197,94,0.07)" stroke="rgba(34,197,94,0.3)" stroke-width="1"/>
+            <path d="M 20,138 Q 200,10 380,138" fill="none" stroke="var(--re-wa)" stroke-width="1.5" stroke-dasharray="8,6" opacity="0.35"/>
+            <line x1="10" y1="140" x2="390" y2="140" stroke="#1a2010" stroke-width="1.5"/>
+            <text x="12" y="155" fill="#4a5568" font-size="13" font-family="Courier New">06h</text>
+            <text x="178" y="155" fill="#4a5568" font-size="13" font-family="Courier New">13h</text>
+            <text x="358" y="155" fill="#4a5568" font-size="13" font-family="Courier New">21h</text>
+            <text x="183" y="122" fill="rgba(34,197,94,0.6)" font-size="12" font-family="Courier New">SUD</text>
+            ${sunVisible ? html`
+            <circle cx="${10 + azPct*370}" cy="${Math.max(18, 138 - elevPct*128)}" r="22" fill="var(--re-wa)" opacity="0.08"/>
+            <circle cx="${10 + azPct*370}" cy="${Math.max(18, 138 - elevPct*128)}" r="14" fill="var(--re-wa)" opacity="0.2" stroke="var(--re-wa)" stroke-width="1"/>
+            <circle cx="${10 + azPct*370}" cy="${Math.max(18, 138 - elevPct*128)}" r="8" fill="var(--re-wa)"/>
+            <line x1="${10+azPct*370}" y1="${Math.max(18,138-elevPct*128)-16}" x2="${10+azPct*370}" y2="${Math.max(18,138-elevPct*128)-24}" stroke="var(--re-wa)" stroke-width="2" opacity="0.7"/>
+            <line x1="${10+azPct*370}" y1="${Math.max(18,138-elevPct*128)+16}" x2="${10+azPct*370}" y2="${Math.max(18,138-elevPct*128)+24}" stroke="var(--re-wa)" stroke-width="2" opacity="0.4"/>
+            <line x1="${10+azPct*370-16}" y1="${Math.max(18,138-elevPct*128)}" x2="${10+azPct*370-24}" y2="${Math.max(18,138-elevPct*128)}" stroke="var(--re-wa)" stroke-width="2" opacity="0.5"/>
+            <line x1="${10+azPct*370+16}" y1="${Math.max(18,138-elevPct*128)}" x2="${10+azPct*370+24}" y2="${Math.max(18,138-elevPct*128)}" stroke="var(--re-wa)" stroke-width="2" opacity="0.5"/>
+            <line x1="${10+azPct*370+11}" y1="${Math.max(18,138-elevPct*128)-11}" x2="${10+azPct*370+17}" y2="${Math.max(18,138-elevPct*128)-17}" stroke="var(--re-wa)" stroke-width="1.5" opacity="0.5"/>
+            <line x1="${10+azPct*370-11}" y1="${Math.max(18,138-elevPct*128)-11}" x2="${10+azPct*370-17}" y2="${Math.max(18,138-elevPct*128)-17}" stroke="var(--re-wa)" stroke-width="1.5" opacity="0.5"/>
+            <text x="${Math.min(360,10+azPct*370+16)}" y="${Math.max(24,138-elevPct*128-14)}" fill="var(--re-wa)" font-size="14" font-family="Courier New" font-weight="bold">${elev!=null?elev.toFixed(0)+"°":""}</text>
+            ` : html`
+            <circle cx="${10+azPct*370}" cy="142" r="10" fill="var(--re-wa)" opacity="0.15" stroke="var(--re-wa)" stroke-width="1" stroke-dasharray="3,3"/>
+            <text x="155" y="95" fill="var(--re-wa)" opacity="0.25" font-size="22" font-family="Courier New">NUIT</text>
+            `}
+          </svg>
+        </div>
 
-          <!-- MÉTRIQUES -->
-          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--re-wa)08;align-content:start;">
-            <div style="background:#050800;padding:12px;">
-              <div style="font-size:15px;color:var(--re-wa);letter-spacing:1px;margin-bottom:5px;">AZIMUT</div>
-              <div style="font-size:24px;font-weight:900;color:var(--re-wa);line-height:1;">${az!=null?az.toFixed(0)+'°':'--'}</div>
-              <div style="font-size:14px;color:var(--re-wa);margin-top:3px;">${az!=null?(az<90?'EST':az<180?'SUD-EST':az<270?'SUD-OUEST':'OUEST'):'--'}</div>
-            </div>
-            <div style="background:#050800;padding:12px;border-left:1px solid var(--re-wa)08;">
-              <div style="font-size:15px;color:var(--re-wa);letter-spacing:1px;margin-bottom:5px;">ÉLÉVATION</div>
-              <div style="font-size:24px;font-weight:900;color:var(--re-wa);line-height:1;">${elev!=null?elev.toFixed(0)+'°':'--'}</div>
-              <div style="font-size:14px;color:var(--re-wa);margin-top:3px;">${elev!=null?(elev<0?'SOUS HORIZON':elev<15?'BAS':elev<35?'MOYEN':'HAUT'):'--'}</div>
-            </div>
-            <div style="background:#050800;padding:12px;border-top:1px solid var(--re-wg)08;">
-              <div style="font-size:15px;color:var(--re-wg);letter-spacing:1px;margin-bottom:5px;">PIC SOLCAST</div>
-              <div style="font-size:24px;font-weight:900;color:var(--re-wg);line-height:1;">${pic!=null?pic.toFixed(1)+' kWh':'--'}</div>
-              <div style="font-size:14px;color:var(--re-wg);margin-top:3px;">AUJOURD'HUI</div>
-            </div>
-            <div style="background:#050800;padding:12px;border-top:1px solid var(--re-wg)08;border-left:1px solid var(--re-wa)08;">
-              <div style="font-size:15px;color:var(--re-wg);letter-spacing:1px;margin-bottom:5px;">TOTAL JOUR</div>
-              <div style="font-size:24px;font-weight:900;color:var(--re-wg);line-height:1;">${tot!=null?tot.toFixed(1)+' kWh':'--'}</div>
-              <div style="font-size:14px;color:var(--re-wg);margin-top:3px;">SOLCAST PRÉVIS.</div>
-            </div>
+        <!-- MÉTRIQUES 4 cases pleine largeur -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1px solid var(--re-wa)12;">
+          <div style="background:#050800;padding:14px 16px;border-right:1px solid var(--re-wa)08;">
+            <div style="font-size:13px;color:var(--re-wa);letter-spacing:1px;margin-bottom:5px;">AZIMUT</div>
+            <div style="font-size:26px;font-weight:900;color:var(--re-wa);line-height:1;">${az!=null?az.toFixed(0)+"°":"--"}</div>
+            <div style="font-size:12px;color:var(--re-wa);margin-top:4px;opacity:0.6;">${az!=null?(az<90?"EST":az<180?"SUD-EST":az<270?"SUD-OUEST":"OUEST"):"--"}</div>
+          </div>
+          <div style="background:#050800;padding:14px 16px;border-right:1px solid var(--re-wa)08;">
+            <div style="font-size:13px;color:var(--re-wa);letter-spacing:1px;margin-bottom:5px;">ÉLÉVATION</div>
+            <div style="font-size:26px;font-weight:900;color:var(--re-wa);line-height:1;">${elev!=null?elev.toFixed(0)+"°":"--"}</div>
+            <div style="font-size:12px;color:var(--re-wa);margin-top:4px;opacity:0.6;">${elev!=null?(elev<0?"SOUS HORIZON":elev<15?"BAS":elev<35?"MOYEN":"HAUT"):"--"}</div>
+          </div>
+          <div style="background:#050800;padding:14px 16px;border-right:1px solid var(--re-wg)08;">
+            <div style="font-size:13px;color:var(--re-wg);letter-spacing:1px;margin-bottom:5px;">PIC SOLCAST</div>
+            <div style="font-size:26px;font-weight:900;color:var(--re-wg);line-height:1;">${pic!=null?pic.toFixed(1)+" kWh":"--"}</div>
+            <div style="font-size:12px;color:var(--re-wg);margin-top:4px;opacity:0.6;">AUJOURD'HUI</div>
+          </div>
+          <div style="background:#050800;padding:14px 16px;">
+            <div style="font-size:13px;color:var(--re-wg);letter-spacing:1px;margin-bottom:5px;">TOTAL JOUR</div>
+            <div style="font-size:26px;font-weight:900;color:var(--re-wg);line-height:1;">${tot!=null?tot.toFixed(1)+" kWh":"--"}</div>
+            <div style="font-size:12px;color:var(--re-wg);margin-top:4px;opacity:0.6;">SOLCAST PRÉVIS.</div>
           </div>
         </div>
 
