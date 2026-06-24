@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v211 (version RICHE : widgets)
+   RESIDENT EVIL CARD v212 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2670,6 +2670,20 @@ class ResidentEvilCard extends LitElement {
         requestAnimationFrame(() => {
           map.invalidateSize();
           this._updateMyMapMarkers(map, L, w);
+          // Init radar coin haut-droit
+          const radarCv = this.shadowRoot?.querySelector(`#re-map-radar-${wid}`);
+          if (radarCv) {
+            this._startAnim(`map-radar-${wid}`, radarCv, c => this._initMapRadar(c,
+              () => (w.persons||[]).map(p => {
+                const st = this.hass?.states[p.person];
+                return { name:p.name||'', color:p.color||'#00ff00',
+                         lat:st?.attributes?.latitude, lon:st?.attributes?.longitude,
+                         personEid:p.person, distanceEid:p.distance_entity };
+              }),
+              () => { const z=this.hass?.states['zone.home']; return z?{lat:z.attributes?.latitude,lon:z.attributes?.longitude}:null; },
+              null  // pas de onPing
+            ));
+          }
         });
       };
 
@@ -2723,6 +2737,10 @@ class ResidentEvilCard extends LitElement {
           <div style="position:absolute;top:10px;left:10px;z-index:1000;display:flex;flex-direction:column;gap:6px;pointer-events:all;">
             ${personButtons}
           </div>
+          <canvas id="re-map-radar-${wid}" width="160" height="160"
+            style="position:absolute;top:12px;right:12px;width:150px;height:150px;
+                   border-radius:50%;z-index:1000;pointer-events:none;
+                   box-shadow:0 0 0 1px rgba(0,255,0,0.2);"></canvas>
           <div id="re-custom-map-${wid}" style="position:absolute;inset:0;"></div>
         </div>
       </div>`;
