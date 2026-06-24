@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v210 (version RICHE : widgets)
+   RESIDENT EVIL CARD v211 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2617,6 +2617,47 @@ class ResidentEvilCard extends LitElement {
       mapDiv.__mapInited = true;
 
       const initMap = (L) => {
+        // Injecter CSS Leaflet dans le shadow root (ne traverse pas la frontière shadow DOM)
+        if (!this.shadowRoot.querySelector('#re-leaflet-css')) {
+          const st = document.createElement('style');
+          st.id = 're-leaflet-css';
+          st.textContent = `
+            .leaflet-container{position:absolute!important;top:0;left:0;right:0;bottom:0;outline:0;background:#0d1117;overflow:hidden;}
+            .leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,
+            .leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,
+            .leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0;}
+            .leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,
+            .leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer,
+            .leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;}
+            .leaflet-tile{filter:inherit;visibility:hidden;}
+            .leaflet-tile-loaded{visibility:inherit;}
+            .leaflet-zoom-animated{will-change:transform;transition:transform .25s cubic-bezier(0,0,.25,1);}
+            .leaflet-pane{z-index:400;}
+            .leaflet-tile-pane{z-index:200;}
+            .leaflet-overlay-pane{z-index:400;}
+            .leaflet-shadow-pane{z-index:500;}
+            .leaflet-marker-pane{z-index:600;}
+            .leaflet-popup-pane{z-index:700;}
+            .leaflet-map-pane canvas{z-index:100;}
+            .leaflet-map-pane svg{z-index:200;}
+            .leaflet-control-container .leaflet-top,.leaflet-control-container .leaflet-bottom{position:absolute;z-index:1000;pointer-events:none;}
+            .leaflet-control-container .leaflet-bottom{bottom:0;}
+            .leaflet-control-container .leaflet-right{right:0;}
+            .leaflet-control{position:relative;float:left;pointer-events:auto;}
+            .leaflet-right .leaflet-control{float:right;}
+            .leaflet-top .leaflet-control{margin-top:10px;}
+            .leaflet-bottom .leaflet-control{margin-bottom:10px;}
+            .leaflet-left .leaflet-control{margin-left:10px;}
+            .leaflet-right .leaflet-control{margin-right:10px;}
+            .leaflet-control-zoom{border:1px solid #333;border-radius:4px;overflow:hidden;}
+            .leaflet-control-zoom-in,.leaflet-control-zoom-out{display:block;width:26px;height:26px;line-height:26px;text-align:center;font-size:18px;text-decoration:none;color:#fff;background:#1e293b;cursor:pointer;}
+            .leaflet-control-zoom-in:hover,.leaflet-control-zoom-out:hover{background:#334155;}
+            .leaflet-div-icon{background:transparent;border:none;}
+            .leaflet-fade-anim .leaflet-popup{opacity:0;transition:opacity .2s linear;}
+            .leaflet-fade-anim .leaflet-map-pane .leaflet-popup{opacity:1;}
+          `;
+          this.shadowRoot.appendChild(st);
+        }
         // Créer la carte Leaflet sur mon propre div
         const map = L.map(mapDiv, { zoomControl:false, attributionControl:false });
         // Tuiles sombres CartoDB
