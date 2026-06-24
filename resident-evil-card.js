@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v215 (version RICHE : widgets)
+   RESIDENT EVIL CARD v216 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1316,14 +1316,182 @@ class ResidentEvilCard extends LitElement {
         </div>`;
     };
 
-    const renderChem = () => html`
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        ${chemGauge(ph,   numv(w.ph_min,7),    numv(w.ph_max,7.6),  'pH',  '',    calOff(w.ph_offset)   || null)}
-        ${chemGauge(orp,  numv(w.orp_min,650), numv(w.orp_max,800), 'ORP', 'mV',  calOff(w.orp_offset)  || null)}
-        ${chemGauge(tds,  numv(w.tds_min,500), numv(w.tds_max,2000),'TDS', 'ppm', calOff(w.tds_offset)  || null)}
-        ${chemGauge(salt, numv(w.salt_min,300),numv(w.salt_max,500),'Sel', 'ppm', calOff(w.salt_offset) || null)}
-        ${ph==null&&orp==null&&tds==null&&salt==null ? html`<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px;">Aucune entité chimie configurée</div>` : chemAdvice()}
-      </div>`;
+    const renderChem = () => {
+      const phMin=numv(w.ph_min,7), phMax=numv(w.ph_max,7.6);
+      const orpMin=numv(w.orp_min,650), orpMax=numv(w.orp_max,800);
+      const tdsMin=numv(w.tds_min,300), tdsMax=numv(w.tds_max,600);
+      const saltMin=numv(w.salt_min,300), saltMax=numv(w.salt_max,500);
+
+      const param = (val, min, max) => {
+        if (val == null) return { pct: 0, col: '#334', fill: 20, ok: false, alert: false };
+        const inRange = val >= min && val <= max;
+        const range = max - min;
+        const fill = Math.min(92, Math.max(8, ((val - min) / range) * 70 + 15));
+        const overshoot = !inRange ? Math.max(0, (val > max ? (val-max)/range : (min-val)/range)) : 0;
+        const alert = overshoot > 0.15;
+        const col = inRange ? '#00ff66' : alert ? '#ff3300' : '#ffaa00';
+        return { pct: Math.min(100, Math.max(0, ((val-min)/range)*100)), fill, col, ok: inRange, alert };
+      };
+      const PP = param(ph, phMin, phMax);
+      const PO = param(orp, orpMin, orpMax);
+      const PT = param(tds, tdsMin, tdsMax);
+      const PS = param(salt, saltMin, saltMax);
+
+      const alerts = [
+        ph!=null && !PP.ok ? `pH ${ph?.toFixed(2)} hors norme (${phMin}–${phMax}) — ajuster le pH` : null,
+        orp!=null && !PO.ok ? `ORP ${Math.round(orp)} mV hors norme (${orpMin}–${orpMax} mV) — vérifier le chlore` : null,
+        salt!=null && !PS.ok ? `Sel ${Math.round(salt)} ppm hors norme (${saltMin}–${saltMax} ppm) — ${salt>saltMax?'diluer l\'eau':'ajouter du sel'}` : null,
+        tds!=null && !PT.ok ? `TDS ${Math.round(tds)} ppm hors norme (${tdsMin}–${tdsMax} ppm) — renouveler l'eau` : null,
+      ].filter(Boolean);
+      const allOk = alerts.length === 0;
+      const riskPct = Math.min(100, alerts.length * 28 + (PP.alert||PO.alert||PS.alert||PT.alert ? 15 : 0));
+
+      const vial = (label, val, unit, P, min, max) => {
+        const hasVal = val != null;
+        const dispVal = hasVal ? (Number.isInteger(val) ? val : val.toFixed(unit===''?1:0)) : '--';
+        return html`
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;
+                      padding:10px 6px;border-right:1px solid #3300ff10;position:relative;overflow:hidden;
+                      background:${P.alert?'#0d0100':'#030005'};">
+            <div style="position:absolute;top:0;left:0;right:0;height:1px;
+                         background:${P.col}18;animation:_re_scan ${P.alert?'2':'3.5'}s linear infinite;
+                         animation-delay:${Math.random()*2}s;"></div>
+            <div style="font-size:8px;letter-spacing:2px;color:${P.col}88;
+                         ${P.alert?'animation:_re_pulse 1.5s ease-in-out infinite;':''}">
+              ${label}
+            </div>
+            <div style="width:30px;height:6px;background:${P.col};border-radius:2px 2px 0 0;opacity:0.8;
+                         ${P.alert?'animation:_re_pulse 1.5s ease-in-out infinite;':''}"></div>
+            <div style="width:34px;height:108px;border:2px solid ${P.col}44;
+                         border-radius:3px 3px 16px 16px;background:#040008;
+                         position:relative;overflow:hidden;">
+              <div style="position:absolute;bottom:0;left:0;right:0;height:${P.fill}%;
+                           background:${P.col}22;border-radius:0 0 14px 14px;"></div>
+              <div style="position:absolute;bottom:0;left:2px;right:2px;height:${Math.max(0,P.fill-2)}%;
+                           background:${P.col}55;border-radius:0 0 12px 12px;
+                           ${P.alert?'animation:_re_pulse 1.5s ease-in-out infinite;':''}">
+                ${P.alert ? html`
+                  <div style="position:absolute;top:4px;left:5px;width:4px;height:4px;border-radius:50%;background:${P.col};opacity:.5;animation:_re_bubble 1.8s ease-out infinite;"></div>
+                  <div style="position:absolute;top:12px;left:14px;width:3px;height:3px;border-radius:50%;background:${P.col};opacity:.4;animation:_re_bubble 2.3s ease-out infinite;animation-delay:.7s;"></div>` : html``}
+              </div>
+              ${P.fill > 80 && !allOk ? html`
+                <div style="position:absolute;bottom:${P.fill-2}%;left:0;right:0;height:1px;
+                             border-top:1px dashed ${P.col}55;"></div>
+                <div style="position:absolute;bottom:${P.fill}%;right:2px;font-size:7px;color:${P.col}77;">MAX</div>` : html``}
+              <div style="position:absolute;top:0;left:3px;width:5px;bottom:0;
+                           background:rgba(255,255,255,0.03);border-radius:3px;"></div>
+            </div>
+            <div style="font-size:17px;font-weight:900;color:${P.col};line-height:1;
+                         ${P.alert?'animation:_re_pulse 1.5s ease-in-out infinite;':''}">
+              ${dispVal}<span style="font-size:9px;color:#334;margin-left:2px;">${unit}</span>
+            </div>
+            <div style="font-size:8px;color:${P.col}77;padding:2px 7px;border:1px solid ${P.col}33;border-radius:2px;
+                         ${P.alert?'animation:_re_pulse 1.5s ease-in-out infinite;':''}">
+              ${!hasVal?'N/D':P.ok?'CONFORME':P.alert?'ALERTE !':'ATTENTION'}
+            </div>
+            <div style="font-size:8px;color:#334;">${min}–${max}</div>
+          </div>`;
+      };
+
+      return html`
+        <style>
+          @keyframes _re_bubble{0%{transform:translateY(0);opacity:.5}100%{transform:translateY(-35px);opacity:0}}
+        </style>
+        <div style="display:flex;flex-direction:column;gap:0;background:#030005;border:1px solid #3300ff22;border-radius:6px;overflow:hidden;font-family:'Courier New',monospace;position:relative;">
+          <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;">
+            <div style="position:absolute;width:40%;height:1px;background:#6644ff44;animation:_re_scanH 4s linear infinite;"></div>
+          </div>
+          <style>@keyframes _re_scanH{0%{left:-40%}100%{left:100%}}</style>
+
+          <!-- HEADER -->
+          <div style="background:#07000f;border-bottom:1px solid #3300ff22;padding:8px 12px;display:flex;align-items:center;gap:10px;">
+            <svg width="24" height="24" viewBox="0 0 28 28" style="flex-shrink:0;animation:_re_rotate 8s linear infinite;opacity:0.6">
+              <style>@keyframes _re_rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+              <circle cx="14" cy="14" r="12" fill="none" stroke="#6644ff" stroke-width="1.5"/>
+              <circle cx="14" cy="14" r="5" fill="none" stroke="#6644ff" stroke-width="1.5"/>
+              <line x1="14" y1="9" x2="14" y2="2" stroke="#6644ff" stroke-width="1.5"/>
+              <line x1="9" y1="17.2" x2="3.2" y2="20.6" stroke="#6644ff" stroke-width="1.5"/>
+              <line x1="19" y1="17.2" x2="24.8" y2="20.6" stroke="#6644ff" stroke-width="1.5"/>
+            </svg>
+            <div style="flex:1;">
+              <div style="font-size:9px;letter-spacing:3px;color:#6644ff88;">UMBRELLA CORP. — BIO-ANALYSIS UNIT 7</div>
+              <div style="font-size:8px;color:#33005566;letter-spacing:1px;margin-top:1px;">VECTEUR: H₂O · SPA-01</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:9px;color:${allOk?'#00ff6699':'#ff330099'};letter-spacing:2px;${!allOk?'animation:_re_pulse 2s infinite;':''}">
+                ${allOk?'✓ NOMINAL':'⚠ CONTAMINATION'}
+              </div>
+              <div style="font-size:8px;color:${allOk?'#00ff6644':'#ff330066'};margin-top:2px;">
+                NIVEAU BIOHAZARD: ${allOk?'0':alerts.length}
+              </div>
+            </div>
+          </div>
+
+          <!-- JAUGE GLOBALE + TEMPS -->
+          <div style="display:flex;border-bottom:1px solid #3300ff15;">
+            <div style="flex:1;padding:10px 12px;border-right:1px solid #3300ff15;">
+              <div style="font-size:8px;letter-spacing:2px;color:#6644ff44;margin-bottom:6px;">INDICE DE CONTAMINATION GLOBAL</div>
+              <div style="height:6px;background:#0a0012;border-radius:3px;overflow:hidden;position:relative;">
+                <div style="position:absolute;left:0;top:0;bottom:0;width:33%;background:#00ff66;border-radius:3px 0 0 3px;"></div>
+                <div style="position:absolute;left:33%;top:0;bottom:0;width:34%;background:#ffaa00;"></div>
+                <div style="position:absolute;left:67%;top:0;bottom:0;width:33%;background:#ff3300;border-radius:0 3px 3px 0;"></div>
+                <div style="position:absolute;top:-2px;bottom:-2px;width:3px;background:#fff;border-radius:1px;
+                             left:${Math.min(96,riskPct)}%;transition:left .8s;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:8px;color:#33005555;">
+                <span>SAIN</span><span>MODÉRÉ</span><span>DANGER</span>
+              </div>
+              <div style="margin-top:5px;font-size:10px;color:${allOk?'#00ff66':riskPct>60?'#ff3300':'#ffaa00'};letter-spacing:1px;">
+                ${allOk?'TOUS PARAMÈTRES CONFORMES':alerts.length+' PARAMÈTRE(S) HORS NORME'}
+              </div>
+            </div>
+            <div style="display:flex;">
+              <div style="padding:10px 12px;border-right:1px solid #3300ff15;text-align:center;min-width:60px;">
+                <div style="font-size:8px;letter-spacing:1px;color:#00aaff55;margin-bottom:3px;">EAU</div>
+                <div style="font-size:20px;font-weight:900;color:#00ccff;">${wTemp!=null?wTemp.toFixed(1)+'°':'--'}</div>
+                ${tTemp!=null?html`<div style="font-size:8px;color:#00aaff33;margin-top:2px;">CIBLE ${tTemp}°</div>`:html``}
+              </div>
+              ${airTemp!=null?html`
+              <div style="padding:10px 12px;text-align:center;min-width:60px;">
+                <div style="font-size:8px;letter-spacing:1px;color:#ff660055;margin-bottom:3px;">AIR SPA</div>
+                <div style="font-size:20px;font-weight:900;color:#ff8844;">${parseFloat(airTemp).toFixed(1)}°</div>
+                ${extTemp!=null?html`<div style="font-size:8px;color:#ff660033;margin-top:2px;">EXT. ${parseFloat(extTemp).toFixed(1)}°</div>`:html``}
+              </div>`:html``}
+            </div>
+          </div>
+
+          <!-- FIOLES -->
+          <div style="display:flex;border-bottom:1px solid #3300ff15;">
+            ${vial('pH', ph, '', PP, phMin, phMax)}
+            ${vial('ORP', orp, 'mV', PO, orpMin, orpMax)}
+            ${vial('SEL', salt, 'ppm', PS, saltMin, saltMax)}
+            ${vial('TDS', tds, 'ppm', PT, tdsMin, tdsMax)}
+          </div>
+
+          <!-- RECOMMANDATIONS -->
+          ${alerts.length > 0 ? html`
+          <div style="padding:8px 12px;border-bottom:1px solid #3300ff10;background:#060008;">
+            <div style="font-size:8px;letter-spacing:2px;color:#6644ff44;margin-bottom:5px;">&gt; RECOMMANDATIONS AUTOMATIQUES</div>
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              ${alerts.map(a => html`
+                <div style="display:flex;align-items:flex-start;gap:7px;font-size:10px;">
+                  <span style="color:#ff3300;flex-shrink:0;">⚠</span>
+                  <span style="color:#ff330099;">${a}</span>
+                </div>`)}
+            </div>
+          </div>` : html`
+          <div style="padding:8px 12px;background:#000a02;border-bottom:1px solid #3300ff10;">
+            <div style="font-size:10px;color:#00ff6666;letter-spacing:1px;">&gt; TOUS PARAMÈTRES DANS LES NORMES — AUCUNE ACTION REQUISE ✓</div>
+          </div>`}
+
+          <!-- FOOTER -->
+          <div style="padding:5px 12px;display:flex;justify-content:space-between;font-size:8px;color:#3300ff33;">
+            <span>SPA-01 · LAZYSPA 500L</span>
+            <span style="color:#ff330044;animation:_re_pulse 1.5s step-end infinite;">● ENREGISTREMENT EN COURS</span>
+            <span>UMBR. CORP. BIO-LAB © 2026</span>
+          </div>
+        </div>`;
+    };
 
     const renderSw = () => html`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start;">
