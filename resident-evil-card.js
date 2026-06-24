@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v230 (version RICHE : widgets)
+   RESIDENT EVIL CARD v231 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -875,7 +875,8 @@ class ResidentEvilCard extends LitElement {
       case 'oscilloscope':    return this._renderOscilloscopeWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
-      case 'solar_flow': return this._renderSolarFlowWidget(w, sizeStyle, noBorder);
+      case 'solar_flow':   return this._renderSolarFlowWidget(w, sizeStyle, noBorder);
+      case 'consumption':   return this._renderConsumptionWidget(w, sizeStyle, noBorder);
       case 'economies':   return this._renderEconomiesWidget(w, sizeStyle, noBorder);
       case 'previsions':   return this._renderPrevisionsWidget(w, sizeStyle, noBorder);
       default:          return html``;
@@ -5387,7 +5388,133 @@ class ResidentEvilCard extends LitElement {
       </div>`;
   }
 
-    _renderSolarFlowWidget(w, sizeStyle, noBorder=false) {
+    _renderConsumptionWidget(w, sizeStyle, noBorder=false) {
+    const fv  = (eid) => { const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const fmt = (v,d=0,suf='') => v!=null ? v.toFixed(d).replace('.',',')+suf : '--';
+
+    const totalW  = fv(w.total_entity);
+    const solarW  = fv(w.solar_entity);
+    const nightKwh= fv(w.night_entity);
+    const tarif   = fv(w.kwh_price) || parseFloat(w.kwh_price_val) || 0.194;
+    const maxW    = parseFloat(w.max_power) || 5000;
+    const thresh  = parseFloat(w.threshold) || 5;
+    const topN    = parseInt(w.top_count) || 6;
+
+    const cT = w.col_total  || '#ef4444';
+    const cS = w.col_solar  || '#22c55e';
+    const cN = w.col_night  || '#f59e0b';
+
+    const lTotal = w.lbl_total  || 'CONSOMMATION INSTANTANÉE';
+    const lCost  = w.lbl_cost   || 'COÛT / HEURE';
+    const lSolar = w.lbl_solar  || 'SOLAIRE ACTUEL';
+    const lNight = w.lbl_night  || 'CONSO NUIT';
+    const lTarif = w.tarif_label || 'TARIF EDF';
+
+    const costPerH = totalW!=null && tarif ? totalW/1000*tarif : null;
+    const capPct   = totalW!=null ? Math.min(100,(totalW/maxW)*100) : 0;
+    const capCol   = capPct>80?'#ff3300':capPct>50?'#f59e0b':'#22c55e';
+
+    // Devices triés par puissance décroissante
+    const devices = (w.devices||[]).map(d => ({
+      ...d,
+      val: fv(d.entity),
+    })).filter(d => d.val!=null && d.val>=thresh)
+      .sort((a,b)=>(b.val||0)-(a.val||0))
+      .slice(0, topN);
+
+    const maxDev = devices.length ? Math.max(...devices.map(d=>d.val||0)) : 1;
+
+    return html`
+      <div style="${sizeStyle}background:#080005;border:1px solid ${cT}22;border-radius:6px;
+                  overflow:hidden;font-family:'Courier New',monospace;position:relative;">
+        <style>
+          @keyframes _co_scan{0%{left:-40%}100%{left:110%}}
+          @keyframes _co_pulse{0%,100%{opacity:1}50%{opacity:0.25}}
+          @keyframes _co_blink{0%,100%{opacity:1}50%{opacity:0}}
+        </style>
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;z-index:1;">
+          <div style="position:absolute;width:40%;height:1px;background:${cT}55;animation:_co_scan 4s linear infinite;"></div>
+        </div>
+
+        <!-- HEADER -->
+        <div style="background:#0d0008;border-bottom:1px solid ${cT}18;padding:9px 14px;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:14px;letter-spacing:2px;color:${cT};">${w.header_title||'SURVEILLANCE ÉNERGÉTIQUE — RÉSIDENCE'}</div>
+            <div style="font-size:12px;color:var(--re-wtd);margin-top:2px;">${w.header_sub||'LINKY + ECOJOKO · CAPTEURS ACTIFS'}</div>
+          </div>
+          <div style="font-size:11px;color:${cN};border:1px solid ${cN}33;padding:3px 10px;border-radius:2px;">
+            ${lTarif} · ${fmt(tarif,3)} €/kWh
+          </div>
+        </div>
+
+        <!-- CONSO TOTALE + 3 MÉTRIQUES -->
+        <div style="padding:14px;border-bottom:1px solid ${cT}12;display:flex;gap:16px;align-items:center;">
+          <!-- Grande valeur -->
+          <div style="flex:1;">
+            <div style="font-size:12px;color:${cT};letter-spacing:2px;margin-bottom:6px;opacity:0.7;">${lTotal}</div>
+            <div style="font-size:44px;font-weight:900;color:${cT};line-height:1;">
+              ${totalW!=null?Math.round(totalW).toLocaleString('fr-FR'):'--'}
+              <span style="font-size:18px;opacity:0.5;"> W</span>
+            </div>
+            <div style="margin-top:10px;height:5px;background:#1a0005;border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${capPct}%;background:linear-gradient(90deg,#22c55e,${cN},${capCol});border-radius:3px;transition:width .8s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:${cT};opacity:0.35;margin-top:4px;">
+              <span>0 W</span>
+              <span>${capPct.toFixed(0)}% DE LA CAPACITÉ</span>
+              <span>${(maxW/1000).toFixed(0)} kW</span>
+            </div>
+          </div>
+          <!-- 3 métriques côté droit -->
+          <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0;min-width:140px;">
+            <div style="padding:9px 12px;background:#0a0002;border:1px solid ${cT}22;border-radius:4px;">
+              <div style="font-size:10px;color:${cT};opacity:0.6;margin-bottom:3px;">${lCost}</div>
+              <div style="font-size:20px;font-weight:900;color:${cT};">${fmt(costPerH,2)} €</div>
+            </div>
+            <div style="padding:9px 12px;background:#020a02;border:1px solid ${cS}22;border-radius:4px;">
+              <div style="font-size:10px;color:${cS};opacity:0.6;margin-bottom:3px;">${lSolar}</div>
+              <div style="font-size:20px;font-weight:900;color:${cS};">${fmt(solarW,0)} W</div>
+            </div>
+            <div style="padding:9px 12px;background:#0a0500;border:1px solid ${cN}22;border-radius:4px;">
+              <div style="font-size:10px;color:${cN};opacity:0.6;margin-bottom:3px;">${lNight}</div>
+              <div style="font-size:20px;font-weight:900;color:${cN};">${fmt(nightKwh,1)} kWh</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOP APPAREILS ACTIFS -->
+        <div style="padding:10px 14px;">
+          <div style="font-size:11px;color:${cT};letter-spacing:2px;margin-bottom:8px;opacity:0.5;">
+            TOP CONSOMMATEURS ACTIFS — ${devices.length} / ${(w.devices||[]).length} UNITÉS
+          </div>
+          ${devices.length ? devices.map(d => {
+            const barW = maxDev>0 ? Math.min(100,(d.val/maxDev)*100) : 0;
+            const dc = d.color || cT;
+            return html`
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid ${cT}08;">
+                <div style="width:9px;height:9px;border-radius:50%;background:${dc};flex-shrink:0;animation:_co_pulse 2s ease-in-out infinite;"></div>
+                <div style="flex:1;font-size:13px;color:var(--re-wt);">${d.name||d.entity.split('.').pop()}</div>
+                <div style="width:80px;height:3px;background:#1a0005;border-radius:2px;overflow:hidden;">
+                  <div style="height:100%;width:${barW}%;background:${dc};transition:width .5s;"></div>
+                </div>
+                <div style="font-size:14px;font-weight:700;color:${dc};min-width:65px;text-align:right;">${fmt(d.val,0)} W</div>
+              </div>`;
+          }) : html`
+            <div style="font-size:12px;color:var(--re-wtd);padding:10px 0;text-align:center;opacity:0.5;">
+              Aucun appareil actif · configurez les appareils dans l'éditeur
+            </div>`}
+        </div>
+
+        <!-- FOOTER -->
+        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:10px;color:${cT}22;border-top:1px solid ${cT}08;">
+          <span>SURVEILLANCE MULTI-CAPTEURS</span>
+          <span style="animation:_co_blink 1.2s step-end infinite;color:${cS}44;">● TEMPS RÉEL</span>
+        </div>
+      </div>`;
+  }
+
+  _renderSolarFlowWidget(w, sizeStyle, noBorder=false) {
     const fv = (eid) => { const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
     const fmt = (v,d=0) => v!=null ? v.toFixed(d).replace('.',',') : '--';
     const th = this._config?.theme || {};
@@ -6633,6 +6760,19 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'plant_image',l:'Image',t:T},{k:'battery_sensor',l:'Batterie',t:E},
       ],
       solar:   [ {k:'active_tab',l:'Onglet (0=Sol 1=Météo 2=Batt 3=Éco)',t:S,o:['0','1','2','3']} ],
+      consumption: [
+        {k:'header_title',l:'Titre header',t:T},{k:'header_sub',l:'Sous-titre header',t:T},
+        {k:'total_entity',l:'Conso totale (W)',t:E},{k:'solar_entity',l:'Production solaire (W)',t:E},
+        {k:'night_entity',l:'Conso nuit (kWh)',t:E},{k:'kwh_price',l:'Tarif €/kWh (entité)',t:E},
+        {k:'kwh_price_val',l:'Tarif €/kWh (valeur fixe)',t:N},{k:'max_power',l:'Capacité max (W)',t:N},
+        {k:'threshold',l:'Seuil actif (W)',t:N},{k:'top_count',l:'Nb appareils affichés',t:N},
+        {k:'col_total',l:'Couleur conso totale',t:'color',d:'#ef4444'},
+        {k:'col_solar',l:'Couleur solaire',t:'color',d:'#22c55e'},
+        {k:'col_night',l:'Couleur nuit',t:'color',d:'#f59e0b'},
+        {k:'lbl_total',l:'Label conso totale',t:T},{k:'lbl_cost',l:'Label coût/heure',t:T},
+        {k:'lbl_solar',l:'Label solaire',t:T},{k:'lbl_night',l:'Label conso nuit',t:T},
+        {k:'tarif_label',l:'Label tarif EDF',t:T},
+      ],
       solar_flow: [
         {k:'header_title',l:'Titre header',t:T},{k:'header_sub',l:'Sous-titre header',t:T},
         {k:'p1_name',l:'Install. 1 — Nom',t:T},{k:'p1_color',l:'Install. 1 — Couleur',t:'color',d:'#f59e0b'},
@@ -7025,6 +7165,34 @@ class ResidentEvilCardEditor extends LitElement {
               {k:'geocoded_entity',l:'Lieu géocodé',e:true,flex:1.3},{k:'distance_entity',l:'Distance',e:true,flex:1.3},
             ], ()=>({name:'',person:''}))}
           </div>` : html``}
+        ${wg.type==='consumption' ? html`
+          <div style="margin-top:10px;">
+            ${this._lbl('⚡ APPAREILS SURVEILLÉS')}
+            <div style="font-size:12px;color:#64748b;margin-bottom:8px;">Un appareil par ligne. LED pulsante quand actif (au-dessus du seuil).</div>
+            ${(wg.devices||[]).map((d, di) => html`
+              <div style="margin-bottom:6px;background:#080e18;border:1px solid #1a2744;border-radius:6px;padding:8px;">
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                  <div style="flex:2;min-width:120px;">
+                    <div style="font-size:10px;color:#475569;margin-bottom:2px;">Entité</div>
+                    ${this._txt(d.entity, v => this._mutate(cfg => { cfg.categories[ci].submenus[si].widgets[wi].devices[di].entity = v; }), 'sensor.…', 're2ents')}
+                  </div>
+                  <div style="flex:1;min-width:80px;">
+                    <div style="font-size:10px;color:#475569;margin-bottom:2px;">Nom affiché</div>
+                    ${this._txt(d.name, v => this._mutate(cfg => { cfg.categories[ci].submenus[si].widgets[wi].devices[di].name = v; }), 'ex: Lave-linge')}
+                  </div>
+                  <div style="flex-shrink:0;">
+                    <div style="font-size:10px;color:#475569;margin-bottom:2px;">Couleur</div>
+                    ${this._color(d.color||'#ef4444', '#ef4444', v => this._mutate(cfg => { cfg.categories[ci].submenus[si].widgets[wi].devices[di].color = v; }))}
+                  </div>
+                  ${this._btn('🗑', () => this._mutate(cfg => { cfg.categories[ci].submenus[si].widgets[wi].devices.splice(di,1); }), '#ef4444')}
+                </div>
+              </div>`)}
+            ${this._btn('＋ Appareil', () => this._mutate(cfg => {
+              const ww = cfg.categories[ci].submenus[si].widgets[wi];
+              if (!ww.devices) ww.devices = [];
+              ww.devices.push({entity:'', name:'', color:'#ef4444'});
+            }), '#22c55e')}
+          </div>` : html``}
         ${wg.type==='appliance' ? html`
           <div style="margin-top:10px;">
             ${this._lbl('Capteurs par équipement')}
@@ -7060,7 +7228,8 @@ class ResidentEvilCardEditor extends LitElement {
                     </div>
                   </div>`)}
               </div>`)}
-          </div>` : html``}
+          </div>
+        ` : html``}
       </div>`;
   }
 
