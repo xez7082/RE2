@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v229 (version RICHE : widgets)
+   RESIDENT EVIL CARD v230 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -5187,52 +5187,35 @@ class ResidentEvilCard extends LitElement {
         <div style="padding:8px 16px 4px;border-bottom:1px solid var(--re-wa)12;">
           <div style="font-size:12px;color:var(--re-wa);letter-spacing:2px;margin-bottom:4px;text-align:center;opacity:0.6;">TRAJECTOIRE SOLAIRE — AUJOURD'HUI</div>
           <svg width="100%" height="160" viewBox="0 0 400 160" xmlns="http://www.w3.org/2000/svg" style="display:block;max-height:160px;">
+            <!-- Zone panneaux SUD -->
             <path d="M 150,130 Q 200,60 250,130 Z" fill="rgba(34,197,94,0.07)" stroke="rgba(34,197,94,0.3)" stroke-width="1"/>
+            <!-- Arc trajectoire -->
             <path d="M 20,138 Q 200,10 380,138" fill="none" stroke="var(--re-wa)" stroke-width="2" stroke-dasharray="8,6" opacity="0.5"/>
+            <!-- Horizon -->
             <line x1="10" y1="140" x2="390" y2="140" stroke="#2a3a1a" stroke-width="1.5"/>
+            <!-- Labels horaires -->
             <text x="12" y="155" fill="#4a5568" font-size="12" font-family="Courier New">06h</text>
             <text x="183" y="155" fill="#4a5568" font-size="12" font-family="Courier New">13h</text>
             <text x="362" y="155" fill="#4a5568" font-size="12" font-family="Courier New">21h</text>
             <text x="186" y="125" fill="rgba(34,197,94,0.6)" font-size="11" font-family="Courier New">SUD</text>
-            ${sunVisible ? html`
-            <circle cx="${10+azPct*370}" cy="${Math.max(16,138-elevPct*128)}" r="20" fill="var(--re-wa)" opacity="0.1"/>
-            <circle cx="${10+azPct*370}" cy="${Math.max(16,138-elevPct*128)}" r="11" fill="var(--re-wa)" opacity="0.25" stroke="var(--re-wa)" stroke-width="1.5"/>
-            <circle cx="${10+azPct*370}" cy="${Math.max(16,138-elevPct*128)}" r="6" fill="var(--re-wa)"/>
-            <line x1="${10+azPct*370}" y1="${Math.max(16,138-elevPct*128)-14}" x2="${10+azPct*370}" y2="${Math.max(16,138-elevPct*128)-20}" stroke="var(--re-wa)" stroke-width="2" opacity="0.7"/>
-            <line x1="${10+azPct*370}" y1="${Math.max(16,138-elevPct*128)+14}" x2="${10+azPct*370}" y2="${Math.max(16,138-elevPct*128)+20}" stroke="var(--re-wa)" stroke-width="2" opacity="0.4"/>
-            <line x1="${10+azPct*370-14}" y1="${Math.max(16,138-elevPct*128)}" x2="${10+azPct*370-20}" y2="${Math.max(16,138-elevPct*128)}" stroke="var(--re-wa)" stroke-width="2" opacity="0.5"/>
-            <line x1="${10+azPct*370+14}" y1="${Math.max(16,138-elevPct*128)}" x2="${10+azPct*370+20}" y2="${Math.max(16,138-elevPct*128)}" stroke="var(--re-wa)" stroke-width="2" opacity="0.5"/>
-            <line x1="${10+azPct*370+10}" y1="${Math.max(16,138-elevPct*128)-10}" x2="${10+azPct*370+15}" y2="${Math.max(16,138-elevPct*128)-15}" stroke="var(--re-wa)" stroke-width="1.5" opacity="0.5"/>
-            <line x1="${10+azPct*370-10}" y1="${Math.max(16,138-elevPct*128)-10}" x2="${10+azPct*370-15}" y2="${Math.max(16,138-elevPct*128)-15}" stroke="var(--re-wa)" stroke-width="1.5" opacity="0.5"/>
-            <text x="${Math.min(360,10+azPct*370+14)}" y="${Math.max(20,138-elevPct*128-12)}" fill="var(--re-wa)" font-size="13" font-family="Courier New" font-weight="bold">${elev!=null?elev.toFixed(0)+'°':''}</text>
-            ` : html`
-            <circle cx="${10+azPct*370}" cy="142" r="8" fill="var(--re-wa)" opacity="0.15" stroke="var(--re-wa)" stroke-width="1" stroke-dasharray="3,3"/>
-            <text x="160" y="90" fill="var(--re-wa)" opacity="0.2" font-size="20" font-family="Courier New">NUIT</text>
-            `}
-          </svg>
-        </div>
-            <path d="M 150,130 Q 200,60 250,130 Z" fill="rgba(34,197,94,0.07)" stroke="rgba(34,197,94,0.3)" stroke-width="1"/>
-            <path d="M 20,138 Q 200,10 380,138" fill="none" stroke="var(--re-wa)" stroke-width="1.5" stroke-dasharray="8,6" opacity="0.35"/>
-            <line x1="10" y1="140" x2="390" y2="140" stroke="#1a2010" stroke-width="1.5"/>
-            <text x="12" y="155" fill="#4a5568" font-size="13" font-family="Courier New">06h</text>
-            <text x="178" y="155" fill="#4a5568" font-size="13" font-family="Courier New">13h</text>
-            <text x="358" y="155" fill="#4a5568" font-size="13" font-family="Courier New">21h</text>
-            <text x="183" y="122" fill="rgba(34,197,94,0.6)" font-size="12" font-family="Courier New">SUD</text>
-            ${sunVisible ? html`
-            <circle cx="${10 + azPct*370}" cy="${Math.max(18, 138 - elevPct*128)}" r="22" fill="var(--re-wa)" opacity="0.08"/>
-            <circle cx="${10 + azPct*370}" cy="${Math.max(18, 138 - elevPct*128)}" r="14" fill="var(--re-wa)" opacity="0.2" stroke="var(--re-wa)" stroke-width="1"/>
-            <circle cx="${10 + azPct*370}" cy="${Math.max(18, 138 - elevPct*128)}" r="8" fill="var(--re-wa)"/>
-            <line x1="${10+azPct*370}" y1="${Math.max(18,138-elevPct*128)-16}" x2="${10+azPct*370}" y2="${Math.max(18,138-elevPct*128)-24}" stroke="var(--re-wa)" stroke-width="2" opacity="0.7"/>
-            <line x1="${10+azPct*370}" y1="${Math.max(18,138-elevPct*128)+16}" x2="${10+azPct*370}" y2="${Math.max(18,138-elevPct*128)+24}" stroke="var(--re-wa)" stroke-width="2" opacity="0.4"/>
-            <line x1="${10+azPct*370-16}" y1="${Math.max(18,138-elevPct*128)}" x2="${10+azPct*370-24}" y2="${Math.max(18,138-elevPct*128)}" stroke="var(--re-wa)" stroke-width="2" opacity="0.5"/>
-            <line x1="${10+azPct*370+16}" y1="${Math.max(18,138-elevPct*128)}" x2="${10+azPct*370+24}" y2="${Math.max(18,138-elevPct*128)}" stroke="var(--re-wa)" stroke-width="2" opacity="0.5"/>
-            <line x1="${10+azPct*370+11}" y1="${Math.max(18,138-elevPct*128)-11}" x2="${10+azPct*370+17}" y2="${Math.max(18,138-elevPct*128)-17}" stroke="var(--re-wa)" stroke-width="1.5" opacity="0.5"/>
-            <line x1="${10+azPct*370-11}" y1="${Math.max(18,138-elevPct*128)-11}" x2="${10+azPct*370-17}" y2="${Math.max(18,138-elevPct*128)-17}" stroke="var(--re-wa)" stroke-width="1.5" opacity="0.5"/>
-            <text x="${Math.min(360,10+azPct*370+16)}" y="${Math.max(24,138-elevPct*128-14)}" fill="var(--re-wa)" font-size="14" font-family="Courier New" font-weight="bold">${elev!=null?elev.toFixed(0)+"°":""}</text>
-            ` : html`
-            <circle cx="${10+azPct*370}" cy="142" r="10" fill="var(--re-wa)" opacity="0.15" stroke="var(--re-wa)" stroke-width="1" stroke-dasharray="3,3"/>
-            <text x="155" y="95" fill="var(--re-wa)" opacity="0.25" font-size="22" font-family="Courier New">NUIT</text>
-            `}
+            <!-- Soleil visible (affiché si elev > 0) -->
+            <g opacity="${sunVisible ? 1 : 0}">
+              <circle cx="${10 + azPct*370}" cy="${Math.max(16, 138 - elevPct*128)}" r="20" fill="var(--re-wa)" opacity="0.1"/>
+              <circle cx="${10 + azPct*370}" cy="${Math.max(16, 138 - elevPct*128)}" r="11" fill="var(--re-wa)" opacity="0.25"/>
+              <circle cx="${10 + azPct*370}" cy="${Math.max(16, 138 - elevPct*128)}" r="6" fill="var(--re-wa)"/>
+              <line x1="${10+azPct*370}" y1="${Math.max(16,138-elevPct*128)-14}" x2="${10+azPct*370}" y2="${Math.max(16,138-elevPct*128)-22}" stroke="var(--re-wa)" stroke-width="2" opacity="0.7"/>
+              <line x1="${10+azPct*370}" y1="${Math.max(16,138-elevPct*128)+14}" x2="${10+azPct*370}" y2="${Math.max(16,138-elevPct*128)+22}" stroke="var(--re-wa)" stroke-width="2" opacity="0.4"/>
+              <line x1="${10+azPct*370-14}" y1="${Math.max(16,138-elevPct*128)}" x2="${10+azPct*370-22}" y2="${Math.max(16,138-elevPct*128)}" stroke="var(--re-wa)" stroke-width="2" opacity="0.5"/>
+              <line x1="${10+azPct*370+14}" y1="${Math.max(16,138-elevPct*128)}" x2="${10+azPct*370+22}" y2="${Math.max(16,138-elevPct*128)}" stroke="var(--re-wa)" stroke-width="2" opacity="0.5"/>
+              <line x1="${10+azPct*370+10}" y1="${Math.max(16,138-elevPct*128)-10}" x2="${10+azPct*370+16}" y2="${Math.max(16,138-elevPct*128)-16}" stroke="var(--re-wa)" stroke-width="1.5" opacity="0.5"/>
+              <line x1="${10+azPct*370-10}" y1="${Math.max(16,138-elevPct*128)-10}" x2="${10+azPct*370-16}" y2="${Math.max(16,138-elevPct*128)-16}" stroke="var(--re-wa)" stroke-width="1.5" opacity="0.5"/>
+              <text x="${Math.min(360,10+azPct*370+14)}" y="${Math.max(20,138-elevPct*128-12)}" fill="var(--re-wa)" font-size="13" font-family="Courier New" font-weight="bold">${elev!=null?elev.toFixed(0)+'°':''}</text>
+            </g>
+            <!-- Soleil sous l'horizon (affiché si nuit) -->
+            <g opacity="${sunVisible ? 0 : 1}">
+              <circle cx="${10+azPct*370}" cy="142" r="8" fill="var(--re-wa)" opacity="0.15" stroke="var(--re-wa)" stroke-width="1" stroke-dasharray="3,3"/>
+              <text x="155" y="90" fill="var(--re-wa)" opacity="0.25" font-size="22" font-family="Courier New">NUIT</text>
+            </g>
           </svg>
         </div>
 
