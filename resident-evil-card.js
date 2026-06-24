@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v214 (version RICHE : widgets)
+   RESIDENT EVIL CARD v215 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1768,6 +1768,10 @@ class ResidentEvilCard extends LitElement {
       ? Math.min(100, Math.max(0, (Math.abs(wSt - wCur) / Math.abs(wSt - wId)) * 100))
       : 0;
 
+    // ── Capteur BPM (heart-pulse) ──
+    const heartSensor = sensors.find(s => s.icon === 'mdi:heart-pulse' || (s.unit||'').toLowerCase().includes('bpm'));
+    const heartVal = heartSensor ? numSt(heartSensor.entity) : null;
+
     return html`
       <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}
            background:#050505; border:2px solid #8b0000; border-radius:3px;
@@ -1799,6 +1803,16 @@ class ResidentEvilCard extends LitElement {
               <span style="opacity:.8;">●</span> STATUT ${anyAlert?'ALERTE':'OPÉRATIONNEL'}
             </div>
           </div>
+          ${heartVal != null ? html`
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;
+                      background:#0d0505;border:1px solid #8b000044;border-radius:4px;padding:6px 10px;">
+            <div style="font-size:9px;letter-spacing:2px;color:#8b0000;margin-bottom:2px;">BPM</div>
+            <div style="font-size:22px;font-weight:900;color:#ef4444;line-height:1;
+                        animation:_re_pulse 1s ease-in-out infinite;">
+              ${Math.round(heartVal)}
+            </div>
+            <div style="font-size:9px;color:#8b000088;margin-top:2px;">♥</div>
+          </div>` : html``}
         </div>
 
         <div style="flex:1;overflow-y:auto;padding:12px 14px;scrollbar-width:none;">
