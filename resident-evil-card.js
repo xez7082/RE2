@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v213 (version RICHE : widgets)
+   RESIDENT EVIL CARD v214 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -6328,6 +6328,42 @@ class ResidentEvilCardEditor extends LitElement {
               {k:'name',l:'Nom'},{k:'person',l:'person.…',e:true,flex:1.3},
               {k:'geocoded_entity',l:'Lieu géocodé',e:true,flex:1.3},{k:'distance_entity',l:'Distance',e:true,flex:1.3},
             ], ()=>({name:'',person:''}))}
+          </div>` : html``}
+        ${wg.type==='appliance' ? html`
+          <div style="margin-top:10px;">
+            ${this._lbl('Capteurs par équipement')}
+            ${(wg.categories||[]).map((cat, catIdx) => html`
+              <div style="margin-top:8px;">
+                <div style="font-size:11px;letter-spacing:2px;color:#818cf888;margin-bottom:6px;padding:3px 0;border-bottom:1px solid #1a2744;">
+                  ${(cat.label||'CATÉGORIE '+catIdx).toUpperCase()}
+                </div>
+                ${(cat.items||[]).map((item, itemIdx) => html`
+                  <div style="margin-bottom:8px;background:#080e18;border:1px solid #1a2744;border-radius:6px;padding:8px;">
+                    <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+                      ${item.img?html`<img src="${item.img}" style="width:22px;height:22px;object-fit:contain;opacity:0.7;">`:html``}
+                      ${item.name||'Item '+itemIdx}
+                      <span style="font-size:10px;color:#475569;">${(item.sensors||[]).length} capteur(s)</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                      ${(item.sensors||[]).map((eid, sIdx) => {
+                        return html`
+                          <div style="display:flex;gap:5px;align-items:center;">
+                            ${this._txt(eid, v => this._mutate(cfg => {
+                              cfg.categories[ci].submenus[si].widgets[wi].categories[catIdx].items[itemIdx].sensors[sIdx] = v;
+                            }), 'sensor.…', 're2ents')}
+                            ${this._btn('🗑', () => this._mutate(cfg => {
+                              cfg.categories[ci].submenus[si].widgets[wi].categories[catIdx].items[itemIdx].sensors.splice(sIdx,1);
+                            }), '#ef4444')}
+                          </div>`;
+                      })}
+                      ${this._btn('＋ Capteur', () => this._mutate(cfg => {
+                        const itm = cfg.categories[ci].submenus[si].widgets[wi].categories[catIdx].items[itemIdx];
+                        if (!itm.sensors) itm.sensors=[];
+                        itm.sensors.push('');
+                      }), '#22c55e')}
+                    </div>
+                  </div>`)}
+              </div>`)}
           </div>` : html``}
       </div>`;
   }
