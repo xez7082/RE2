@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v209 (version RICHE : widgets)
+   RESIDENT EVIL CARD v210 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2625,7 +2625,11 @@ class ResidentEvilCard extends LitElement {
         }).addTo(map);
         L.control.zoom({ position:'bottomright' }).addTo(map);
         mapDiv._leafletMap = map;
-        this._updateMyMapMarkers(map, L, w);
+        // Laisser le DOM se stabiliser avant de calculer la taille
+        requestAnimationFrame(() => {
+          map.invalidateSize();
+          this._updateMyMapMarkers(map, L, w);
+        });
       };
 
       if (window.L) {
@@ -2678,7 +2682,7 @@ class ResidentEvilCard extends LitElement {
           <div style="position:absolute;top:10px;left:10px;z-index:1000;display:flex;flex-direction:column;gap:6px;pointer-events:all;">
             ${personButtons}
           </div>
-          <div id="re-custom-map-${wid}" style="width:100%;height:100%;"></div>
+          <div id="re-custom-map-${wid}" style="position:absolute;inset:0;"></div>
         </div>
       </div>`;
   }
