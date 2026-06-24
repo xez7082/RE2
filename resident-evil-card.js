@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v224 (version RICHE : widgets)
+   RESIDENT EVIL CARD v225 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -875,6 +875,7 @@ class ResidentEvilCard extends LitElement {
       case 'oscilloscope':    return this._renderOscilloscopeWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
+      case 'solar_flow': return this._renderSolarFlowWidget(w, sizeStyle, noBorder);
       case 'economies':   return this._renderEconomiesWidget(w, sizeStyle, noBorder);
       case 'previsions':   return this._renderPrevisionsWidget(w, sizeStyle, noBorder);
       default:          return html``;
@@ -5385,6 +5386,192 @@ class ResidentEvilCard extends LitElement {
           <span>DIVISION ÉNERGIE RENOUVELABLE</span>
           <span style="animation:_re_blink_eco 1.2s step-end infinite;color:var(--re-wg);">● TEMPS RÉEL</span>
           <span>UMBR. CORP. © 2026</span>
+        </div>
+      </div>`;
+  }
+
+    _renderSolarFlowWidget(w, sizeStyle, noBorder=false) {
+    const fv = (eid) => { const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const fmt = (v,d=0) => v!=null ? v.toFixed(d).replace('.',',') : '--';
+    const th = this._config?.theme || {};
+
+    // Valeurs
+    const p1w=fv(w.p1_w_entity), p2w=fv(w.p2_w_entity), p3w=fv(w.p3_w_entity);
+    const p1d=fv(w.p1_d_entity), p2d=fv(w.p2_d_entity), p3d=fv(w.p3_d_entity);
+    const p1m=fv(w.p1_m_entity), p2m=fv(w.p2_m_entity), p3m=fv(w.p3_m_entity);
+    const totalW   = fv(w.total_entity) || ((p1w||0)+(p2w||0)+(p3w||0));
+    const consW    = fv(w.cons_entity);
+    const gridRaw  = fv(w.grid_entity);
+    const autoP    = fv(w.autoconso_entity);
+    const dayKwh   = fv(w.day_entity);
+    const monthKwh = fv(w.month_entity);
+    const nightKwh = fv(w.night_entity);
+    const objPct   = fv(w.obj_pct_entity);
+    const objKwh   = fv(w.obj_kwh_entity);
+
+    // Flux calculés
+    const injection = gridRaw!=null ? Math.max(0,-gridRaw) : Math.max(0,totalW-(consW||0));
+    const fromGrid  = gridRaw!=null ? Math.max(0,gridRaw)  : Math.max(0,(consW||0)-totalW);
+    const hasInj    = injection > 5;
+    const hasImp    = fromGrid > 5;
+
+    // Noms/couleurs installations
+    const p1n=w.p1_name||'Install. 1', p2n=w.p2_name||'Install. 2', p3n=w.p3_name||'Install. 3';
+    const p1c=w.p1_color||'var(--re-wa)', p2c=w.p2_color||'var(--re-wg)', p3c=w.p3_color||'var(--re-wb)';
+
+    // Labels
+    const lProd  = w.lbl_prod     || 'PRODUCTION';
+    const lCons  = w.lbl_cons     || 'CONSOMMATION';
+    const lGIn   = w.lbl_grid_in  || 'IMPORT RÉSEAU';
+    const lGOut  = w.lbl_grid_out || 'INJECTION';
+    const lAuto  = w.lbl_autoconso|| 'AUTOCONSO';
+    const lDay   = w.lbl_day      || 'PRODUCTION JOUR';
+    const lMonth = w.lbl_month    || 'PRODUCTION MOIS';
+    const lNight = w.lbl_night    || 'CONSO NUIT';
+
+    // Couleurs thème
+    const cT=`var(--re-wt)`, cD=`var(--re-wtd)`, cG=`var(--re-wg)`, cA=`var(--re-wa)`, cB=`var(--re-wb)`, cP=`var(--re-wp)`;
+
+    // Fonction ligne de flux animée
+    const flowLine = (from_right=false, color='#f59e0b', speed=1.5, active=true) => html`
+      <div style="flex:1;height:3px;background:${color}22;border-radius:2px;position:relative;overflow:hidden;">
+        ${active ? html`<div style="position:absolute;top:0;height:100%;width:30%;background:${color};border-radius:2px;
+          animation:_sf_flow_${from_right?'r':'l'} ${speed}s linear infinite;opacity:0.9;"></div>` : html``}
+      </div>`;
+
+    return html`
+      <style>
+        @keyframes _sf_scan{0%{left:-40%}100%{left:110%}}
+        @keyframes _sf_flow_l{0%{left:-30%}100%{left:100%}}
+        @keyframes _sf_flow_r{0%{right:-30%}100%{right:100%}}
+        @keyframes _sf_pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+        @keyframes _sf_blink{0%,100%{opacity:1}50%{opacity:0}}
+      </style>
+      <div style="${sizeStyle}background:#050800;border:1px solid ${cA}22;border-radius:6px;
+                  overflow:hidden;font-family:'Courier New',monospace;position:relative;">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;z-index:1;">
+          <div style="position:absolute;width:40%;height:1px;background:${cA}55;animation:_sf_scan 5s linear infinite;"></div>
+        </div>
+
+        <!-- HEADER -->
+        <div style="background:#0a0700;border-bottom:1px solid ${cA}15;padding:9px 14px;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:14px;letter-spacing:2px;color:${cA};">${w.header_title||'CENTRALE SOLAIRE — COMPLEXE SAINTE-CROIX'}</div>
+            <div style="font-size:12px;color:${cD};margin-top:2px;">${w.header_sub||'3 INSTALLATIONS · SURVEILLANCE TEMPS RÉEL'}</div>
+          </div>
+          <div style="font-size:12px;color:${cG};border:1px solid ${cG}33;padding:3px 10px;border-radius:2px;">
+            ⚡ ${totalW>10?'EN LIGNE':'VEILLE'}
+          </div>
+        </div>
+
+        <!-- TOP : 3 INSTALLATIONS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid ${cA}12;">
+          ${[[p1n,p1c,p1w,p1d,p1m],[p2n,p2c,p2w,p2d,p2m],[p3n,p3c,p3w,p3d,p3m]].map((ins,i)=> html`
+            <div style="padding:10px 12px;${i<2?`border-right:1px solid ${cA}10`:''};
+                         background:${ins[2]>10?'#060900':'#050505'};">
+              <div style="font-size:11px;color:${ins[1]};letter-spacing:1px;margin-bottom:4px;opacity:0.8;">${ins[0]}</div>
+              <div style="font-size:22px;font-weight:900;color:${ins[1]};line-height:1;">
+                ${fmt(ins[2])} <span style="font-size:11px;opacity:0.5;">W</span>
+              </div>
+              <div style="margin-top:5px;height:2px;background:#0a0800;border-radius:1px;overflow:hidden;">
+                <div style="height:100%;width:${Math.min(100,((ins[2]||0)/800)*100)}%;background:${ins[1]};"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:${cD};">
+                <span>${fmt(ins[3],1)} kWh/j</span>
+                ${ins[4]!=null?html`<span style="color:${ins[1]};opacity:0.7;">${fmt(ins[4],0)} kWh/m</span>`:html``}
+              </div>
+            </div>`)}
+        </div>
+
+        <!-- CENTRE : FLUX D'ÉNERGIE -->
+        <div style="display:flex;gap:0;border-bottom:1px solid ${cA}12;">
+          <!-- Nœud production -->
+          <div style="flex-shrink:0;padding:14px 12px;display:flex;flex-direction:column;
+                      align-items:center;justify-content:center;min-width:130px;border-right:1px solid ${cA}10;">
+            <div style="font-size:11px;color:${cA};letter-spacing:1px;margin-bottom:5px;">${lProd}</div>
+            <div style="font-size:32px;font-weight:900;color:${cA};line-height:1;">${fmt(totalW)} <span style="font-size:13px;opacity:0.5;">W</span></div>
+            <div style="margin-top:6px;height:3px;width:100%;background:#0a0800;border-radius:2px;overflow:hidden;">
+              <div style="height:100%;width:${Math.min(100,((totalW||0)/3000)*100)}%;background:${cA};"></div>
+            </div>
+            <div style="font-size:11px;color:${cD};margin-top:4px;">${fmt(dayKwh,1)} kWh auj.</div>
+          </div>
+
+          <!-- Zone flux central -->
+          <div style="flex:1;padding:10px 8px;display:flex;flex-direction:column;justify-content:space-around;gap:6px;">
+            <!-- Flux autoconsommation (prod → conso) -->
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="font-size:9px;color:${cG};letter-spacing:1px;width:55px;text-align:right;">${lAuto}</div>
+              ${flowLine(false, 'var(--re-wg)', 1.5, totalW>10)}
+              <div style="font-size:11px;font-weight:700;color:${cG};width:55px;">
+                ${autoP!=null?autoP.toFixed(0)+'%':fmt(Math.max(0,Math.min(totalW,consW||0)))+'W'}
+              </div>
+            </div>
+            <!-- Flux injection réseau -->
+            ${hasInj ? html`
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="font-size:9px;color:${cP};letter-spacing:1px;width:55px;text-align:right;">${lGOut}</div>
+              ${flowLine(false, 'var(--re-wp)', 2.5, true)}
+              <div style="font-size:11px;font-weight:700;color:${cP};width:55px;">${fmt(injection)} W</div>
+            </div>` : html``}
+            <!-- Flux import réseau -->
+            ${hasImp ? html`
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="font-size:9px;color:${cB};letter-spacing:1px;width:55px;text-align:right;">${lGIn}</div>
+              ${flowLine(true, 'var(--re-wb)', 2, true)}
+              <div style="font-size:11px;font-weight:700;color:${cB};width:55px;">${fmt(fromGrid)} W</div>
+            </div>` : html``}
+            ${!hasInj&&!hasImp ? html`
+            <div style="font-size:11px;color:${cD};text-align:center;opacity:0.5;">Flux réseau nul</div>` : html``}
+          </div>
+
+          <!-- Nœud consommation -->
+          <div style="flex-shrink:0;padding:14px 12px;display:flex;flex-direction:column;
+                      align-items:center;justify-content:center;min-width:130px;border-left:1px solid ${cA}10;">
+            <div style="font-size:11px;color:${cT};letter-spacing:1px;margin-bottom:5px;">${lCons}</div>
+            <div style="font-size:32px;font-weight:900;color:${cT};line-height:1;">${fmt(consW)} <span style="font-size:13px;opacity:0.5;">W</span></div>
+            <div style="margin-top:6px;height:3px;width:100%;background:#0a0800;border-radius:2px;overflow:hidden;">
+              <div style="height:100%;width:${Math.min(100,((consW||0)/5000)*100)}%;background:${cT};opacity:0.4;"></div>
+            </div>
+            <div style="font-size:11px;color:${cD};margin-top:4px;">${autoP!=null?fmt(autoP,0)+'% solaire':'--'}</div>
+          </div>
+        </div>
+
+        <!-- OBJECTIF (si configuré) -->
+        ${objPct!=null ? html`
+        <div style="padding:8px 14px;border-bottom:1px solid ${cA}10;background:${cA}04;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+            <span style="font-size:12px;color:${cD};">OBJECTIF MENSUEL</span>
+            <span style="font-size:12px;font-weight:700;color:${cG};">
+              ${fmt(objPct,0)}% ${objKwh!=null?'— '+fmt(monthKwh,0)+'/'+fmt(objKwh,0)+' kWh':''}
+            </span>
+          </div>
+          <div style="height:4px;background:#0a0800;border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${Math.min(100,objPct)}%;background:linear-gradient(90deg,${cG},${cA});border-radius:2px;"></div>
+          </div>
+        </div>` : html``}
+
+        <!-- MÉTRIQUES BAS -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);">
+          ${[
+            [lDay,   dayKwh,   'kWh', 1, cA],
+            [lMonth, monthKwh, 'kWh', 0, cG],
+            [hasInj?lGOut:lGIn, hasInj?injection:fromGrid, 'W', 0, hasInj?cP:cB],
+            [lNight, nightKwh, 'kWh', 1, cD],
+          ].map((m,i) => html`
+            <div style="padding:10px 12px;${i<3?`border-right:1px solid ${cA}08`:''};background:${cA}03;">
+              <div style="font-size:10px;color:${m[4]};opacity:0.7;letter-spacing:1px;margin-bottom:3px;">${m[0]}</div>
+              <div style="font-size:18px;font-weight:900;color:${m[4]};">
+                ${m[1]!=null?m[1].toFixed(m[3]).replace('.',','):'--'}
+                <span style="font-size:10px;opacity:0.5;"> ${m[2]}</span>
+              </div>
+            </div>`)}
+        </div>
+
+        <!-- FOOTER -->
+        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:10px;color:${cA}22;border-top:1px solid ${cA}08;">
+          <span>SURVEILLANCE CENTRALISÉE</span>
+          <span style="animation:_sf_blink 1.2s step-end infinite;color:${cG}44;">● TEMPS RÉEL</span>
         </div>
       </div>`;
   }
