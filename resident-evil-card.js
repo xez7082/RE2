@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v218 (version RICHE : widgets)
+   RESIDENT EVIL CARD v219 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -875,6 +875,7 @@ class ResidentEvilCard extends LitElement {
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
       case 'economies':   return this._renderEconomiesWidget(w, sizeStyle, noBorder);
+      case 'previsions':   return this._renderPrevisionsWidget(w, sizeStyle, noBorder);
       default:          return html``;
     }
   }
@@ -5112,7 +5113,169 @@ class ResidentEvilCard extends LitElement {
   //  WIDGET SOLAIRE NATIF (4 onglets, sans carte externe)
   //  Onglet figé par w.active_tab : 0 Solaire · 1 Météo · 2 Batteries · 3 Économies
   // ═══════════════════════════════════════════════════════════
-  _renderEconomiesWidget(w, sizeStyle, noBorder=false) {
+  _renderPrevisionsWidget(w, sizeStyle, noBorder=false) {
+    const fv  = (eid) => { const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const sv  = (eid) => this.hass?.states[eid]?.state || null;
+    const attr= (eid,a) => this.hass?.states[eid]?.attributes?.[a] ?? null;
+
+    const az   = fv(w.azimuth_entity);
+    const elev = fv(w.elevation_entity);
+    const pic  = fv(w.solcast_pic);
+    const tot  = fv(w.solcast_total);
+    const wind = fv(w.wind_entity);
+    const moon = sv(w.moon_entity);
+    const wSt  = sv(w.weather_entity);
+    const wTemp= attr(w.weather_entity,'temperature');
+    const wHum = attr(w.weather_entity,'humidity');
+
+    // Icônes météo
+    const weatherIcon = {'clear-night':'🌙','cloudy':'☁️','fog':'🌫️','hail':'🌨️',
+      'lightning':'⛈️','lightning-rainy':'⛈️','partlycloudy':'⛅','partly-cloudy':'⛅',
+      'pouring':'🌧️','rainy':'🌦️','snowy':'❄️','snowy-rainy':'🌨️','sunny':'☀️',
+      'windy':'💨','windy-variant':'💨','exceptional':'⚡'}[wSt] || '🌡️';
+    const weatherLabel = {'clear-night':'NUIT CLAIRE','cloudy':'NUAGEUX','fog':'BROUILLARD',
+      'partlycloudy':'PARTIELLEMENT NUAGEUX','partly-cloudy':'PARTIELLEMENT NUAGEUX',
+      'pouring':'FORTE PLUIE','rainy':'PLUIE','snowy':'NEIGE','sunny':'ENSOLEILLÉ',
+      'windy':'VENTEUX','windy-variant':'TRÈS VENTEUX','lightning-rainy':'ORAGE',
+      'lightning':'ORAGE','hail':'GRÊLE','exceptional':'EXCEPTIONNEL'}[wSt] || (wSt||'--').toUpperCase();
+    const moonIcon = {'new_moon':'🌑','waxing_crescent':'🌒','first_quarter':'🌓',
+      'waxing_gibbous':'🌔','full_moon':'🌕','waning_gibbous':'🌖',
+      'last_quarter':'🌗','waning_crescent':'🌘'}[moon?.replace(/ /g,'_').toLowerCase()] || '🌙';
+    const moonLabel = {'new_moon':'Nouvelle lune','waxing_crescent':'Croissant croissant',
+      'first_quarter':'Premier quartier','waxing_gibbous':'Gibbeuse croissante',
+      'full_moon':'Pleine lune','waning_gibbous':'Gibbeuse décroissante',
+      'last_quarter':'Dernier quartier','waning_crescent':'Croissant décroissant'}[moon?.replace(/ /g,'_').toLowerCase()] || (moon||'--');
+
+    // Position du soleil sur l'arc SVG
+    // Azimut : lever ~60° coucher ~300°, arc de 240°
+    const AZ_RISE=60, AZ_SET=300;
+    const azPct = az!=null ? Math.max(0,Math.min(1,(az-AZ_RISE)/(AZ_SET-AZ_RISE))) : 0.5;
+    const MAX_ELEV = 62; // élévation max Alsace été
+    const elevPct = elev!=null ? Math.max(0,Math.min(1,elev/MAX_ELEV)) : 0;
+    // Coordonnées sur l'arc (parabole)
+    const svgX = 10 + azPct * 140;
+    const svgY = elev!=null && elev > 0 ? 82 - elevPct * 70 : 88;
+    const sunVisible = elev!=null && elev > 0;
+
+    return html`
+      <div style="${sizeStyle}background:#050800;border:1px solid #f59e0b22;border-radius:6px;
+                  overflow:hidden;font-family:'Courier New',monospace;position:relative;">
+        <style>
+          @keyframes _re_scanH_prev{0%{left:-40%}100%{left:110%}}
+          @keyframes _re_blink_prev{0%,100%{opacity:1}50%{opacity:0}}
+          @keyframes _re_rotate_prev{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        </style>
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;z-index:1;">
+          <div style="position:absolute;width:40%;height:1px;background:#f59e0b55;animation:_re_scanH_prev 5s linear infinite;"></div>
+        </div>
+
+        <!-- HEADER -->
+        <div style="background:#0a0700;border-bottom:1px solid #f59e0b18;padding:9px 14px;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:12px;letter-spacing:3px;color:#f59e0b88;">PRÉVISIONS SOLAIRES — CENTRE ALSACE</div>
+            <div style="font-size:11px;color:#f59e0b33;margin-top:2px;">STE-CROIX-EN-PLAINE · 48.009°N 7.405°E</div>
+          </div>
+          <div style="font-size:11px;color:#22c55e;border:1px solid #22c55e33;padding:3px 10px;border-radius:2px;">
+            ✓ SOLCAST ACTIF
+          </div>
+        </div>
+
+        <!-- ZONE PRINCIPALE : ARC + DONNÉES -->
+        <div style="display:flex;">
+          <!-- ARC TRAJECTOIRE SOLAIRE -->
+          <div style="padding:12px 10px;border-right:1px solid #f59e0b12;flex-shrink:0;">
+            <div style="font-size:10px;color:#f59e0b44;letter-spacing:2px;margin-bottom:6px;text-align:center;">TRAJECTOIRE</div>
+            <svg width="150" height="100" viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg">
+              <!-- Zone panneau estimée (sud, azimut 150-210°) -->
+              <path d="M 58,75 Q 80,30 102,75 Z" fill="rgba(34,197,94,0.06)" stroke="rgba(34,197,94,0.2)" stroke-width="0.8"/>
+              <!-- Arc de trajectoire en pointillés -->
+              <path d="M 10,85 Q 80,5 150,85" fill="none" stroke="rgba(245,158,11,0.25)" stroke-width="1.5" stroke-dasharray="5,4"/>
+              <!-- Ligne horizon -->
+              <line x1="5" y1="87" x2="155" y2="87" stroke="#1a2010" stroke-width="1"/>
+              <!-- Labels horizon -->
+              <text x="6" y="97" fill="#334455" font-size="9" font-family="Courier New">06h</text>
+              <text x="132" y="97" fill="#334455" font-size="9" font-family="Courier New">21h</text>
+              <text x="70" y="97" fill="#334455" font-size="9" font-family="Courier New">13h</text>
+              ${sunVisible ? html`
+              <!-- Halo externe -->
+              <circle cx="${svgX}" cy="${svgY}" r="14" fill="rgba(245,158,11,0.1)"/>
+              <!-- Soleil -->
+              <circle cx="${svgX}" cy="${svgY}" r="8" fill="rgba(245,158,11,0.3)" stroke="#f59e0b" stroke-width="1.5"/>
+              <circle cx="${svgX}" cy="${svgY}" r="4" fill="#f59e0b"/>
+              <!-- Rayons -->
+              <line x1="${svgX}" y1="${svgY-12}" x2="${svgX}" y2="${svgY-16}" stroke="rgba(245,158,11,0.6)" stroke-width="1"/>
+              <line x1="${svgX+11}" y1="${svgY-6}" x2="${svgX+14}" y2="${svgY-8}" stroke="rgba(245,158,11,0.6)" stroke-width="1"/>
+              <line x1="${svgX-11}" y1="${svgY-6}" x2="${svgX-14}" y2="${svgY-8}" stroke="rgba(245,158,11,0.6)" stroke-width="1"/>
+              <line x1="${svgX+12}" y1="${svgY+2}" x2="${svgX+16}" y2="${svgY+3}" stroke="rgba(245,158,11,0.4)" stroke-width="1"/>
+              <line x1="${svgX-12}" y1="${svgY+2}" x2="${svgX-16}" y2="${svgY+3}" stroke="rgba(245,158,11,0.4)" stroke-width="1"/>
+              <!-- Élévation label -->
+              <text x="${Math.min(140,svgX+10)}" y="${Math.max(16,svgY-6)}" fill="rgba(245,158,11,0.8)" font-size="10" font-family="Courier New">${elev!=null?elev.toFixed(0)+'°':''}</text>` : html`
+              <!-- Soleil sous l'horizon -->
+              <circle cx="${svgX}" cy="90" r="6" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.3)" stroke-width="1" stroke-dasharray="2,2"/>
+              <text x="50" y="65" fill="rgba(245,158,11,0.3)" font-size="10" font-family="Courier New">NUIT</text>`}
+              <!-- Label panneau -->
+              <text x="66" y="72" fill="rgba(34,197,94,0.5)" font-size="8" font-family="Courier New">SUD</text>
+            </svg>
+          </div>
+
+          <!-- MÉTRIQUES -->
+          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#f59e0b08;align-content:start;">
+            <div style="background:#050800;padding:12px;">
+              <div style="font-size:11px;color:#f59e0b55;letter-spacing:1px;margin-bottom:5px;">AZIMUT</div>
+              <div style="font-size:24px;font-weight:900;color:#f59e0b;line-height:1;">${az!=null?az.toFixed(0)+'°':'--'}</div>
+              <div style="font-size:10px;color:#f59e0b33;margin-top:3px;">${az!=null?(az<90?'EST':az<180?'SUD-EST':az<270?'SUD-OUEST':'OUEST'):'--'}</div>
+            </div>
+            <div style="background:#050800;padding:12px;border-left:1px solid #f59e0b08;">
+              <div style="font-size:11px;color:#f59e0b55;letter-spacing:1px;margin-bottom:5px;">ÉLÉVATION</div>
+              <div style="font-size:24px;font-weight:900;color:#f59e0b;line-height:1;">${elev!=null?elev.toFixed(0)+'°':'--'}</div>
+              <div style="font-size:10px;color:#f59e0b33;margin-top:3px;">${elev!=null?(elev<0?'SOUS HORIZON':elev<15?'BAS':elev<35?'MOYEN':'HAUT'):'--'}</div>
+            </div>
+            <div style="background:#050800;padding:12px;border-top:1px solid #22c55e08;">
+              <div style="font-size:11px;color:#22c55e55;letter-spacing:1px;margin-bottom:5px;">PIC SOLCAST</div>
+              <div style="font-size:24px;font-weight:900;color:#22c55e;line-height:1;">${pic!=null?pic.toFixed(1)+' kWh':'--'}</div>
+              <div style="font-size:10px;color:#22c55e33;margin-top:3px;">AUJOURD'HUI</div>
+            </div>
+            <div style="background:#050800;padding:12px;border-top:1px solid #22c55e08;border-left:1px solid #f59e0b08;">
+              <div style="font-size:11px;color:#22c55e55;letter-spacing:1px;margin-bottom:5px;">TOTAL JOUR</div>
+              <div style="font-size:24px;font-weight:900;color:#22c55e;line-height:1;">${tot!=null?tot.toFixed(1)+' kWh':'--'}</div>
+              <div style="font-size:10px;color:#22c55e33;margin-top:3px;">SOLCAST PRÉVIS.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BANDE MÉTÉO BAS -->
+        <div style="border-top:1px solid #f59e0b12;display:grid;grid-template-columns:1fr 1fr 1fr;background:#f59e0b06;">
+          <div style="padding:10px 14px;border-right:1px solid #f59e0b10;">
+            <div style="font-size:11px;color:#94a3b8;letter-spacing:1px;margin-bottom:4px;">CONDITION</div>
+            <div style="font-size:15px;font-weight:700;color:#e2e8f0;">
+              ${weatherIcon} ${weatherLabel}
+            </div>
+            ${wTemp!=null?html`<div style="font-size:12px;color:#94a3b855;margin-top:3px;">${wTemp}° · ${wHum!=null?wHum+'% HR':''}</div>`:html``}
+          </div>
+          <div style="padding:10px 14px;border-right:1px solid #f59e0b10;">
+            <div style="font-size:11px;color:#94a3b8;letter-spacing:1px;margin-bottom:4px;">VENT</div>
+            <div style="font-size:15px;font-weight:700;color:#e2e8f0;">
+              ${wind!=null?wind.toFixed(0)+' km/h':'--'}
+            </div>
+            ${wind!=null?html`<div style="font-size:12px;color:#94a3b855;margin-top:3px;">${wind<10?'FAIBLE':wind<25?'MODÉRÉ':wind<50?'FORT':'TRÈS FORT'}</div>`:html``}
+          </div>
+          <div style="padding:10px 14px;">
+            <div style="font-size:11px;color:#818cf8;letter-spacing:1px;margin-bottom:4px;">LUNE</div>
+            <div style="font-size:15px;font-weight:700;color:#818cf8;">${moonIcon} ${moonLabel}</div>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:10px;
+                    color:#f59e0b22;border-top:1px solid #f59e0b08;">
+          <span>SOURCE: OPENWEATHERMAP + SOLCAST</span>
+          <span style="animation:_re_blink_prev 1.2s step-end infinite;color:#22c55e44;">● LIVE</span>
+        </div>
+      </div>`;
+  }
+
+    _renderEconomiesWidget(w, sizeStyle, noBorder=false) {
     const fv = (eid) => { const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
     const fmtE = (v, dec=2) => v!=null ? v.toFixed(dec).replace('.',',')+'&nbsp;€' : '--';
     const fmtK = (v) => v!=null ? v.toFixed(3).replace('.',',')+'&nbsp;€' : '--';
