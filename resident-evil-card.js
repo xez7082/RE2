@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v217 (version RICHE : widgets)
+   RESIDENT EVIL CARD v218 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -874,6 +874,7 @@ class ResidentEvilCard extends LitElement {
       case 'oscilloscope':    return this._renderOscilloscopeWidget(w, sizeStyle, noBorder);
       case 'weather':    return this._renderWeatherWidget(w, sizeStyle, noBorder);
       case 'solar':      return this._renderSolarWidget(w, sizeStyle, noBorder);
+      case 'economies':   return this._renderEconomiesWidget(w, sizeStyle, noBorder);
       default:          return html``;
     }
   }
@@ -5111,7 +5112,120 @@ class ResidentEvilCard extends LitElement {
   //  WIDGET SOLAIRE NATIF (4 onglets, sans carte externe)
   //  Onglet figé par w.active_tab : 0 Solaire · 1 Météo · 2 Batteries · 3 Économies
   // ═══════════════════════════════════════════════════════════
-  _renderSolarWidget(w, sizeStyle, noBorder=false) {
+  _renderEconomiesWidget(w, sizeStyle, noBorder=false) {
+    const fv = (eid) => { const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const fmtE = (v, dec=2) => v!=null ? v.toFixed(dec).replace('.',',')+'&nbsp;€' : '--';
+    const fmtK = (v) => v!=null ? v.toFixed(3).replace('.',',')+'&nbsp;€' : '--';
+
+    const cumul   = fv(w.eco_money);
+    const jour    = fv(w.eco_day);
+    const mois    = fv(w.eco_month);
+    const annuel  = fv(w.eco_year);
+    const tarif   = fv(w.kwh_price);
+    const target  = parseFloat(w.eco_target) || 300;
+    const pctEnt  = fv(w.eco_pct);
+    const pct     = pctEnt!=null ? Math.min(100,pctEnt) : (cumul!=null ? Math.min(100,(cumul/target)*100) : 0);
+    const pctDisp = pct.toFixed(0);
+    const allOk   = cumul != null;
+
+    return html`
+      <div style="${sizeStyle}background:#020a02;border:1px solid #22c55e22;border-radius:6px;
+                  overflow:hidden;font-family:'Courier New',monospace;position:relative;">
+
+        <!-- Scan line -->
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;z-index:1;">
+          <div style="position:absolute;width:40%;height:1px;background:#22c55e55;
+                       animation:_re_scan_eco 5s linear infinite;"></div>
+        </div>
+        <style>
+          @keyframes _re_scan_eco{0%{left:-40%}100%{left:110%}}
+          @keyframes _re_blink_eco{0%,100%{opacity:1}50%{opacity:0}}
+        </style>
+
+        <!-- HEADER -->
+        <div style="background:#021002;border-bottom:1px solid #22c55e18;
+                    padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:12px;letter-spacing:3px;color:#22c55e88;">
+              UMBRELLA CORP. — DIVISION ÉNERGIE
+            </div>
+            <div style="font-size:11px;color:#22c55e44;margin-top:2px;letter-spacing:1px;">
+              COMPTE ÉPARGNE PHOTOVOLTAÏQUE · REF: PV-7742
+            </div>
+          </div>
+          <div style="font-size:11px;color:#22c55e55;border:1px solid #22c55e22;padding:3px 10px;border-radius:2px;">
+            CONFIDENTIEL
+          </div>
+        </div>
+
+        <!-- SOLDE PRINCIPAL -->
+        <div style="padding:20px 16px 14px;border-bottom:1px solid #22c55e12;text-align:center;">
+          <div style="font-size:13px;letter-spacing:3px;color:#22c55e66;margin-bottom:10px;">
+            ÉCONOMIES RÉALISÉES — CUMUL ANNUEL
+          </div>
+          <div style="font-size:48px;font-weight:900;color:#22c55e;letter-spacing:2px;line-height:1;">
+            ${cumul!=null ? html`${cumul.toFixed(2).replace('.',',')} <span style="font-size:24px;color:#22c55e88;">€</span>` : html`<span style="font-size:32px;color:#334;">--</span>`}
+          </div>
+          ${mois!=null?html`<div style="font-size:13px;color:#22c55e55;margin-top:8px;letter-spacing:1px;">
+            ↑ +${mois.toFixed(2).replace('.',',')} € CE MOIS · OBJECTIF: ${target.toFixed(0)} €/AN
+          </div>`:html``}
+          <!-- Barre progression -->
+          <div style="margin-top:12px;height:6px;background:#0a1a0a;border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${pctDisp}%;background:#22c55e;border-radius:3px;transition:width 1s;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#22c55e44;margin-top:5px;">
+            <span>0 €</span>
+            <span style="color:#22c55e88;font-weight:700;">${pctDisp}% DE L'OBJECTIF ATTEINT</span>
+            <span>${target.toFixed(0)} €</span>
+          </div>
+        </div>
+
+        <!-- 3 MÉTRIQUES -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;background:#22c55e08;">
+          <div style="background:#020a02;padding:14px 16px;border-right:1px solid #22c55e12;">
+            <div style="font-size:12px;letter-spacing:2px;color:#22c55e55;margin-bottom:6px;">GAIN / JOUR</div>
+            <div style="font-size:26px;font-weight:900;color:#22c55e;line-height:1;">
+              ${jour!=null ? jour.toFixed(2).replace('.',',') : '--'}
+              <span style="font-size:14px;color:#22c55e66;"> €</span>
+            </div>
+          </div>
+          <div style="background:#020a02;padding:14px 16px;border-right:1px solid #22c55e12;">
+            <div style="font-size:12px;letter-spacing:2px;color:#22c55e55;margin-bottom:6px;">GAIN / MOIS</div>
+            <div style="font-size:26px;font-weight:900;color:#22c55e;line-height:1;">
+              ${mois!=null ? mois.toFixed(2).replace('.',',') : '--'}
+              <span style="font-size:14px;color:#22c55e66;"> €</span>
+            </div>
+          </div>
+          <div style="background:#020a02;padding:14px 16px;">
+            <div style="font-size:12px;letter-spacing:2px;color:#818cf888;margin-bottom:6px;">TARIF EDF</div>
+            <div style="font-size:26px;font-weight:900;color:#818cf8;line-height:1;">
+              ${tarif!=null ? tarif.toFixed(3).replace('.',',') : '--'}
+              <span style="font-size:14px;color:#818cf866;"> €/kWh</span>
+            </div>
+          </div>
+        </div>
+
+        ${annuel!=null?html`
+        <!-- GAIN NET ANNUEL -->
+        <div style="padding:12px 16px;border-top:1px solid #22c55e12;background:#021002;
+                    display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;letter-spacing:2px;color:#22c55e44;">GAIN NET ANNUEL</div>
+          <div style="font-size:22px;font-weight:900;color:#22c55e;">
+            ${annuel.toFixed(2).replace('.',',')} <span style="font-size:13px;color:#22c55e66;">€</span>
+          </div>
+        </div>`:html``}
+
+        <!-- FOOTER -->
+        <div style="padding:7px 16px;border-top:1px solid #22c55e0a;
+                    display:flex;justify-content:space-between;font-size:11px;color:#22c55e33;">
+          <span>DIVISION ÉNERGIE RENOUVELABLE</span>
+          <span style="animation:_re_blink_eco 1.2s step-end infinite;color:#22c55e55;">● TEMPS RÉEL</span>
+          <span>UMBR. CORP. © 2026</span>
+        </div>
+      </div>`;
+  }
+
+    _renderSolarWidget(w, sizeStyle, noBorder=false) {
     const fixedTab = w.active_tab != null ? parseInt(w.active_tab) : 0;
     const c = w.solar_config || {};
     const Sx = (id) => id && this.hass?.states[id] ? this.hass.states[id] : null;
