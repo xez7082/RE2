@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v212 (version RICHE : widgets)
+   RESIDENT EVIL CARD v213 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1514,7 +1514,8 @@ class ResidentEvilCard extends LitElement {
   _renderHealthWidget(w, sizeStyle, noBorder=false) {
     const people = w.people || [];
     if (people.length === 0) return html`
-      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} background:#0d1321;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:14px;">
+      <style>@keyframes _re_pulse{0%,100%{opacity:1}50%{opacity:0.25}}</style>
+      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} background:#050505;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:14px;">
         Aucune personne configurée ✏️
       </div>`;
 
@@ -2858,33 +2859,70 @@ class ResidentEvilCard extends LitElement {
         </div>`;
     };
 
-    const renderAppliance = (item) => {
+    const renderAppliance = (item, idx) => {
       const st    = this.hass?.states[item.entity];
       const isOn  = st?.state === 'on';
-      const col   = isOn ? '#f59e0b' : '#475569';
       const cycSt = item.cycle ? this.hass?.states[item.cycle] : null;
       const cyc   = cycSt && !['unavailable','unknown'].includes(cycSt.state) ? cycSt.state : null;
+      const col   = isOn ? '#00ff44' : '#334155';
+      const borderCol = isOn ? '#00ff4430' : '#0f1a0f';
+      const unitId = String(idx+1).padStart(3,'0');
+      // Puissance pour la barre
+      const pwrSt = (item.sensors||[]).map(e=>this.hass?.states[e]).find(s=>s?.attributes?.unit_of_measurement==='W');
+      const pwr = pwrSt ? parseFloat(pwrSt.state) : 0;
+      const pwrPct = Math.min(100, (pwr/2500)*100);
+      const pwrCol = pwr>2000?'#ff3300':pwr>800?'#ffaa00':'#00ff44';
       return html`
-        <div style="flex:1 1 320px;min-width:300px;background:${isOn?'rgba(245,158,11,.08)':'rgba(255,255,255,.03)'};border:1px solid ${isOn?'rgba(245,158,11,.3)':'#1e2d3d'};border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;cursor:pointer;"
+        <div style="flex:1 1 300px;min-width:280px;background:${isOn?'#030d03':'#050808'};
+                    border:1px solid ${borderCol};border-radius:6px;
+                    padding:0;display:flex;flex-direction:column;cursor:pointer;
+                    position:relative;overflow:hidden;font-family:'Courier New',monospace;"
              @click="${(e)=>{e.stopPropagation();toggle(item.entity);}}">
-          <div style="display:flex;align-items:center;gap:12px;">
-            ${item.img?html`<div style="width:64px;height:64px;flex-shrink:0;background:#111;border-radius:10px;overflow:hidden;border:1px solid #1e2d3d;"><img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:4px;${isOn?'':'filter:grayscale(.7) opacity(.6);'}"/></div>`:html``}
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:16px;font-weight:700;color:#f1f5f9;">${item.name}</div>
-              <div style="font-size:14px;font-weight:800;color:${col};margin-top:2px;">${isOn?'EN MARCHE':'ARRÊTÉ'}</div>
-              ${cyc?html`<div style="font-size:13px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">⟳ ${cyc}</div>`:html``}
+          ${isOn?html`<div style="position:absolute;left:0;right:0;height:1px;background:#00ff0018;z-index:1;pointer-events:none;animation:_re_scan 4s linear infinite;top:0;"></div>`:html``}
+          <div style="position:absolute;top:6px;right:8px;font-size:9px;color:${col}55;letter-spacing:1px;z-index:2;">UNIT-${unitId}</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px 8px;">
+            ${item.img?html`
+              <div style="width:56px;height:56px;flex-shrink:0;background:#080808;border:1px solid #0f1a0f;
+                           border-radius:4px;overflow:hidden;position:relative;">
+                <img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:4px;
+                     ${isOn?'':'filter:grayscale(0.8) brightness(0.5);'}"/>
+              </div>`:html``}
+            <div style="flex:1;min-width:0;padding-right:24px;">
+              <div style="font-size:13px;font-weight:900;color:#e2e8f0;letter-spacing:1px;text-transform:uppercase;">
+                ${item.name}
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+                <div style="width:7px;height:7px;border-radius:50%;background:${col};
+                             ${isOn?'animation:_re_pulse 2s ease-in-out infinite;':'opacity:0.4;'}
+                             flex-shrink:0;"></div>
+                <span style="font-size:11px;font-weight:700;color:${col};letter-spacing:2px;">
+                  ${isOn?'EN LIGNE':'HORS LIGNE'}
+                </span>
+              </div>
+              ${cyc?html`<div style="font-size:10px;color:#334155;margin-top:2px;letter-spacing:1px;">
+                &gt; ${cyc.toUpperCase()}
+              </div>`:html``}
             </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${pwr>0?html`
+            <div style="height:2px;background:#0a100a;margin:0 12px;">
+              <div style="height:100%;width:${pwrPct}%;background:${pwrCol};transition:width .5s;"></div>
+            </div>`:html``}
+          <div style="display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px 10px;">
             ${(item.sensors||[]).map(eid => {
               const sst = this.hass?.states[eid];
               if (!sst) return html``;
-              const un  = sst.attributes.unit_of_measurement || '';
-              const lbl = (sst.attributes.friendly_name||eid.split('.').pop()).split(' ').slice(-2).join(' ');
-              return html`<div style="display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,.05);border:1px solid #1e2d3d;border-radius:9px;padding:5px 11px;min-width:0;">
-                <span style="font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${lbl}</span>
-                <span style="font-size:14px;font-weight:700;color:#e2e8f0;">${fmt(sst.state)} ${un}</span>
-              </div>`;
+              const un  = sst.attributes?.unit_of_measurement || '';
+              const lbl = (sst.attributes?.friendly_name||eid.split('.').pop()).split(' ').slice(-2).join(' ');
+              const val = fmt(sst.state);
+              const vCol = un==='W'?(parseFloat(sst.state)>1000?'#ff5500':parseFloat(sst.state)>100?'#ffaa00':'#00ff88')
+                          : un==='°C'?(parseFloat(sst.state)<-5?'#00aaff':parseFloat(sst.state)>60?'#ff5500':'#e2e8f0')
+                          : '#e2e8f0';
+              return html`
+                <div style="background:#080e08;border:1px solid #0f1a0f;border-radius:3px;padding:4px 8px;min-width:0;">
+                  <div style="font-size:9px;color:#2a4a2a;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">${lbl.toUpperCase()}</div>
+                  <div style="font-size:14px;font-weight:900;color:${vCol};letter-spacing:0.5px;">${val}<span style="font-size:9px;color:#334155;"> ${un}</span></div>
+                </div>`;
             })}
           </div>
         </div>`;
@@ -3034,14 +3072,14 @@ class ResidentEvilCard extends LitElement {
         </div>`;
     };
 
-    const renderItem = (item) => {
+    const renderItem = (item, idx) => {
       if (item.type === 'robot_vacuum') return renderVacuum(item);
       if (item.type === 'robot_mower')  return renderMower(item);
-      if (item.type === 'tool')         return renderTool(item);
+      if (item.type === 'tool')         return renderTool(item, idx);
       const domain = (item.entity||'').split('.')[0];
       if (domain === 'vacuum')     return renderVacuum(item);
       if (domain === 'lawn_mower') return renderMower(item);
-      return renderAppliance(item);
+      return renderAppliance(item, idx);
     };
 
     return html`
@@ -3056,7 +3094,7 @@ class ResidentEvilCard extends LitElement {
             </button>`)}
         </div>
         <div class="no-scrollbar" style="flex:1;min-height:0;padding:12px 14px 14px;display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;overflow-y:auto;align-content:start;">
-          ${items.map(item => renderItem(item))}
+          ${items.map((item, idx) => renderItem(item, idx))}
         </div>
       </div>`;
   }
