@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v208 (version RICHE : widgets)
+   RESIDENT EVIL CARD v209 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2552,62 +2552,16 @@ class ResidentEvilCard extends LitElement {
   }
 
     _renderMapWidget(w, sizeStyle, noBorder=false) {
-    // Carte Lovelace "map" via card helpers + auto_fit (recadre sur les marqueurs)
-    // + bandeau d'infos par personne sous la carte.
     const persons = w.persons || [];
-    const entities = persons.map(p => p.person).filter(Boolean);
-    if (entities.length === 0) {
-      return html`
-        <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle} padding:0;">
-          <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">AUCUNE PERSONNE</div>
-        </div>`;
-    }
+    const wid = w._wid || 0;
 
-    if (!this._mapCards) this._mapCards = {};
-    const key = entities.join('|') + '#' + (w.zoom || 12) + '#' + (w.hours_to_show || 0);
-
-    if (!this._mapCards[key]) {
-      this._mapCards[key] = 'loading';
-      (async () => {
-        try {
-          const helpers = await window.loadCardHelpers();
-          const el = helpers.createCardElement({
-            type: 'map',
-            entities: entities,
-            default_zoom: Number(w.zoom || 12),
-            theme_mode: 'dark',
-            auto_fit: true,
-            hours_to_show: Number(w.hours_to_show || 0),
-          });
-          el.hass = this.hass;
-          el.style.cssText = 'display:block;width:100%;height:100%;';
-          this._mapCards[key] = el;
-          this.requestUpdate();
-          // Recadrage forcé après init (le premier fit peut partir avant les coords)
-          [800, 2000].forEach(t => setTimeout(() => {
-            const m = el.shadowRoot && el.shadowRoot.querySelector('ha-map');
-            if (m && typeof m.fitMap === 'function') { try { m.fitMap(); } catch(_e) {} }
-            this._syncFallbackMarkers(el, persons);
-          }, t));
-        } catch (e) {
-          this._mapCards[key] = 'error';
-          this.requestUpdate();
-        }
-      })();
-    }
-
-    const card = this._mapCards[key];
-    if (card && card !== 'loading' && card !== 'error') {
-      card.hass = this.hass;
-      this._syncFallbackMarkers(card, persons);
-    }
-
-    // ── Bandeau d'infos par personne ─────────────────────────────
+    // ── Infos personnes (bandeau haut) ──────────────────────────────
     const getSt = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
+    const getObj= (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid] : null;
     const footRows = persons.map(p => {
-      const pObj  = p.person && this.hass?.states[p.person] ? this.hass.states[p.person] : null;
+      const pObj  = getObj(p.person);
       const homeByHA = pObj ? pObj.state === 'home' : false;
-      const distRaw2 = parseFloat(getSt(p.distance_entity));
+      const distRaw2 = parseFloat(this.hass?.states[p.distance_entity]?.state);
       const distNear2 = !isNaN(distRaw2) && distRaw2 < 0.3;
       const home  = homeByHA || distNear2;
       const stLbl = homeByHA ? 'À DOMICILE' : distNear2 ? 'À DOMICILE' :
@@ -2616,7 +2570,6 @@ class ResidentEvilCard extends LitElement {
       const stCol = home ? '#22c55e' : '#f59e0b';
       const geoRaw2 = getSt(p.geocoded_entity);
       const homeZone2 = this.hass?.states['zone.home'];
-      // Adresse : reverse geocode zone.home (mis en cache) ou geocoded GPS
       if (!this._homeAddr && homeZone2?.attributes?.latitude) {
         this._homeAddr = 'Chargement…';
         const hLat = homeZone2.attributes.latitude, hLon = homeZone2.attributes.longitude;
@@ -2630,116 +2583,174 @@ class ResidentEvilCard extends LitElement {
       }
       const homeAddrFull = (this._homeAddr && this._homeAddr!=='Chargement…') ? this._homeAddr : (homeZone2?.attributes?.friendly_name||'Domicile');
       const geo   = home ? homeAddrFull : geoRaw2;
-      const dist  = (() => { const v = parseFloat(getSt(p.distance_entity)); return isNaN(v) ? null : v; })();
+      const dist  = (() => { const v = parseFloat(this.hass?.states[p.distance_entity]?.state); return isNaN(v) ? null : v; })();
       const loc1  = getSt(p.location_1_entity);
       const pic   = pObj?.attributes?.entity_picture;
-      const initials = (p.name||'?')[0].toUpperCase();
+      const init  = (p.name||'?')[0].toUpperCase();
+      const batV  = parseFloat(this.hass?.states[p.battery_entity]?.state);
+      const bat   = isNaN(batV) ? null : batV;
+      const batCol= bat==null?'#475569':bat<=20?'#ef4444':bat<=50?'#f59e0b':'#22c55e';
+      const wifi  = getSt(p.wifi_entity);
       return html`
-        <div style="flex:1;min-width:260px;display:flex;align-items:center;gap:10px;
-                    background:rgba(129,140,248,.05);border:1px solid #1e2d3d;border-radius:10px;padding:8px 12px;">
-          <div style="width:36px;height:36px;border-radius:50%;border:2px solid ${stCol};overflow:hidden;flex-shrink:0;
-                      background:#1e2d3d;display:flex;align-items:center;justify-content:center;">
-            ${pic ? html`<img src="${pic}" style="width:100%;height:100%;object-fit:cover;" />`
-                  : html`<span style="font-size:16px;font-weight:800;color:${stCol};">${initials}</span>`}
+        <div style="flex:1;min-width:260px;background:#060d1a;border:1px solid ${stCol}22;border-radius:8px;padding:8px 10px;display:flex;gap:8px;align-items:flex-start;">
+          <div style="width:38px;height:38px;border-radius:50%;border:2px solid ${stCol};overflow:hidden;flex-shrink:0;background:#1e2d3d;display:flex;align-items:center;justify-content:center;">
+            ${pic ? html`<img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/>` : html`<span style="font-size:15px;font-weight:800;color:${stCol};">${init}</span>`}
           </div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span style="font-size:15px;font-weight:700;color:#f1f5f9;">${p.name||'—'}</span>
-              <span style="font-size:12px;font-weight:700;color:${stCol};border:1px solid ${stCol}44;border-radius:5px;padding:1px 7px;">${stLbl}</span>
-              ${dist != null ? html`<span style="font-size:13px;font-weight:700;color:#818cf8;">📍 ${dist.toFixed(2)} km</span>` : html``}
+              <span style="font-size:14px;font-weight:900;color:#e2e8f0;">${p.name||''}</span>
+              <span style="font-size:11px;font-weight:700;color:${stCol};letter-spacing:1px;">${stLbl}</span>
+              ${dist!=null?html`<span style="font-size:11px;color:#818cf8;">📍 ${dist.toFixed(2)} km</span>`:html``}
+              ${bat!=null?html`<span style="font-size:11px;color:${batCol};">🔋 ${bat.toFixed(0)}%</span>`:html``}
+              ${wifi?html`<span style="font-size:11px;color:#64748b;">📶 ${wifi}</span>`:html``}
             </div>
-            ${geo ? html`
-              <div style="font-size:13px;color:#cbd5e1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ${geo}
-              </div>` : html``}
-            ${loc1 ? html`
-              <div style="font-size:12px;color:#64748b;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ⏱ ${loc1}
-              </div>` : html``}
+            ${geo?html`<div style="font-size:11px;color:#94a3b8;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${geo}</div>`:html``}
+            ${loc1&&!home?html`<div style="font-size:10px;color:#475569;margin-top:1px;">⏱ ${loc1}</div>`:html``}
           </div>
         </div>`;
     });
 
-    const wid = w._wid || 0;
-    const mapKey = key; // capturer la clé pour accès dynamique
-    const zoomToperson = (p) => {
-      // Accès direct à la carte stockée (mise à jour à chaque render)
-      const currentCard = this._mapCards[mapKey];
-      if (!currentCard || currentCard === 'loading' || currentCard === 'error') return;
+    // ── Init carte Leaflet custom ────────────────────────────────────
+    setTimeout(() => {
+      const mapDiv = this.shadowRoot?.querySelector(`#re-custom-map-${wid}`);
+      if (!mapDiv || mapDiv.__mapInited) return;
+      mapDiv.__mapInited = true;
 
-      // Chercher ha-map dans le shadow DOM du card
-      const haMap = currentCard.shadowRoot?.querySelector('ha-map');
-      if (!haMap) return;
+      const initMap = (L) => {
+        // Créer la carte Leaflet sur mon propre div
+        const map = L.map(mapDiv, { zoomControl:false, attributionControl:false });
+        // Tuiles sombres CartoDB
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          maxZoom:19, subdomains:'abcd'
+        }).addTo(map);
+        L.control.zoom({ position:'bottomright' }).addTo(map);
+        mapDiv._leafletMap = map;
+        this._updateMyMapMarkers(map, L, w);
+      };
 
-      // Chercher l'instance Leaflet par toutes les propriétés connues
-      let lMap = haMap._map || haMap._leafletMap || haMap.leafletMap || haMap.map || haMap._l;
-      if (!lMap) {
-        // Recherche exhaustive : trouver un objet avec setView()
-        for (const k of Object.getOwnPropertyNames(haMap)) {
-          try {
-            const v = haMap[k];
-            if (v && typeof v === 'object' && typeof v.setView === 'function') { lMap = v; break; }
-          } catch(_) {}
-        }
-      }
-      if (!lMap) return;
-
-      // Coordonnées : home configuré si near home, sinon GPS personne
-      const curSt = this.hass?.states[p.person];
-      const dV = parseFloat(this.hass?.states[p.distance_entity]?.state);
-      const isNear = !isNaN(dV) && dV < 0.3;
-      let lat, lon;
-      if (isNear && w.home_lat && w.home_lon) {
-        lat = parseFloat(w.home_lat); lon = parseFloat(w.home_lon);
+      if (window.L) {
+        initMap(window.L);
       } else {
-        lat = curSt?.attributes?.latitude; lon = curSt?.attributes?.longitude;
+        // Charger Leaflet si pas disponible globalement
+        if (!document.getElementById('leaflet-css-re')) {
+          const lk = document.createElement('link');
+          lk.id='leaflet-css-re'; lk.rel='stylesheet';
+          lk.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          document.head.appendChild(lk);
+        }
+        const sc = document.createElement('script');
+        sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        sc.onload = () => initMap(window.L);
+        document.head.appendChild(sc);
       }
-      if (lat && lon) lMap.setView([lat, lon], isNear ? 18 : 16, { animate:true, duration:0.7 });
-    };
+    }, 300);
 
+    // ── Boutons personnes ────────────────────────────────────────────
     const personButtons = persons.map(p => {
       const pSt = this.hass?.states[p.person];
-      const distV = parseFloat(this.hass?.states[p.distance_entity]?.state);
-      const near = !isNaN(distV) && distV < 0.3;
-      const pHome = pSt?.state === 'home' || near;
-      const col = pHome ? '#22c55e' : '#f59e0b';
+      const dV  = parseFloat(this.hass?.states[p.distance_entity]?.state);
+      const near= !isNaN(dV) && dV < 0.3;
+      const col = (pSt?.state==='home'||near) ? '#22c55e' : '#f59e0b';
       const pic = pSt?.attributes?.entity_picture;
-      const init = (p.name||'?')[0].toUpperCase();
+      const init= (p.name||'?')[0].toUpperCase();
       return html`
-        <button style="display:flex;align-items:center;gap:7px;
-                       background:rgba(5,8,20,0.85);border:1px solid ${col}55;
-                       color:${col};font-family:'Courier New',monospace;font-size:12px;
-                       font-weight:700;letter-spacing:1px;padding:5px 10px 5px 6px;
-                       border-radius:20px;cursor:pointer;transition:border-color .2s;"
-          @click="${() => zoomToperson(p)}">
+        <button style="display:flex;align-items:center;gap:7px;background:rgba(5,8,20,0.88);
+                       border:1px solid ${col}55;color:${col};font-family:'Courier New',monospace;
+                       font-size:12px;font-weight:700;letter-spacing:1px;padding:5px 10px 5px 6px;
+                       border-radius:20px;cursor:pointer;"
+          @click="${() => this._zoomMyMap(wid, p, w)}">
           <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${col};overflow:hidden;
                        background:#1e2d3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            ${pic ? html`<img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/>`
-                  : html`<span style="font-size:11px;font-weight:800;color:${col};">${init}</span>`}
+            ${pic?html`<img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/>`
+                 :html`<span style="font-size:11px;font-weight:800;color:${col};">${init}</span>`}
           </div>
           ${p.name||'—'}
         </button>`;
     });
+
     return html`
       <div class="dw-card ${noBorder?'no-border':''}"
-           style="${sizeStyle} padding:0;overflow:hidden;position:relative;display:flex;flex-direction:column;">
+           style="${sizeStyle}padding:0;overflow:hidden;display:flex;flex-direction:column;">
         <div style="flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;padding:8px;background:#0a0f1a;border-bottom:1px solid #1a2744;">
           ${footRows}
         </div>
-        <div style="flex:1;min-height:0;position:relative;" id="map-wrap-${wid}">
-          <div style="position:absolute;top:10px;left:10px;z-index:10;display:flex;flex-direction:column;gap:6px;">
+        <div style="flex:1;min-height:0;position:relative;">
+          <div style="position:absolute;top:10px;left:10px;z-index:1000;display:flex;flex-direction:column;gap:6px;pointer-events:all;">
             ${personButtons}
           </div>
-
-          ${card === 'loading' ? html`
-            <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;">CHARGEMENT DE LA CARTE…</div>
-          ` : card === 'error' ? html`
-            <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;color:#ef4444;">ERREUR CHARGEMENT CARTE</div>
-          ` : card}
+          <div id="re-custom-map-${wid}" style="width:100%;height:100%;"></div>
         </div>
       </div>`;
   }
 
+  _updateMyMapMarkers(map, L, w) {
+    if (!map || !L) return;
+    if (!this._myMarkers) this._myMarkers = {};
+    const persons = w.persons || [];
+    const bounds = [];
+
+    persons.forEach(p => {
+      const st  = this.hass?.states[p.person];
+      const dV  = parseFloat(this.hass?.states[p.distance_entity]?.state);
+      const near= !isNaN(dV) && dV < 0.3;
+      const key = p.person;
+
+      let lat, lon;
+      if (near && w.home_lat && w.home_lon) {
+        lat = parseFloat(w.home_lat); lon = parseFloat(w.home_lon);
+      } else if (st?.attributes?.latitude != null) {
+        lat = st.attributes.latitude; lon = st.attributes.longitude;
+      } else {
+        const zone = this.hass?.states['zone.home'];
+        lat = zone?.attributes?.latitude; lon = zone?.attributes?.longitude;
+      }
+      if (!lat || !lon) return;
+      bounds.push([lat, lon]);
+
+      const pic    = st?.attributes?.entity_picture;
+      const init   = (p.name||'?')[0].toUpperCase();
+      const border = (st?.state==='home'||near) ? '#22c55e' : '#f59e0b';
+      const img    = pic ? `<img src="${pic}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
+                         : `<span style="font-size:18px;font-weight:800;color:${border};">${init}</span>`;
+      const html2  = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+        <div style="width:46px;height:46px;border-radius:50%;border:3px solid ${border};overflow:hidden;
+                     background:#1e2d3d;display:flex;align-items:center;justify-content:center;
+                     box-shadow:0 2px 12px rgba(0,0,0,.9);">${img}</div>
+        <div style="margin-top:4px;padding:2px 6px;background:rgba(0,0,0,0.75);border-radius:4px;
+                     font-size:11px;font-weight:800;color:#fff;white-space:nowrap;letter-spacing:0.5px;">
+          ${p.name||''}
+        </div>
+      </div>`;
+      const icon = L.divIcon({ html:html2, className:'', iconSize:[60,70], iconAnchor:[30,23] });
+
+      if (this._myMarkers[key]) {
+        this._myMarkers[key].setLatLng([lat,lon]).setIcon(icon);
+      } else {
+        this._myMarkers[key] = L.marker([lat,lon],{icon,zIndexOffset:1000}).addTo(map);
+      }
+    });
+
+    if (bounds.length===1) map.setView(bounds[0], 16);
+    else if (bounds.length>1) map.fitBounds(L.latLngBounds(bounds),{padding:[60,60],maxZoom:15});
+  }
+
+  _zoomMyMap(wid, p, w) {
+    const mapDiv = this.shadowRoot?.querySelector(`#re-custom-map-${wid}`);
+    const map = mapDiv?._leafletMap;
+    if (!map) return;
+    const st   = this.hass?.states[p.person];
+    const dV   = parseFloat(this.hass?.states[p.distance_entity]?.state);
+    const near = !isNaN(dV) && dV < 0.3;
+    let lat, lon;
+    if (near && w.home_lat && w.home_lon) {
+      lat = parseFloat(w.home_lat); lon = parseFloat(w.home_lon);
+    } else {
+      lat = st?.attributes?.latitude; lon = st?.attributes?.longitude;
+    }
+    if (lat && lon) map.setView([lat,lon], near?18:16, {animate:true,duration:0.7});
+  }
+
+  
   _renderApplianceWidget(w, sizeStyle, noBorder=false) {
     const categories = w.categories || [];
     const tabKey     = '_appTab_' + (w.widget_id || 'def');
