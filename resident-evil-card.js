@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v206 (version RICHE : widgets)
+   RESIDENT EVIL CARD v207 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2349,62 +2349,96 @@ class ResidentEvilCard extends LitElement {
   // (ex: présence détectée par le routeur WiFi → person sans latitude/longitude).
   // Position de repli : la zone correspondant à l'état (zone.home si "home").
   _syncFallbackMarkers(cardEl, persons) {
-    const haMap = cardEl.shadowRoot && cardEl.shadowRoot.querySelector('ha-map');
-    const L   = haMap && haMap.Leaflet;
-    const map = haMap && haMap.leafletMap;
-    if (!L || !map) return;
     if (!this._fbMarkers) this._fbMarkers = {};
 
-    let fbIndex = 0;
-    persons.forEach(p => {
-      if (!p.person) return;
-      const st  = this.hass?.states[p.person];
-      const key = p.person;
+    const trySync = (retries = 0) => {
+      const haMap = cardEl.shadowRoot?.querySelector('ha-map');
+      if (!haMap) { if (retries < 15) setTimeout(() => trySync(retries+1), 400); return; }
 
-      // Vérifier si la personne est proche du domicile via le capteur distance
-      const distV = parseFloat(this.hass?.states[p.distance_entity]?.state);
-      const nearHome = !isNaN(distV) && distV < 0.3;
+      // Trouver Leaflet (L) — toutes les versions HA
+      let L = haMap.Leaflet || haMap._leaflet || haMap.leaflet || window.L;
+      if (!L) {
+        for (const k of Object.getOwnPropertyNames(Object.getPrototypeOf(haMap)).concat(Object.keys(haMap))) {
+          try { const v = haMap[k]; if (v && v.divIcon && v.marker && v.DivIcon) { L = v; break; } } catch(_) {}
+        }
+      }
 
-      const hasCoords = st && st.attributes.latitude != null && st.attributes.longitude != null;
+      // Trouver la carte Leaflet — toutes les versions HA
+      let map = haMap.leafletMap || haMap._leafletMap || haMap._map || haMap.map;
+      if (!map) {
+        for (const k of Object.getOwnPropertyNames(haMap)) {
+          try { const v = haMap[k]; if (v && typeof v.setView === 'function' && typeof v.fitBounds === 'function') { map = v; break; } } catch(_) {}
+        }
+      }
 
-      // Si la personne est loin ET a des coords → la carte HA gère, on retire le fallback
-      if (!nearHome && (!st || hasCoords)) {
-        if (this._fbMarkers[key]) { try { map.removeLayer(this._fbMarkers[key]); } catch(_e) {} delete this._fbMarkers[key]; }
+      if (!L || !map) {
+        if (retries < 15) setTimeout(() => trySync(retries+1), 400);
         return;
       }
 
-      // Forcer à zone.home quand proche du domicile, sinon zone de l'état
-      const zone = nearHome
-        ? this.hass.states['zone.home']
-        : (this.hass.states['zone.' + st?.state] || this.hass.states['zone.home']);
-      const lat = zone?.attributes?.latitude;
-      const lon = zone?.attributes?.longitude;
-      if (lat == null || lon == null) return;
+      let fbIndex = 0;
+      const bounds = [];
 
-      // Décalage léger si plusieurs personnes au même endroit
-      const offsets = [[-0.00035,0.0005],[0.0004,-0.0004],[0,-0.0006],[0.0005,0.0003]];
-      const [oLat, oLon] = offsets[fbIndex % offsets.length];
-      fbIndex++;
+      persons.forEach(p => {
+        if (!p.person) return;
+        const st  = this.hass?.states[p.person];
+        const key = p.person;
 
-      const pic     = st?.attributes?.entity_picture;
-      const initial = (p.name || st?.attributes?.friendly_name || '?')[0].toUpperCase();
-      const border  = nearHome ? '#22c55e' : '#f59e0b';
-      const iconHtml = pic
-        ? `<div style="width:44px;height:44px;border-radius:50%;border:3px solid ${border};overflow:hidden;background:#000;box-shadow:0 2px 10px rgba(0,0,0,.7);"><img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/></div>`
-        : `<div style="width:44px;height:44px;border-radius:50%;border:3px solid ${border};background:#1e2d3d;color:${border};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,.7);">${initial}</div>`;
-      const labelHtml = `<div style="margin-top:3px;font-size:11px;font-weight:700;color:#fff;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,0.9);white-space:nowrap;">${p.name||''}</div>`;
-      const icon = L.divIcon({
-        html: `<div style="display:flex;flex-direction:column;align-items:center;">${iconHtml}${labelHtml}</div>`,
-        className: '', iconSize: [60, 60], iconAnchor: [30, 22]
+        const distV = parseFloat(this.hass?.states[p.distance_entity]?.state);
+        const nearHome = !isNaN(distV) && distV < 0.3;
+        const hasCoords = st?.attributes?.latitude != null && st?.attributes?.longitude != null;
+
+        if (!nearHome && (!st || hasCoords)) {
+          if (this._fbMarkers[key]) { try { map.removeLayer(this._fbMarkers[key]); } catch(_) {} delete this._fbMarkers[key]; }
+          return;
+        }
+
+        const zone = nearHome
+          ? this.hass.states['zone.home']
+          : (this.hass.states['zone.' + st?.state] || this.hass.states['zone.home']);
+        const lat = zone?.attributes?.latitude;
+        const lon = zone?.attributes?.longitude;
+        if (lat == null || lon == null) return;
+
+        const offsets = [[-0.00035,0.0005],[0.0004,-0.0004],[0,-0.0006],[0.0005,0.0003]];
+        const [oLat, oLon] = offsets[fbIndex % offsets.length];
+        fbIndex++;
+
+        const fLat = lat + oLat, fLon = lon + oLon;
+        bounds.push([fLat, fLon]);
+
+        const pic     = st?.attributes?.entity_picture;
+        const initial = (p.name || '?')[0].toUpperCase();
+        const border  = nearHome ? '#22c55e' : '#f59e0b';
+        const iconHtml = `<div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:44px;height:44px;border-radius:50%;border:3px solid ${border};overflow:hidden;background:#1e2d3d;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.8);">
+            ${pic ? `<img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/>` : `<span style="font-size:18px;font-weight:800;color:${border};">${initial}</span>`}
+          </div>
+          <div style="margin-top:3px;font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.9);white-space:nowrap;">${p.name||''}</div>
+        </div>`;
+        const icon = L.divIcon({ html: iconHtml, className:'', iconSize:[60,64], iconAnchor:[30,22] });
+
+        if (this._fbMarkers[key]) {
+          this._fbMarkers[key].setLatLng([fLat, fLon]);
+          this._fbMarkers[key].setIcon(icon);
+        } else {
+          this._fbMarkers[key] = L.marker([fLat, fLon], { icon, zIndexOffset:1000 }).addTo(map);
+        }
       });
 
-      if (this._fbMarkers[key]) {
-        this._fbMarkers[key].setLatLng([lat + oLat, lon + oLon]);
-        this._fbMarkers[key].setIcon(icon);
-      } else {
-        this._fbMarkers[key] = L.marker([lat + oLat, lon + oLon], { icon, zIndexOffset: 1000 }).addTo(map);
+      // Fit la carte sur tous les marqueurs placés
+      if (bounds.length > 0) {
+        try {
+          if (bounds.length === 1) {
+            map.setView(bounds[0], 16, { animate:false });
+          } else {
+            map.fitBounds(bounds, { padding:[40,40], maxZoom:16, animate:false });
+          }
+        } catch(_) {}
       }
-    });
+    };
+
+    setTimeout(() => trySync(0), 600);
   }
 
   // ═══════════════════════════════════════════════════════════
