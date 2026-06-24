@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v207 (version RICHE : widgets)
+   RESIDENT EVIL CARD v208 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2353,28 +2353,29 @@ class ResidentEvilCard extends LitElement {
 
     const trySync = (retries = 0) => {
       const haMap = cardEl.shadowRoot?.querySelector('ha-map');
-      if (!haMap) { if (retries < 15) setTimeout(() => trySync(retries+1), 400); return; }
+      if (!haMap) { if (retries < 20) setTimeout(() => trySync(retries+1), 400); return; }
 
-      // Trouver Leaflet (L) — toutes les versions HA
-      let L = haMap.Leaflet || haMap._leaflet || haMap.leaflet || window.L;
-      if (!L) {
-        for (const k of Object.getOwnPropertyNames(Object.getPrototypeOf(haMap)).concat(Object.keys(haMap))) {
-          try { const v = haMap[k]; if (v && v.divIcon && v.marker && v.DivIcon) { L = v; break; } } catch(_) {}
-        }
-      }
+      // Méthode 1 : Leaflet pose _leaflet_map sur le conteneur DOM
+      const leafletContainer = haMap.shadowRoot?.querySelector('.leaflet-container')
+                            || haMap.shadowRoot?.querySelector('#map')
+                            || haMap.shadowRoot?.querySelector('div[class*="leaflet"]');
+      let lMap = leafletContainer?._leaflet_map;
 
-      // Trouver la carte Leaflet — toutes les versions HA
-      let map = haMap.leafletMap || haMap._leafletMap || haMap._map || haMap.map;
-      if (!map) {
+      // Méthode 2 : propriétés directes de ha-map
+      if (!lMap) lMap = haMap._map || haMap._leafletMap || haMap.leafletMap || haMap.map;
+
+      // Méthode 3 : recherche exhaustive sur ha-map
+      if (!lMap) {
         for (const k of Object.getOwnPropertyNames(haMap)) {
-          try { const v = haMap[k]; if (v && typeof v.setView === 'function' && typeof v.fitBounds === 'function') { map = v; break; } } catch(_) {}
+          try { const v = haMap[k]; if (v && typeof v.setView === 'function' && typeof v.fitBounds === 'function') { lMap = v; break; } } catch(_) {}
         }
       }
 
-      if (!L || !map) {
-        if (retries < 15) setTimeout(() => trySync(retries+1), 400);
-        return;
-      }
+      if (!lMap) { if (retries < 20) setTimeout(() => trySync(retries+1), 400); return; }
+
+      // Leaflet global (HA le charge en global dans le browser)
+      const L = window.L || haMap.Leaflet;
+      if (!L?.divIcon) { if (retries < 20) setTimeout(() => trySync(retries+1), 400); return; }
 
       let fbIndex = 0;
       const bounds = [];
@@ -2383,13 +2384,12 @@ class ResidentEvilCard extends LitElement {
         if (!p.person) return;
         const st  = this.hass?.states[p.person];
         const key = p.person;
-
         const distV = parseFloat(this.hass?.states[p.distance_entity]?.state);
         const nearHome = !isNaN(distV) && distV < 0.3;
         const hasCoords = st?.attributes?.latitude != null && st?.attributes?.longitude != null;
 
         if (!nearHome && (!st || hasCoords)) {
-          if (this._fbMarkers[key]) { try { map.removeLayer(this._fbMarkers[key]); } catch(_) {} delete this._fbMarkers[key]; }
+          if (this._fbMarkers[key]) { try { lMap.removeLayer(this._fbMarkers[key]); } catch(_) {} delete this._fbMarkers[key]; }
           return;
         }
 
@@ -2403,42 +2403,40 @@ class ResidentEvilCard extends LitElement {
         const offsets = [[-0.00035,0.0005],[0.0004,-0.0004],[0,-0.0006],[0.0005,0.0003]];
         const [oLat, oLon] = offsets[fbIndex % offsets.length];
         fbIndex++;
-
         const fLat = lat + oLat, fLon = lon + oLon;
         bounds.push([fLat, fLon]);
 
-        const pic     = st?.attributes?.entity_picture;
-        const initial = (p.name || '?')[0].toUpperCase();
-        const border  = nearHome ? '#22c55e' : '#f59e0b';
+        const pic = st?.attributes?.entity_picture;
+        const init = (p.name||'?')[0].toUpperCase();
+        const border = nearHome ? '#22c55e' : '#f59e0b';
+        const imgHtml = pic
+          ? `<img src="${pic}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
+          : `<span style="font-size:18px;font-weight:800;color:${border};">${init}</span>`;
         const iconHtml = `<div style="display:flex;flex-direction:column;align-items:center;">
-          <div style="width:44px;height:44px;border-radius:50%;border:3px solid ${border};overflow:hidden;background:#1e2d3d;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.8);">
-            ${pic ? `<img src="${pic}" style="width:100%;height:100%;object-fit:cover;"/>` : `<span style="font-size:18px;font-weight:800;color:${border};">${initial}</span>`}
-          </div>
-          <div style="margin-top:3px;font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.9);white-space:nowrap;">${p.name||''}</div>
+          <div style="width:44px;height:44px;border-radius:50%;border:3px solid ${border};overflow:hidden;background:#1e2d3d;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.9);">${imgHtml}</div>
+          <div style="margin-top:3px;font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,1);white-space:nowrap;letter-spacing:0.5px;">${p.name||''}</div>
         </div>`;
-        const icon = L.divIcon({ html: iconHtml, className:'', iconSize:[60,64], iconAnchor:[30,22] });
+        const icon = L.divIcon({ html:iconHtml, className:'', iconSize:[60,64], iconAnchor:[30,22] });
 
         if (this._fbMarkers[key]) {
-          this._fbMarkers[key].setLatLng([fLat, fLon]);
-          this._fbMarkers[key].setIcon(icon);
+          this._fbMarkers[key].setLatLng([fLat, fLon]).setIcon(icon);
         } else {
-          this._fbMarkers[key] = L.marker([fLat, fLon], { icon, zIndexOffset:1000 }).addTo(map);
+          this._fbMarkers[key] = L.marker([fLat, fLon], { icon, zIndexOffset:1000 }).addTo(lMap);
         }
       });
 
-      // Fit la carte sur tous les marqueurs placés
+      // Centrer la carte sur les marqueurs placés
       if (bounds.length > 0) {
         try {
-          if (bounds.length === 1) {
-            map.setView(bounds[0], 16, { animate:false });
-          } else {
-            map.fitBounds(bounds, { padding:[40,40], maxZoom:16, animate:false });
-          }
+          setTimeout(() => {
+            if (bounds.length === 1) lMap.setView(bounds[0], 16);
+            else lMap.fitBounds(L.latLngBounds(bounds), { padding:[50,50], maxZoom:15 });
+          }, 200);
         } catch(_) {}
       }
     };
 
-    setTimeout(() => trySync(0), 600);
+    setTimeout(() => trySync(0), 800);
   }
 
   // ═══════════════════════════════════════════════════════════
