@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v216 (version RICHE : widgets)
+   RESIDENT EVIL CARD v217 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1356,7 +1356,7 @@ class ResidentEvilCard extends LitElement {
             <div style="position:absolute;top:0;left:0;right:0;height:1px;
                          background:${P.col}18;animation:_re_scan ${P.alert?'2':'3.5'}s linear infinite;
                          animation-delay:${Math.random()*2}s;"></div>
-            <div style="font-size:8px;letter-spacing:2px;color:${P.col}88;
+            <div style="font-size:12px;letter-spacing:2px;color:${P.col}88;
                          ${P.alert?'animation:_re_pulse 1.5s ease-in-out infinite;':''}">
               ${label}
             </div>
@@ -1377,19 +1377,19 @@ class ResidentEvilCard extends LitElement {
               ${P.fill > 80 && !allOk ? html`
                 <div style="position:absolute;bottom:${P.fill-2}%;left:0;right:0;height:1px;
                              border-top:1px dashed ${P.col}55;"></div>
-                <div style="position:absolute;bottom:${P.fill}%;right:2px;font-size:7px;color:${P.col}77;">MAX</div>` : html``}
+                <div style="position:absolute;bottom:${P.fill}%;right:2px;font-size:12px;color:${P.col}77;">MAX</div>` : html``}
               <div style="position:absolute;top:0;left:3px;width:5px;bottom:0;
                            background:rgba(255,255,255,0.03);border-radius:3px;"></div>
             </div>
-            <div style="font-size:17px;font-weight:900;color:${P.col};line-height:1;
+            <div style="font-size:20px;font-weight:900;color:${P.col};line-height:1;
                          ${P.alert?'animation:_re_pulse 1.5s ease-in-out infinite;':''}">
-              ${dispVal}<span style="font-size:9px;color:#334;margin-left:2px;">${unit}</span>
+              ${dispVal}<span style="font-size:13px;color:#8899aa;margin-left:2px;">${unit}</span>
             </div>
-            <div style="font-size:8px;color:${P.col}77;padding:2px 7px;border:1px solid ${P.col}33;border-radius:2px;
+            <div style="font-size:12px;color:${P.col}77;padding:2px 7px;border:1px solid ${P.col}33;border-radius:2px;
                          ${P.alert?'animation:_re_pulse 1.5s ease-in-out infinite;':''}">
               ${!hasVal?'N/D':P.ok?'CONFORME':P.alert?'ALERTE !':'ATTENTION'}
             </div>
-            <div style="font-size:8px;color:#334;">${min}–${max}</div>
+            <div style="font-size:12px;color:#8899aa;">${min}–${max}</div>
           </div>`;
       };
 
@@ -1414,14 +1414,14 @@ class ResidentEvilCard extends LitElement {
               <line x1="19" y1="17.2" x2="24.8" y2="20.6" stroke="#6644ff" stroke-width="1.5"/>
             </svg>
             <div style="flex:1;">
-              <div style="font-size:9px;letter-spacing:3px;color:#6644ff88;">UMBRELLA CORP. — BIO-ANALYSIS UNIT 7</div>
-              <div style="font-size:8px;color:#33005566;letter-spacing:1px;margin-top:1px;">VECTEUR: H₂O · SPA-01</div>
+              <div style="font-size:13px;letter-spacing:2px;color:#9977ff;">UMBRELLA CORP. — BIO-ANALYSIS UNIT 7</div>
+              <div style="font-size:12px;color:#6644aa;letter-spacing:1px;margin-top:1px;">VECTEUR: H₂O · SPA-01</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:9px;color:${allOk?'#00ff6699':'#ff330099'};letter-spacing:2px;${!allOk?'animation:_re_pulse 2s infinite;':''}">
+              <div style="font-size:13px;color:${allOk?'#00ff6699':'#ff330099'};letter-spacing:2px;${!allOk?'animation:_re_pulse 2s infinite;':''}">
                 ${allOk?'✓ NOMINAL':'⚠ CONTAMINATION'}
               </div>
-              <div style="font-size:8px;color:${allOk?'#00ff6644':'#ff330066'};margin-top:2px;">
+              <div style="font-size:12px;color:${allOk?'#00ff6644':'#ff330066'};margin-top:2px;">
                 NIVEAU BIOHAZARD: ${allOk?'0':alerts.length}
               </div>
             </div>
@@ -1430,7 +1430,7 @@ class ResidentEvilCard extends LitElement {
           <!-- JAUGE GLOBALE + TEMPS -->
           <div style="display:flex;border-bottom:1px solid #3300ff15;">
             <div style="flex:1;padding:10px 12px;border-right:1px solid #3300ff15;">
-              <div style="font-size:8px;letter-spacing:2px;color:#6644ff44;margin-bottom:6px;">INDICE DE CONTAMINATION GLOBAL</div>
+              <div style="font-size:12px;letter-spacing:2px;color:#9977ff;margin-bottom:6px;">INDICE DE CONTAMINATION GLOBAL</div>
               <div style="height:6px;background:#0a0012;border-radius:3px;overflow:hidden;position:relative;">
                 <div style="position:absolute;left:0;top:0;bottom:0;width:33%;background:#00ff66;border-radius:3px 0 0 3px;"></div>
                 <div style="position:absolute;left:33%;top:0;bottom:0;width:34%;background:#ffaa00;"></div>
@@ -1438,24 +1438,24 @@ class ResidentEvilCard extends LitElement {
                 <div style="position:absolute;top:-2px;bottom:-2px;width:3px;background:#fff;border-radius:1px;
                              left:${Math.min(96,riskPct)}%;transition:left .8s;"></div>
               </div>
-              <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:8px;color:#33005555;">
+              <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:12px;color:#7755bb;">
                 <span>SAIN</span><span>MODÉRÉ</span><span>DANGER</span>
               </div>
-              <div style="margin-top:5px;font-size:10px;color:${allOk?'#00ff66':riskPct>60?'#ff3300':'#ffaa00'};letter-spacing:1px;">
+              <div style="margin-top:5px;font-size:14px;color:${allOk?'#00ff66':riskPct>60?'#ff3300':'#ffaa00'};letter-spacing:1px;">
                 ${allOk?'TOUS PARAMÈTRES CONFORMES':alerts.length+' PARAMÈTRE(S) HORS NORME'}
               </div>
             </div>
             <div style="display:flex;">
               <div style="padding:10px 12px;border-right:1px solid #3300ff15;text-align:center;min-width:60px;">
-                <div style="font-size:8px;letter-spacing:1px;color:#00aaff55;margin-bottom:3px;">EAU</div>
-                <div style="font-size:20px;font-weight:900;color:#00ccff;">${wTemp!=null?wTemp.toFixed(1)+'°':'--'}</div>
-                ${tTemp!=null?html`<div style="font-size:8px;color:#00aaff33;margin-top:2px;">CIBLE ${tTemp}°</div>`:html``}
+                <div style="font-size:12px;letter-spacing:1px;color:#00ccff;margin-bottom:3px;">EAU</div>
+                <div style="font-size:24px;font-weight:900;color:#00ccff;">${wTemp!=null?wTemp.toFixed(1)+'°':'--'}</div>
+                ${tTemp!=null?html`<div style="font-size:12px;color:#00bbff88;margin-top:2px;">CIBLE ${tTemp}°</div>`:html``}
               </div>
               ${airTemp!=null?html`
               <div style="padding:10px 12px;text-align:center;min-width:60px;">
-                <div style="font-size:8px;letter-spacing:1px;color:#ff660055;margin-bottom:3px;">AIR SPA</div>
-                <div style="font-size:20px;font-weight:900;color:#ff8844;">${parseFloat(airTemp).toFixed(1)}°</div>
-                ${extTemp!=null?html`<div style="font-size:8px;color:#ff660033;margin-top:2px;">EXT. ${parseFloat(extTemp).toFixed(1)}°</div>`:html``}
+                <div style="font-size:12px;letter-spacing:1px;color:#ff9944;margin-bottom:3px;">AIR SPA</div>
+                <div style="font-size:24px;font-weight:900;color:#ff8844;">${parseFloat(airTemp).toFixed(1)}°</div>
+                ${extTemp!=null?html`<div style="font-size:12px;color:#ff884488;margin-top:2px;">EXT. ${parseFloat(extTemp).toFixed(1)}°</div>`:html``}
               </div>`:html``}
             </div>
           </div>
@@ -1471,21 +1471,21 @@ class ResidentEvilCard extends LitElement {
           <!-- RECOMMANDATIONS -->
           ${alerts.length > 0 ? html`
           <div style="padding:8px 12px;border-bottom:1px solid #3300ff10;background:#060008;">
-            <div style="font-size:8px;letter-spacing:2px;color:#6644ff44;margin-bottom:5px;">&gt; RECOMMANDATIONS AUTOMATIQUES</div>
+            <div style="font-size:12px;letter-spacing:2px;color:#9977ff;margin-bottom:5px;">&gt; RECOMMANDATIONS AUTOMATIQUES</div>
             <div style="display:flex;flex-direction:column;gap:3px;">
               ${alerts.map(a => html`
-                <div style="display:flex;align-items:flex-start;gap:7px;font-size:10px;">
+                <div style="display:flex;align-items:flex-start;gap:7px;font-size:14px;">
                   <span style="color:#ff3300;flex-shrink:0;">⚠</span>
                   <span style="color:#ff330099;">${a}</span>
                 </div>`)}
             </div>
           </div>` : html`
           <div style="padding:8px 12px;background:#000a02;border-bottom:1px solid #3300ff10;">
-            <div style="font-size:10px;color:#00ff6666;letter-spacing:1px;">&gt; TOUS PARAMÈTRES DANS LES NORMES — AUCUNE ACTION REQUISE ✓</div>
+            <div style="font-size:14px;color:#00ff6666;letter-spacing:1px;">&gt; TOUS PARAMÈTRES DANS LES NORMES — AUCUNE ACTION REQUISE ✓</div>
           </div>`}
 
           <!-- FOOTER -->
-          <div style="padding:5px 12px;display:flex;justify-content:space-between;font-size:8px;color:#3300ff33;">
+          <div style="padding:5px 12px;display:flex;justify-content:space-between;font-size:12px;color:#8866ff;">
             <span>SPA-01 · LAZYSPA 500L</span>
             <span style="color:#ff330044;animation:_re_pulse 1.5s step-end infinite;">● ENREGISTREMENT EN COURS</span>
             <span>UMBR. CORP. BIO-LAB © 2026</span>
