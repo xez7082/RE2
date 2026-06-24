@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v219 (version RICHE : widgets)
+   RESIDENT EVIL CARD v221 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -841,9 +841,10 @@ class ResidentEvilCard extends LitElement {
     const noBorder = w.noBorder === true;
     const widthPct = Math.min(100, Math.max(5, parseInt(w.widthPct) || 30));
     const heightPx = parseInt(w.heightPx) || 0;
+    const _wZoom = parseFloat((this._config?.theme||{}).widget_zoom || 1);
     const sizeStyle = fillSingle
       ? `width: 100%; height: 100%;`
-      : `width: calc(${widthPct}% - 10px); ${heightPx ? 'height:' + heightPx + 'px;' : ''}`;
+      : `width: calc(${widthPct}% - 10px); ${heightPx ? 'height:' + heightPx + 'px;' : ''} zoom: ${_wZoom};`;
 
     switch (type) {
       case 'shape':    return this._renderShape(w, color, glow, sizeStyle, noBorder);
@@ -5173,10 +5174,10 @@ class ResidentEvilCard extends LitElement {
         <div style="background:#0a0700;border-bottom:1px solid #f59e0b18;padding:9px 14px;
                     display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:12px;letter-spacing:3px;color:#f59e0b88;">PRÉVISIONS SOLAIRES — CENTRE ALSACE</div>
-            <div style="font-size:11px;color:#f59e0b33;margin-top:2px;">STE-CROIX-EN-PLAINE · 48.009°N 7.405°E</div>
+            <div style="font-size:15px;letter-spacing:2px;color:#f59e0b;">PRÉVISIONS SOLAIRES — CENTRE ALSACE</div>
+            <div style="font-size:15px;color:#f59e0b88;margin-top:2px;">STE-CROIX-EN-PLAINE · 48.009°N 7.405°E</div>
           </div>
-          <div style="font-size:11px;color:#22c55e;border:1px solid #22c55e33;padding:3px 10px;border-radius:2px;">
+          <div style="font-size:15px;color:#22c55e;border:1px solid #22c55e33;padding:3px 10px;border-radius:2px;">
             ✓ SOLCAST ACTIF
           </div>
         </div>
@@ -5185,7 +5186,7 @@ class ResidentEvilCard extends LitElement {
         <div style="display:flex;">
           <!-- ARC TRAJECTOIRE SOLAIRE -->
           <div style="padding:12px 10px;border-right:1px solid #f59e0b12;flex-shrink:0;">
-            <div style="font-size:10px;color:#f59e0b44;letter-spacing:2px;margin-bottom:6px;text-align:center;">TRAJECTOIRE</div>
+            <div style="font-size:14px;color:#f59e0b99;letter-spacing:2px;margin-bottom:6px;text-align:center;">TRAJECTOIRE</div>
             <svg width="150" height="100" viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg">
               <!-- Zone panneau estimée (sud, azimut 150-210°) -->
               <path d="M 58,75 Q 80,30 102,75 Z" fill="rgba(34,197,94,0.06)" stroke="rgba(34,197,94,0.2)" stroke-width="0.8"/>
@@ -5222,24 +5223,24 @@ class ResidentEvilCard extends LitElement {
           <!-- MÉTRIQUES -->
           <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#f59e0b08;align-content:start;">
             <div style="background:#050800;padding:12px;">
-              <div style="font-size:11px;color:#f59e0b55;letter-spacing:1px;margin-bottom:5px;">AZIMUT</div>
+              <div style="font-size:15px;color:#f59e0baa;letter-spacing:1px;margin-bottom:5px;">AZIMUT</div>
               <div style="font-size:24px;font-weight:900;color:#f59e0b;line-height:1;">${az!=null?az.toFixed(0)+'°':'--'}</div>
-              <div style="font-size:10px;color:#f59e0b33;margin-top:3px;">${az!=null?(az<90?'EST':az<180?'SUD-EST':az<270?'SUD-OUEST':'OUEST'):'--'}</div>
+              <div style="font-size:14px;color:#f59e0b88;margin-top:3px;">${az!=null?(az<90?'EST':az<180?'SUD-EST':az<270?'SUD-OUEST':'OUEST'):'--'}</div>
             </div>
             <div style="background:#050800;padding:12px;border-left:1px solid #f59e0b08;">
-              <div style="font-size:11px;color:#f59e0b55;letter-spacing:1px;margin-bottom:5px;">ÉLÉVATION</div>
+              <div style="font-size:15px;color:#f59e0baa;letter-spacing:1px;margin-bottom:5px;">ÉLÉVATION</div>
               <div style="font-size:24px;font-weight:900;color:#f59e0b;line-height:1;">${elev!=null?elev.toFixed(0)+'°':'--'}</div>
-              <div style="font-size:10px;color:#f59e0b33;margin-top:3px;">${elev!=null?(elev<0?'SOUS HORIZON':elev<15?'BAS':elev<35?'MOYEN':'HAUT'):'--'}</div>
+              <div style="font-size:14px;color:#f59e0b88;margin-top:3px;">${elev!=null?(elev<0?'SOUS HORIZON':elev<15?'BAS':elev<35?'MOYEN':'HAUT'):'--'}</div>
             </div>
             <div style="background:#050800;padding:12px;border-top:1px solid #22c55e08;">
-              <div style="font-size:11px;color:#22c55e55;letter-spacing:1px;margin-bottom:5px;">PIC SOLCAST</div>
+              <div style="font-size:15px;color:#22c55eaa;letter-spacing:1px;margin-bottom:5px;">PIC SOLCAST</div>
               <div style="font-size:24px;font-weight:900;color:#22c55e;line-height:1;">${pic!=null?pic.toFixed(1)+' kWh':'--'}</div>
-              <div style="font-size:10px;color:#22c55e33;margin-top:3px;">AUJOURD'HUI</div>
+              <div style="font-size:14px;color:#22c55e88;margin-top:3px;">AUJOURD'HUI</div>
             </div>
             <div style="background:#050800;padding:12px;border-top:1px solid #22c55e08;border-left:1px solid #f59e0b08;">
-              <div style="font-size:11px;color:#22c55e55;letter-spacing:1px;margin-bottom:5px;">TOTAL JOUR</div>
+              <div style="font-size:15px;color:#22c55eaa;letter-spacing:1px;margin-bottom:5px;">TOTAL JOUR</div>
               <div style="font-size:24px;font-weight:900;color:#22c55e;line-height:1;">${tot!=null?tot.toFixed(1)+' kWh':'--'}</div>
-              <div style="font-size:10px;color:#22c55e33;margin-top:3px;">SOLCAST PRÉVIS.</div>
+              <div style="font-size:14px;color:#22c55e88;margin-top:3px;">SOLCAST PRÉVIS.</div>
             </div>
           </div>
         </div>
@@ -5247,30 +5248,30 @@ class ResidentEvilCard extends LitElement {
         <!-- BANDE MÉTÉO BAS -->
         <div style="border-top:1px solid #f59e0b12;display:grid;grid-template-columns:1fr 1fr 1fr;background:#f59e0b06;">
           <div style="padding:10px 14px;border-right:1px solid #f59e0b10;">
-            <div style="font-size:11px;color:#94a3b8;letter-spacing:1px;margin-bottom:4px;">CONDITION</div>
+            <div style="font-size:15px;color:#cbd5e1;letter-spacing:1px;margin-bottom:4px;">CONDITION</div>
             <div style="font-size:15px;font-weight:700;color:#e2e8f0;">
               ${weatherIcon} ${weatherLabel}
             </div>
-            ${wTemp!=null?html`<div style="font-size:12px;color:#94a3b855;margin-top:3px;">${wTemp}° · ${wHum!=null?wHum+'% HR':''}</div>`:html``}
+            ${wTemp!=null?html`<div style="font-size:15px;color:#94a3b8;margin-top:3px;">${wTemp}° · ${wHum!=null?wHum+'% HR':''}</div>`:html``}
           </div>
           <div style="padding:10px 14px;border-right:1px solid #f59e0b10;">
-            <div style="font-size:11px;color:#94a3b8;letter-spacing:1px;margin-bottom:4px;">VENT</div>
+            <div style="font-size:15px;color:#cbd5e1;letter-spacing:1px;margin-bottom:4px;">VENT</div>
             <div style="font-size:15px;font-weight:700;color:#e2e8f0;">
               ${wind!=null?wind.toFixed(0)+' km/h':'--'}
             </div>
-            ${wind!=null?html`<div style="font-size:12px;color:#94a3b855;margin-top:3px;">${wind<10?'FAIBLE':wind<25?'MODÉRÉ':wind<50?'FORT':'TRÈS FORT'}</div>`:html``}
+            ${wind!=null?html`<div style="font-size:15px;color:#94a3b8;margin-top:3px;">${wind<10?'FAIBLE':wind<25?'MODÉRÉ':wind<50?'FORT':'TRÈS FORT'}</div>`:html``}
           </div>
           <div style="padding:10px 14px;">
-            <div style="font-size:11px;color:#818cf8;letter-spacing:1px;margin-bottom:4px;">LUNE</div>
-            <div style="font-size:15px;font-weight:700;color:#818cf8;">${moonIcon} ${moonLabel}</div>
+            <div style="font-size:15px;color:#a78bfa;letter-spacing:1px;margin-bottom:4px;">LUNE</div>
+            <div style="font-size:15px;font-weight:700;color:#a78bfa;">${moonIcon} ${moonLabel}</div>
           </div>
         </div>
 
         <!-- FOOTER -->
-        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:10px;
-                    color:#f59e0b22;border-top:1px solid #f59e0b08;">
+        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:14px;
+                    color:#f59e0b55;border-top:1px solid #f59e0b08;">
           <span>SOURCE: OPENWEATHERMAP + SOLCAST</span>
-          <span style="animation:_re_blink_prev 1.2s step-end infinite;color:#22c55e44;">● LIVE</span>
+          <span style="animation:_re_blink_prev 1.2s step-end infinite;color:#22c55e99;">● LIVE</span>
         </div>
       </div>`;
   }
@@ -5634,6 +5635,22 @@ class ResidentEvilCard extends LitElement {
 
   render() {
     if (!this.hass || !this.config) return html``;
+    const th = this.config.theme || {};
+    // Injecter CSS variables couleurs widgets dans le shadow root
+    if (!this.__thStyleEl) {
+      this.__thStyleEl = document.createElement('style');
+      this.__thStyleEl.id = 're2-theme-vars';
+      this.shadowRoot?.appendChild(this.__thStyleEl);
+    }
+    this.__thStyleEl.textContent = `:host {
+      --re-wt:  ${th.widget_text     || '#e2e8f0'};
+      --re-wtd: ${th.widget_text_dim || '#94a3b8'};
+      --re-wg:  ${th.widget_green    || '#22c55e'};
+      --re-wr:  ${th.widget_red      || '#ef4444'};
+      --re-wb:  ${th.widget_blue     || '#38bdf8'};
+      --re-wa:  ${th.widget_amber    || '#f59e0b'};
+      --re-wp:  ${th.widget_purple   || '#a78bfa'};
+    }`;
     const title          = this.config.title || 'UMBRELLA CORP. TERMINAL';
     const categories     = this.config.categories || [];
     const activeCategory = categories[this._activeMainMenu] || { name: '', submenus: [] };
@@ -6956,6 +6973,36 @@ class ResidentEvilCardEditor extends LitElement {
             ${sizeRow('Nom des capteurs', 'fs_name', 12)}
             ${sizeRow('Valeur des capteurs', 'fs_value', 18)}
             ${sizeRow('Largeur barre latérale', 'sidebar_width', 200, 120, 360)}
+          </div>
+        </div>
+        <div>
+          ${this._lbl('🔍 ZOOM CONTENU WIDGETS')}
+          <div style="background:#0a1020;border:1px solid #1e2d3d;border-radius:8px;padding:12px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+              <span style="font-size:14px;color:#cbd5e1;flex:1;">Taille globale des textes</span>
+              <span style="font-size:16px;font-weight:700;color:#22c55e;min-width:40px;text-align:right;">
+                ${Math.round((parseFloat(th.widget_zoom)||1)*100)}%
+              </span>
+            </div>
+            <input type="range" min="70" max="150" step="5"
+              .value="${Math.round((parseFloat(th.widget_zoom)||1)*100)}"
+              @input="${e => this._setTheme('widget_zoom', (parseInt(e.target.value)/100).toFixed(2))}"
+              style="width:100%;accent-color:#22c55e;cursor:pointer;"/>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#475569;margin-top:3px;">
+              <span>70% — Compact</span><span>100% — Normal</span><span>150% — Grand</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          ${this._lbl('🎨 COULEURS DES WIDGETS')}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            ${colorRow('Texte principal widgets', 'widget_text', '#e2e8f0')}
+            ${colorRow('Texte secondaire widgets', 'widget_text_dim', '#94a3b8')}
+            ${colorRow('Accent vert (SPA, présence…)', 'widget_green', '#22c55e')}
+            ${colorRow('Accent rouge (alertes RE…)', 'widget_red', '#ef4444')}
+            ${colorRow('Accent bleu (température…)', 'widget_blue', '#38bdf8')}
+            ${colorRow('Accent ambre (soleil, économies…)', 'widget_amber', '#f59e0b')}
+            ${colorRow('Accent violet (santé, lune…)', 'widget_purple', '#a78bfa')}
           </div>
         </div>
         <button style="background:#7f1d1d33;border:1px solid #7f1d1d;color:#fca5a5;border-radius:8px;
