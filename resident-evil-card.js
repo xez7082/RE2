@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v223 (version RICHE : widgets)
+   RESIDENT EVIL CARD v224 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -6443,6 +6443,19 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'plant_image',l:'Image',t:T},{k:'battery_sensor',l:'Batterie',t:E},
       ],
       solar:   [ {k:'active_tab',l:'Onglet (0=Sol 1=Météo 2=Batt 3=Éco)',t:S,o:['0','1','2','3']} ],
+      economies: [
+        {k:'header_title',l:'Titre header',t:T},{k:'header_sub',l:'Sous-titre header',t:T},{k:'main_label',l:'Label cumul',t:T},
+        {k:'eco_money',l:'Économies cumulées (€)',t:E},{k:'eco_day',l:'Gain du jour (€)',t:E},
+        {k:'eco_month',l:'Gain du mois (€)',t:E},{k:'eco_year',l:'Gain net annuel (€)',t:E},
+        {k:'kwh_price',l:'Tarif EDF (€/kWh)',t:E},{k:'eco_pct',l:'Progression objectif (%)',t:E},
+        {k:'eco_target',l:'Objectif annuel (€)',t:N},
+      ],
+      previsions: [
+        {k:'weather_entity',l:'Météo (weather.*)',t:E},{k:'azimuth_entity',l:'Azimut soleil',t:E},
+        {k:'elevation_entity',l:'Élévation soleil',t:E},{k:'solcast_pic',l:'Solcast — pic du jour',t:E},
+        {k:'solcast_total',l:'Solcast — total du jour',t:E},{k:'wind_entity',l:'Vitesse du vent',t:E},
+        {k:'moon_entity',l:'Phase de la lune',t:E},
+      ],
       appliance: [ {k:'view',l:'Catégorie figée (0/1/2)',t:S,o:['0','1','2']} ],
       gauge: [
         {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},
