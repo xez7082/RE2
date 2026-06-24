@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v226 (version RICHE : widgets)
+   RESIDENT EVIL CARD v227 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -5399,12 +5399,18 @@ class ResidentEvilCard extends LitElement {
     const p1w=fv(w.p1_w_entity), p2w=fv(w.p2_w_entity), p3w=fv(w.p3_w_entity);
     const p1d=fv(w.p1_d_entity), p2d=fv(w.p2_d_entity), p3d=fv(w.p3_d_entity);
     const p1m=fv(w.p1_m_entity), p2m=fv(w.p2_m_entity), p3m=fv(w.p3_m_entity);
+    // Prod mois totale = entité dédiée OU somme des 3 installations
+    const monthFromInst = (p1m!=null||p2m!=null||p3m!=null) ? (p1m||0)+(p2m||0)+(p3m||0) : null;
+    const monthKwh = (()=>{
+      const v = fv(w.month_entity);
+      // Si l'entité mois retourne 0 ou null, utiliser la somme des installations
+      return (v!=null && v>0) ? v : monthFromInst;
+    })();
     const totalW   = fv(w.total_entity) || ((p1w||0)+(p2w||0)+(p3w||0));
     const consW    = fv(w.cons_entity);
     const gridRaw  = fv(w.grid_entity);
     const autoP    = fv(w.autoconso_entity);
     const dayKwh   = fv(w.day_entity);
-    const monthKwh = fv(w.month_entity);
     const nightKwh = fv(w.night_entity);
     const objPct   = fv(w.obj_pct_entity);
     const objKwh   = fv(w.obj_kwh_entity);
@@ -5543,7 +5549,7 @@ class ResidentEvilCard extends LitElement {
           <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
             <span style="font-size:12px;color:${cD};">OBJECTIF MENSUEL</span>
             <span style="font-size:12px;font-weight:700;color:${cG};">
-              ${fmt(objPct,0)}% ${objKwh!=null?'— '+fmt(monthKwh,0)+'/'+fmt(objKwh,0)+' kWh':''}
+              ${fmt(objPct,0)}% ${objKwh!=null?`— ${fmt(monthKwh,1)}/${fmt(objKwh,0)} kWh`:''}
             </span>
           </div>
           <div style="height:4px;background:#0a0800;border-radius:2px;overflow:hidden;">
