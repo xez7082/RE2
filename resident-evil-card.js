@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v205 (version RICHE : widgets)
+   RESIDENT EVIL CARD v206 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2691,6 +2691,9 @@ class ResidentEvilCard extends LitElement {
     return html`
       <div class="dw-card ${noBorder?'no-border':''}"
            style="${sizeStyle} padding:0;overflow:hidden;position:relative;display:flex;flex-direction:column;">
+        <div style="flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;padding:8px;background:#0a0f1a;border-bottom:1px solid #1a2744;">
+          ${footRows}
+        </div>
         <div style="flex:1;min-height:0;position:relative;" id="map-wrap-${wid}">
           <div style="position:absolute;top:10px;left:10px;z-index:10;display:flex;flex-direction:column;gap:6px;">
             ${personButtons}
@@ -2701,9 +2704,6 @@ class ResidentEvilCard extends LitElement {
           ` : card === 'error' ? html`
             <div class="empty-tab" style="margin-top:0;display:flex;height:100%;align-items:center;justify-content:center;color:#ef4444;">ERREUR CHARGEMENT CARTE</div>
           ` : card}
-        </div>
-        <div style="flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;padding:8px;background:#0a0f1a;border-top:1px solid #1a2744;">
-          ${footRows}
         </div>
       </div>`;
   }
