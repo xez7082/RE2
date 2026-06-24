@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v221 (version RICHE : widgets)
+   RESIDENT EVIL CARD v222 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1978,7 +1978,7 @@ class ResidentEvilCard extends LitElement {
           <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;
                       background:#0d0505;border:1px solid #8b000044;border-radius:4px;padding:6px 10px;">
             <div style="font-size:9px;letter-spacing:2px;color:#8b0000;margin-bottom:2px;">BPM</div>
-            <div style="font-size:22px;font-weight:900;color:#ef4444;line-height:1;
+            <div style="font-size:22px;font-weight:900;color:var(--re-wr);line-height:1;
                         animation:_re_pulse 1s ease-in-out infinite;">
               ${Math.round(heartVal)}
             </div>
@@ -3049,14 +3049,14 @@ class ResidentEvilCard extends LitElement {
       const isOn  = st?.state === 'on';
       const cycSt = item.cycle ? this.hass?.states[item.cycle] : null;
       const cyc   = cycSt && !['unavailable','unknown'].includes(cycSt.state) ? cycSt.state : null;
-      const col   = isOn ? '#00ff44' : '#334155';
-      const borderCol = isOn ? '#00ff4430' : '#0f1a0f';
+      const col   = isOn ? 'var(--re-wg)' : '#334155';
+      const borderCol = isOn ? 'var(--re-wg)30' : '#0f1a0f';
       const unitId = String(idx+1).padStart(3,'0');
       // Puissance pour la barre
       const pwrSt = (item.sensors||[]).map(e=>this.hass?.states[e]).find(s=>s?.attributes?.unit_of_measurement==='W');
       const pwr = pwrSt ? parseFloat(pwrSt.state) : 0;
       const pwrPct = Math.min(100, (pwr/2500)*100);
-      const pwrCol = pwr>2000?'#ff3300':pwr>800?'#ffaa00':'#00ff44';
+      const pwrCol = pwr>2000?'var(--re-wr)':pwr>800?'var(--re-wa)':'var(--re-wg)';
       return html`
         <div style="flex:1 1 300px;min-width:280px;background:${isOn?'#030d03':'#050808'};
                     border:1px solid ${borderCol};border-radius:6px;
@@ -3073,7 +3073,7 @@ class ResidentEvilCard extends LitElement {
                      ${isOn?'':'filter:grayscale(0.8) brightness(0.5);'}"/>
               </div>`:html``}
             <div style="flex:1;min-width:0;padding-right:24px;">
-              <div style="font-size:13px;font-weight:900;color:#e2e8f0;letter-spacing:1px;text-transform:uppercase;">
+              <div style="font-size:13px;font-weight:900;color:var(--re-wt);letter-spacing:1px;text-transform:uppercase;">
                 ${item.name}
               </div>
               <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
@@ -3100,9 +3100,9 @@ class ResidentEvilCard extends LitElement {
               const un  = sst.attributes?.unit_of_measurement || '';
               const lbl = (sst.attributes?.friendly_name||eid.split('.').pop()).split(' ').slice(-2).join(' ');
               const val = fmt(sst.state);
-              const vCol = un==='W'?(parseFloat(sst.state)>1000?'#ff5500':parseFloat(sst.state)>100?'#ffaa00':'#00ff88')
-                          : un==='°C'?(parseFloat(sst.state)<-5?'#00aaff':parseFloat(sst.state)>60?'#ff5500':'#e2e8f0')
-                          : '#e2e8f0';
+              const vCol = un==='W'?(parseFloat(sst.state)>1000?'var(--re-wr)':parseFloat(sst.state)>100?'var(--re-wa)':'var(--re-wg)')
+                          : un==='°C'?(parseFloat(sst.state)<-5?'var(--re-wb)':parseFloat(sst.state)>60?'var(--re-wr)':'var(--re-wt)')
+                          : 'var(--re-wt)';
               return html`
                 <div style="background:#080e08;border:1px solid #0f1a0f;border-radius:3px;padding:4px 8px;min-width:0;">
                   <div style="font-size:9px;color:#2a4a2a;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">${lbl.toUpperCase()}</div>
@@ -3130,10 +3130,10 @@ class ResidentEvilCard extends LitElement {
       const sc2St   = this.hass?.states[sc2Eid];
       const sc1Name = sc1St?.attributes?.friendly_name || 'Raccourci 1';
       const sc2Name = sc2St?.attributes?.friendly_name || 'Raccourci 2';
-      const batCol  = bat >= 70 ? '#22c55e' : bat >= 30 ? '#f59e0b' : '#ef4444';
+      const batCol  = bat >= 70 ? 'var(--re-wg)' : bat >= 30 ? 'var(--re-wa)' : 'var(--re-wr)';
       const isOn    = !['docked','idle','paused','error'].includes(state);
       const stLbl   = {docked:'EN VEILLE',cleaning:'NETTOYAGE',paused:'EN PAUSE',returning:'RETOUR BASE',idle:'INACTIF',error:'ERREUR'}[state]||state.toUpperCase();
-      const stCol   = isOn ? '#818cf8' : state==='docked' ? '#22c55e' : '#475569';
+      const stCol   = isOn ? 'var(--re-wp)' : state==='docked' ? 'var(--re-wg)' : 'var(--re-wtd)';
       const camUrl  = item.map_camera && this.hass?.states[item.map_camera]?.attributes?.entity_picture;
       const callVac = (svc,data={}) => this.hass.callService('vacuum',svc,{entity_id:item.entity,...data});
       const callBtn = (eid) => this.hass.callService('button','press',{entity_id:eid});
@@ -3144,38 +3144,38 @@ class ResidentEvilCard extends LitElement {
       const fanSpeed= attr.fan_speed || null;
       const rooms   = attr.room_list || attr.rooms || [];
       const cons    = [{l:'BROSSE PRINC.',v:attr.main_brush_left},{l:'BROSSE LAT.',v:attr.side_brush_left},{l:'FILTRE',v:attr.filter_left},{l:'SERPILLIÈRE',v:attr.mop_left},{l:'DÉTERGENT',v:attr.detergent_left},{l:'CAPTEURS',v:attr.sensor_dirty_left}].filter(c=>c.v!=null).map(c=>({...c,v:Math.round(c.v)}));
-      const cBar=(label,v)=>{const col=v<=20?'#ef4444':v<=50?'#f59e0b':'#00ff88';return html`<div style="display:grid;grid-template-columns:100px 1fr 38px;align-items:center;gap:6px;"><span style="font-size:12px;color:#94a3b8;font-family:'Courier New',monospace;">${label}</span><div style="height:5px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:${v}%;background:${col};box-shadow:0 0 4px ${col}66;"></div></div><span style="font-size:13px;font-weight:700;color:${col};text-align:right;">${v}%</span></div>`;};
+      const cBar=(label,v)=>{const col=v<=20?'var(--re-wr)':v<=50?'var(--re-wa)':'var(--re-wg)';return html`<div style="display:grid;grid-template-columns:100px 1fr 38px;align-items:center;gap:6px;"><span style="font-size:12px;color:var(--re-wtd);font-family:'Courier New',monospace;">${label}</span><div style="height:5px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:${v}%;background:${col};box-shadow:0 0 4px ${col}66;"></div></div><span style="font-size:13px;font-weight:700;color:${col};text-align:right;">${v}%</span></div>`;};
       return html`
         <div style="flex:1;min-width:0;border:1px solid rgba(129,140,248,.2);border-radius:12px;background:rgba(5,10,20,.85);overflow:hidden;display:flex;flex-direction:column;font-family:'Courier New',monospace;">
-          <div style="height:2px;background:linear-gradient(90deg,#818cf8,#22c55e,transparent);"></div>
+          <div style="height:2px;background:linear-gradient(90deg,var(--re-wp),var(--re-wg),transparent);"></div>
           <div style="padding:10px 12px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(129,140,248,.1);">
             ${item.img?html`<div style="width:48px;height:48px;flex-shrink:0;background:rgba(0,0,0,.4);border:1px solid rgba(129,140,248,.2);border-radius:8px;overflow:hidden;"><img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:3px;"/></div>`:html``}
-            <div style="flex:1;"><div style="font-size:15px;font-weight:700;color:#e2e8f0;">${item.name}</div>${item.subtitle?html`<div style="font-size:13px;color:#64748b;">${item.subtitle}</div>`:html``}${fw?html`<div style="font-size:12px;color:#475569;">// ${fw}</div>`:html``}</div>
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;color:var(--re-wt);">${item.name}</div>${item.subtitle?html`<div style="font-size:13px;color:var(--re-wtd);">${item.subtitle}</div>`:html``}${fw?html`<div style="font-size:12px;color:var(--re-wtd);">// ${fw}</div>`:html``}</div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
               ${bat!=null?html`<span style="font-size:14px;font-weight:700;color:${batCol};">⚡ ${bat}%</span>`:html``}
               <span style="font-size:13px;font-weight:700;padding:2px 8px;border:1px solid ${stCol}44;color:${stCol};">${stLbl}</span>
-              ${stateExt?html`<span style="font-size:12px;color:#64748b;">${trOpt(stateExt)}</span>`:html``}
+              ${stateExt?html`<span style="font-size:12px;color:var(--re-wtd);">${trOpt(stateExt)}</span>`:html``}
             </div>
           </div>
           <div style="flex:1;min-height:0;display:flex;gap:0;">
             <div class="no-scrollbar" style="flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid rgba(129,140,248,.08);overflow-y:auto;">
               ${(curRoom||area||dur||fanSpeed)?html`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-                ${curRoom?html`<div style="background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.15);border-radius:4px;padding:3px 8px;"><span style="font-size:12px;color:#64748b;">PIÈCE </span><span style="font-size:14px;color:#818cf8;font-weight:700;">${curRoom}</span></div>`:html``}
-                ${area?html`<div><span style="font-size:17px;font-weight:800;color:#818cf8;">${area}</span><span style="font-size:12px;color:#64748b;"> m²</span></div>`:html``}
-                ${dur?html`<div><span style="font-size:17px;font-weight:800;color:#818cf8;">${dur}</span><span style="font-size:12px;color:#64748b;"> min</span></div>`:html``}
+                ${curRoom?html`<div style="background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.15);border-radius:4px;padding:3px 8px;"><span style="font-size:12px;color:var(--re-wtd);">PIÈCE </span><span style="font-size:14px;color:var(--re-wp);font-weight:700;">${curRoom}</span></div>`:html``}
+                ${area?html`<div><span style="font-size:17px;font-weight:800;color:var(--re-wp);">${area}</span><span style="font-size:12px;color:var(--re-wtd);"> m²</span></div>`:html``}
+                ${dur?html`<div><span style="font-size:17px;font-weight:800;color:var(--re-wp);">${dur}</span><span style="font-size:12px;color:var(--re-wtd);"> min</span></div>`:html``}
                 ${fanSpeed?html`<span style="font-size:12px;padding:2px 7px;border:1px solid #06b6d422;color:#06b6d4;">⚙ ${trOpt(fanSpeed)}</span>`:html``}
               </div>`:html``}
-              ${cons.length>0?html`<div><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:4px;">// CONSOMMABLES</div><div style="display:flex;flex-direction:column;gap:5px;">${cons.map(c=>cBar(c.l,c.v))}</div></div>`:html``}
-              ${(sc1St||sc2St)?html`<div><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:4px;">// RACCOURCIS</div><div style="display:flex;gap:5px;flex-wrap:wrap;">
-                ${sc1St?html`<button style="flex:1;padding:6px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.25);color:#818cf8;" @click="${(e)=>{e.stopPropagation();callBtn(sc1Eid);}}">⊞ ${sc1Name}</button>`:html``}
-                ${sc2St?html`<button style="flex:1;padding:6px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.25);color:#818cf8;" @click="${(e)=>{e.stopPropagation();callBtn(sc2Eid);}}">⊞ ${sc2Name}</button>`:html``}
+              ${cons.length>0?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// CONSOMMABLES</div><div style="display:flex;flex-direction:column;gap:5px;">${cons.map(c=>cBar(c.l,c.v))}</div></div>`:html``}
+              ${(sc1St||sc2St)?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// RACCOURCIS</div><div style="display:flex;gap:5px;flex-wrap:wrap;">
+                ${sc1St?html`<button style="flex:1;padding:6px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.25);color:var(--re-wp);" @click="${(e)=>{e.stopPropagation();callBtn(sc1Eid);}}">⊞ ${sc1Name}</button>`:html``}
+                ${sc2St?html`<button style="flex:1;padding:6px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.25);color:var(--re-wp);" @click="${(e)=>{e.stopPropagation();callBtn(sc2Eid);}}">⊞ ${sc2Name}</button>`:html``}
               </div></div>`:html``}
-              ${rooms.length>0?html`<div><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:4px;">// ZONES</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${rooms.map(r=>html`<button style="padding:4px 9px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#06b6d4;" @click="${(e)=>{e.stopPropagation();callVac('send_command',{command:'segment_clean',params:{segments:[r.id||r]}});}}">⊙ ${r.name||r}</button>`)}</div></div>`:html``}
+              ${rooms.length>0?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// ZONES</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${rooms.map(r=>html`<button style="padding:4px 9px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#06b6d4;" @click="${(e)=>{e.stopPropagation();callVac('send_command',{command:'segment_clean',params:{segments:[r.id||r]}});}}">⊙ ${r.name||r}</button>`)}</div></div>`:html``}
             </div>
             ${camUrl?html`<div style="width:200px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);overflow:hidden;"><img src="${camUrl}" style="max-width:200px;max-height:230px;object-fit:contain;filter:brightness(.85) contrast(1.1);"/></div>`:html``}
           </div>
           <div style="padding:7px 10px;border-top:1px solid rgba(129,140,248,.1);display:flex;flex-wrap:wrap;gap:5px;">
-            ${[{l:'▶ DÉMARRER',fn:()=>callVac('start'),col:'#22c55e'},{l:'⏸ PAUSE',fn:()=>callVac('pause'),col:'#818cf8'},{l:'⌂ BASE',fn:()=>callVac('return_to_base'),col:'#06b6d4'},{l:'⊙ LOCALISER',fn:()=>callVac('locate'),col:'#f59e0b'},{l:'▣ VIDER BAC',fn:()=>callVac('send_command',{command:'start_wash'}),col:'#64748b'}].map(b=>html`<button style="flex:1;min-width:60px;padding:6px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
+            ${[{l:'▶ DÉMARRER',fn:()=>callVac('start'),col:'var(--re-wg)'},{l:'⏸ PAUSE',fn:()=>callVac('pause'),col:'var(--re-wp)'},{l:'⌂ BASE',fn:()=>callVac('return_to_base'),col:'#06b6d4'},{l:'⊙ LOCALISER',fn:()=>callVac('locate'),col:'var(--re-wa)'},{l:'▣ VIDER BAC',fn:()=>callVac('send_command',{command:'start_wash'}),col:'var(--re-wtd)'}].map(b=>html`<button style="flex:1;min-width:60px;padding:6px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
           </div>
         </div>`;
     };
@@ -5159,7 +5159,7 @@ class ResidentEvilCard extends LitElement {
     const sunVisible = elev!=null && elev > 0;
 
     return html`
-      <div style="${sizeStyle}background:#050800;border:1px solid #f59e0b22;border-radius:6px;
+      <div style="${sizeStyle}background:#050800;border:1px solid var(--re-wa)22;border-radius:6px;
                   overflow:hidden;font-family:'Courier New',monospace;position:relative;">
         <style>
           @keyframes _re_scanH_prev{0%{left:-40%}100%{left:110%}}
@@ -5167,17 +5167,17 @@ class ResidentEvilCard extends LitElement {
           @keyframes _re_rotate_prev{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         </style>
         <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;z-index:1;">
-          <div style="position:absolute;width:40%;height:1px;background:#f59e0b55;animation:_re_scanH_prev 5s linear infinite;"></div>
+          <div style="position:absolute;width:40%;height:1px;background:var(--re-wa);animation:_re_scanH_prev 5s linear infinite;"></div>
         </div>
 
         <!-- HEADER -->
-        <div style="background:#0a0700;border-bottom:1px solid #f59e0b18;padding:9px 14px;
+        <div style="background:#0a0700;border-bottom:1px solid var(--re-wa)18;padding:9px 14px;
                     display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:15px;letter-spacing:2px;color:#f59e0b;">PRÉVISIONS SOLAIRES — CENTRE ALSACE</div>
-            <div style="font-size:15px;color:#f59e0b88;margin-top:2px;">STE-CROIX-EN-PLAINE · 48.009°N 7.405°E</div>
+            <div style="font-size:15px;letter-spacing:2px;color:var(--re-wa);">PRÉVISIONS SOLAIRES — CENTRE ALSACE</div>
+            <div style="font-size:15px;color:var(--re-wa);margin-top:2px;">STE-CROIX-EN-PLAINE · 48.009°N 7.405°E</div>
           </div>
-          <div style="font-size:15px;color:#22c55e;border:1px solid #22c55e33;padding:3px 10px;border-radius:2px;">
+          <div style="font-size:15px;color:var(--re-wg);border:1px solid var(--re-wg);padding:3px 10px;border-radius:2px;">
             ✓ SOLCAST ACTIF
           </div>
         </div>
@@ -5185,8 +5185,8 @@ class ResidentEvilCard extends LitElement {
         <!-- ZONE PRINCIPALE : ARC + DONNÉES -->
         <div style="display:flex;">
           <!-- ARC TRAJECTOIRE SOLAIRE -->
-          <div style="padding:12px 10px;border-right:1px solid #f59e0b12;flex-shrink:0;">
-            <div style="font-size:14px;color:#f59e0b99;letter-spacing:2px;margin-bottom:6px;text-align:center;">TRAJECTOIRE</div>
+          <div style="padding:12px 10px;border-right:1px solid var(--re-wa)12;flex-shrink:0;">
+            <div style="font-size:14px;color:var(--re-wa);letter-spacing:2px;margin-bottom:6px;text-align:center;">TRAJECTOIRE</div>
             <svg width="150" height="100" viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg">
               <!-- Zone panneau estimée (sud, azimut 150-210°) -->
               <path d="M 58,75 Q 80,30 102,75 Z" fill="rgba(34,197,94,0.06)" stroke="rgba(34,197,94,0.2)" stroke-width="0.8"/>
@@ -5202,8 +5202,8 @@ class ResidentEvilCard extends LitElement {
               <!-- Halo externe -->
               <circle cx="${svgX}" cy="${svgY}" r="14" fill="rgba(245,158,11,0.1)"/>
               <!-- Soleil -->
-              <circle cx="${svgX}" cy="${svgY}" r="8" fill="rgba(245,158,11,0.3)" stroke="#f59e0b" stroke-width="1.5"/>
-              <circle cx="${svgX}" cy="${svgY}" r="4" fill="#f59e0b"/>
+              <circle cx="${svgX}" cy="${svgY}" r="8" fill="rgba(245,158,11,0.3)" stroke="var(--re-wa)" stroke-width="1.5"/>
+              <circle cx="${svgX}" cy="${svgY}" r="4" fill="var(--re-wa)"/>
               <!-- Rayons -->
               <line x1="${svgX}" y1="${svgY-12}" x2="${svgX}" y2="${svgY-16}" stroke="rgba(245,158,11,0.6)" stroke-width="1"/>
               <line x1="${svgX+11}" y1="${svgY-6}" x2="${svgX+14}" y2="${svgY-8}" stroke="rgba(245,158,11,0.6)" stroke-width="1"/>
@@ -5221,57 +5221,57 @@ class ResidentEvilCard extends LitElement {
           </div>
 
           <!-- MÉTRIQUES -->
-          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#f59e0b08;align-content:start;">
+          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--re-wa)08;align-content:start;">
             <div style="background:#050800;padding:12px;">
-              <div style="font-size:15px;color:#f59e0baa;letter-spacing:1px;margin-bottom:5px;">AZIMUT</div>
-              <div style="font-size:24px;font-weight:900;color:#f59e0b;line-height:1;">${az!=null?az.toFixed(0)+'°':'--'}</div>
-              <div style="font-size:14px;color:#f59e0b88;margin-top:3px;">${az!=null?(az<90?'EST':az<180?'SUD-EST':az<270?'SUD-OUEST':'OUEST'):'--'}</div>
+              <div style="font-size:15px;color:var(--re-wa);letter-spacing:1px;margin-bottom:5px;">AZIMUT</div>
+              <div style="font-size:24px;font-weight:900;color:var(--re-wa);line-height:1;">${az!=null?az.toFixed(0)+'°':'--'}</div>
+              <div style="font-size:14px;color:var(--re-wa);margin-top:3px;">${az!=null?(az<90?'EST':az<180?'SUD-EST':az<270?'SUD-OUEST':'OUEST'):'--'}</div>
             </div>
-            <div style="background:#050800;padding:12px;border-left:1px solid #f59e0b08;">
-              <div style="font-size:15px;color:#f59e0baa;letter-spacing:1px;margin-bottom:5px;">ÉLÉVATION</div>
-              <div style="font-size:24px;font-weight:900;color:#f59e0b;line-height:1;">${elev!=null?elev.toFixed(0)+'°':'--'}</div>
-              <div style="font-size:14px;color:#f59e0b88;margin-top:3px;">${elev!=null?(elev<0?'SOUS HORIZON':elev<15?'BAS':elev<35?'MOYEN':'HAUT'):'--'}</div>
+            <div style="background:#050800;padding:12px;border-left:1px solid var(--re-wa)08;">
+              <div style="font-size:15px;color:var(--re-wa);letter-spacing:1px;margin-bottom:5px;">ÉLÉVATION</div>
+              <div style="font-size:24px;font-weight:900;color:var(--re-wa);line-height:1;">${elev!=null?elev.toFixed(0)+'°':'--'}</div>
+              <div style="font-size:14px;color:var(--re-wa);margin-top:3px;">${elev!=null?(elev<0?'SOUS HORIZON':elev<15?'BAS':elev<35?'MOYEN':'HAUT'):'--'}</div>
             </div>
-            <div style="background:#050800;padding:12px;border-top:1px solid #22c55e08;">
-              <div style="font-size:15px;color:#22c55eaa;letter-spacing:1px;margin-bottom:5px;">PIC SOLCAST</div>
-              <div style="font-size:24px;font-weight:900;color:#22c55e;line-height:1;">${pic!=null?pic.toFixed(1)+' kWh':'--'}</div>
-              <div style="font-size:14px;color:#22c55e88;margin-top:3px;">AUJOURD'HUI</div>
+            <div style="background:#050800;padding:12px;border-top:1px solid var(--re-wg)08;">
+              <div style="font-size:15px;color:var(--re-wg);letter-spacing:1px;margin-bottom:5px;">PIC SOLCAST</div>
+              <div style="font-size:24px;font-weight:900;color:var(--re-wg);line-height:1;">${pic!=null?pic.toFixed(1)+' kWh':'--'}</div>
+              <div style="font-size:14px;color:var(--re-wg);margin-top:3px;">AUJOURD'HUI</div>
             </div>
-            <div style="background:#050800;padding:12px;border-top:1px solid #22c55e08;border-left:1px solid #f59e0b08;">
-              <div style="font-size:15px;color:#22c55eaa;letter-spacing:1px;margin-bottom:5px;">TOTAL JOUR</div>
-              <div style="font-size:24px;font-weight:900;color:#22c55e;line-height:1;">${tot!=null?tot.toFixed(1)+' kWh':'--'}</div>
-              <div style="font-size:14px;color:#22c55e88;margin-top:3px;">SOLCAST PRÉVIS.</div>
+            <div style="background:#050800;padding:12px;border-top:1px solid var(--re-wg)08;border-left:1px solid var(--re-wa)08;">
+              <div style="font-size:15px;color:var(--re-wg);letter-spacing:1px;margin-bottom:5px;">TOTAL JOUR</div>
+              <div style="font-size:24px;font-weight:900;color:var(--re-wg);line-height:1;">${tot!=null?tot.toFixed(1)+' kWh':'--'}</div>
+              <div style="font-size:14px;color:var(--re-wg);margin-top:3px;">SOLCAST PRÉVIS.</div>
             </div>
           </div>
         </div>
 
         <!-- BANDE MÉTÉO BAS -->
-        <div style="border-top:1px solid #f59e0b12;display:grid;grid-template-columns:1fr 1fr 1fr;background:#f59e0b06;">
-          <div style="padding:10px 14px;border-right:1px solid #f59e0b10;">
-            <div style="font-size:15px;color:#cbd5e1;letter-spacing:1px;margin-bottom:4px;">CONDITION</div>
-            <div style="font-size:15px;font-weight:700;color:#e2e8f0;">
+        <div style="border-top:1px solid var(--re-wa)12;display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--re-wa)06;">
+          <div style="padding:10px 14px;border-right:1px solid var(--re-wa)10;">
+            <div style="font-size:15px;color:var(--re-wt);letter-spacing:1px;margin-bottom:4px;">CONDITION</div>
+            <div style="font-size:15px;font-weight:700;color:var(--re-wt);">
               ${weatherIcon} ${weatherLabel}
             </div>
-            ${wTemp!=null?html`<div style="font-size:15px;color:#94a3b8;margin-top:3px;">${wTemp}° · ${wHum!=null?wHum+'% HR':''}</div>`:html``}
+            ${wTemp!=null?html`<div style="font-size:15px;color:var(--re-wtd);margin-top:3px;">${wTemp}° · ${wHum!=null?wHum+'% HR':''}</div>`:html``}
           </div>
-          <div style="padding:10px 14px;border-right:1px solid #f59e0b10;">
-            <div style="font-size:15px;color:#cbd5e1;letter-spacing:1px;margin-bottom:4px;">VENT</div>
-            <div style="font-size:15px;font-weight:700;color:#e2e8f0;">
+          <div style="padding:10px 14px;border-right:1px solid var(--re-wa)10;">
+            <div style="font-size:15px;color:var(--re-wt);letter-spacing:1px;margin-bottom:4px;">VENT</div>
+            <div style="font-size:15px;font-weight:700;color:var(--re-wt);">
               ${wind!=null?wind.toFixed(0)+' km/h':'--'}
             </div>
-            ${wind!=null?html`<div style="font-size:15px;color:#94a3b8;margin-top:3px;">${wind<10?'FAIBLE':wind<25?'MODÉRÉ':wind<50?'FORT':'TRÈS FORT'}</div>`:html``}
+            ${wind!=null?html`<div style="font-size:15px;color:var(--re-wtd);margin-top:3px;">${wind<10?'FAIBLE':wind<25?'MODÉRÉ':wind<50?'FORT':'TRÈS FORT'}</div>`:html``}
           </div>
           <div style="padding:10px 14px;">
-            <div style="font-size:15px;color:#a78bfa;letter-spacing:1px;margin-bottom:4px;">LUNE</div>
-            <div style="font-size:15px;font-weight:700;color:#a78bfa;">${moonIcon} ${moonLabel}</div>
+            <div style="font-size:15px;color:var(--re-wp);letter-spacing:1px;margin-bottom:4px;">LUNE</div>
+            <div style="font-size:15px;font-weight:700;color:var(--re-wp);">${moonIcon} ${moonLabel}</div>
           </div>
         </div>
 
         <!-- FOOTER -->
         <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:14px;
-                    color:#f59e0b55;border-top:1px solid #f59e0b08;">
+                    color:var(--re-wa);border-top:1px solid var(--re-wa)08;">
           <span>SOURCE: OPENWEATHERMAP + SOLCAST</span>
-          <span style="animation:_re_blink_prev 1.2s step-end infinite;color:#22c55e99;">● LIVE</span>
+          <span style="animation:_re_blink_prev 1.2s step-end infinite;color:var(--re-wg);">● LIVE</span>
         </div>
       </div>`;
   }
@@ -5293,12 +5293,12 @@ class ResidentEvilCard extends LitElement {
     const allOk   = cumul != null;
 
     return html`
-      <div style="${sizeStyle}background:#020a02;border:1px solid #22c55e22;border-radius:6px;
+      <div style="${sizeStyle}background:#020a02;border:1px solid var(--re-wg)22;border-radius:6px;
                   overflow:hidden;font-family:'Courier New',monospace;position:relative;">
 
         <!-- Scan line -->
         <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;z-index:1;">
-          <div style="position:absolute;width:40%;height:1px;background:#22c55e55;
+          <div style="position:absolute;width:40%;height:1px;background:var(--re-wg);
                        animation:_re_scan_eco 5s linear infinite;"></div>
         </div>
         <style>
@@ -5307,83 +5307,83 @@ class ResidentEvilCard extends LitElement {
         </style>
 
         <!-- HEADER -->
-        <div style="background:#021002;border-bottom:1px solid #22c55e18;
+        <div style="background:#021002;border-bottom:1px solid var(--re-wg)18;
                     padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:12px;letter-spacing:3px;color:#22c55e88;">
+            <div style="font-size:12px;letter-spacing:3px;color:var(--re-wg);">
               UMBRELLA CORP. — DIVISION ÉNERGIE
             </div>
-            <div style="font-size:11px;color:#22c55e44;margin-top:2px;letter-spacing:1px;">
+            <div style="font-size:11px;color:var(--re-wg);margin-top:2px;letter-spacing:1px;">
               COMPTE ÉPARGNE PHOTOVOLTAÏQUE · REF: PV-7742
             </div>
           </div>
-          <div style="font-size:11px;color:#22c55e55;border:1px solid #22c55e22;padding:3px 10px;border-radius:2px;">
+          <div style="font-size:11px;color:var(--re-wg);border:1px solid var(--re-wg)22;padding:3px 10px;border-radius:2px;">
             CONFIDENTIEL
           </div>
         </div>
 
         <!-- SOLDE PRINCIPAL -->
-        <div style="padding:20px 16px 14px;border-bottom:1px solid #22c55e12;text-align:center;">
-          <div style="font-size:13px;letter-spacing:3px;color:#22c55e66;margin-bottom:10px;">
+        <div style="padding:20px 16px 14px;border-bottom:1px solid var(--re-wg)12;text-align:center;">
+          <div style="font-size:13px;letter-spacing:3px;color:var(--re-wg);margin-bottom:10px;">
             ÉCONOMIES RÉALISÉES — CUMUL ANNUEL
           </div>
-          <div style="font-size:48px;font-weight:900;color:#22c55e;letter-spacing:2px;line-height:1;">
-            ${cumul!=null ? html`${cumul.toFixed(2).replace('.',',')} <span style="font-size:24px;color:#22c55e88;">€</span>` : html`<span style="font-size:32px;color:#334;">--</span>`}
+          <div style="font-size:48px;font-weight:900;color:var(--re-wg);letter-spacing:2px;line-height:1;">
+            ${cumul!=null ? html`${cumul.toFixed(2).replace('.',',')} <span style="font-size:24px;color:var(--re-wg);">€</span>` : html`<span style="font-size:32px;color:#334;">--</span>`}
           </div>
-          ${mois!=null?html`<div style="font-size:13px;color:#22c55e55;margin-top:8px;letter-spacing:1px;">
+          ${mois!=null?html`<div style="font-size:13px;color:var(--re-wg);margin-top:8px;letter-spacing:1px;">
             ↑ +${mois.toFixed(2).replace('.',',')} € CE MOIS · OBJECTIF: ${target.toFixed(0)} €/AN
           </div>`:html``}
           <!-- Barre progression -->
           <div style="margin-top:12px;height:6px;background:#0a1a0a;border-radius:3px;overflow:hidden;">
-            <div style="height:100%;width:${pctDisp}%;background:#22c55e;border-radius:3px;transition:width 1s;"></div>
+            <div style="height:100%;width:${pctDisp}%;background:var(--re-wg);border-radius:3px;transition:width 1s;"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#22c55e44;margin-top:5px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--re-wg);margin-top:5px;">
             <span>0 €</span>
-            <span style="color:#22c55e88;font-weight:700;">${pctDisp}% DE L'OBJECTIF ATTEINT</span>
+            <span style="color:var(--re-wg);font-weight:700;">${pctDisp}% DE L'OBJECTIF ATTEINT</span>
             <span>${target.toFixed(0)} €</span>
           </div>
         </div>
 
         <!-- 3 MÉTRIQUES -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;background:#22c55e08;">
-          <div style="background:#020a02;padding:14px 16px;border-right:1px solid #22c55e12;">
-            <div style="font-size:12px;letter-spacing:2px;color:#22c55e55;margin-bottom:6px;">GAIN / JOUR</div>
-            <div style="font-size:26px;font-weight:900;color:#22c55e;line-height:1;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--re-wg)08;">
+          <div style="background:#020a02;padding:14px 16px;border-right:1px solid var(--re-wg)12;">
+            <div style="font-size:12px;letter-spacing:2px;color:var(--re-wg);margin-bottom:6px;">GAIN / JOUR</div>
+            <div style="font-size:26px;font-weight:900;color:var(--re-wg);line-height:1;">
               ${jour!=null ? jour.toFixed(2).replace('.',',') : '--'}
-              <span style="font-size:14px;color:#22c55e66;"> €</span>
+              <span style="font-size:14px;color:var(--re-wg);"> €</span>
             </div>
           </div>
-          <div style="background:#020a02;padding:14px 16px;border-right:1px solid #22c55e12;">
-            <div style="font-size:12px;letter-spacing:2px;color:#22c55e55;margin-bottom:6px;">GAIN / MOIS</div>
-            <div style="font-size:26px;font-weight:900;color:#22c55e;line-height:1;">
+          <div style="background:#020a02;padding:14px 16px;border-right:1px solid var(--re-wg)12;">
+            <div style="font-size:12px;letter-spacing:2px;color:var(--re-wg);margin-bottom:6px;">GAIN / MOIS</div>
+            <div style="font-size:26px;font-weight:900;color:var(--re-wg);line-height:1;">
               ${mois!=null ? mois.toFixed(2).replace('.',',') : '--'}
-              <span style="font-size:14px;color:#22c55e66;"> €</span>
+              <span style="font-size:14px;color:var(--re-wg);"> €</span>
             </div>
           </div>
           <div style="background:#020a02;padding:14px 16px;">
-            <div style="font-size:12px;letter-spacing:2px;color:#818cf888;margin-bottom:6px;">TARIF EDF</div>
-            <div style="font-size:26px;font-weight:900;color:#818cf8;line-height:1;">
+            <div style="font-size:12px;letter-spacing:2px;color:var(--re-wp);margin-bottom:6px;">TARIF EDF</div>
+            <div style="font-size:26px;font-weight:900;color:var(--re-wp);line-height:1;">
               ${tarif!=null ? tarif.toFixed(3).replace('.',',') : '--'}
-              <span style="font-size:14px;color:#818cf866;"> €/kWh</span>
+              <span style="font-size:14px;color:var(--re-wp);"> €/kWh</span>
             </div>
           </div>
         </div>
 
         ${annuel!=null?html`
         <!-- GAIN NET ANNUEL -->
-        <div style="padding:12px 16px;border-top:1px solid #22c55e12;background:#021002;
+        <div style="padding:12px 16px;border-top:1px solid var(--re-wg)12;background:#021002;
                     display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:12px;letter-spacing:2px;color:#22c55e44;">GAIN NET ANNUEL</div>
-          <div style="font-size:22px;font-weight:900;color:#22c55e;">
-            ${annuel.toFixed(2).replace('.',',')} <span style="font-size:13px;color:#22c55e66;">€</span>
+          <div style="font-size:12px;letter-spacing:2px;color:var(--re-wg);">GAIN NET ANNUEL</div>
+          <div style="font-size:22px;font-weight:900;color:var(--re-wg);">
+            ${annuel.toFixed(2).replace('.',',')} <span style="font-size:13px;color:var(--re-wg);">€</span>
           </div>
         </div>`:html``}
 
         <!-- FOOTER -->
-        <div style="padding:7px 16px;border-top:1px solid #22c55e0a;
-                    display:flex;justify-content:space-between;font-size:11px;color:#22c55e33;">
+        <div style="padding:7px 16px;border-top:1px solid var(--re-wg)0a;
+                    display:flex;justify-content:space-between;font-size:11px;color:var(--re-wg);">
           <span>DIVISION ÉNERGIE RENOUVELABLE</span>
-          <span style="animation:_re_blink_eco 1.2s step-end infinite;color:#22c55e55;">● TEMPS RÉEL</span>
+          <span style="animation:_re_blink_eco 1.2s step-end infinite;color:var(--re-wg);">● TEMPS RÉEL</span>
           <span>UMBR. CORP. © 2026</span>
         </div>
       </div>`;
