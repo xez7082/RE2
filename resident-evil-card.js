@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v222 (version RICHE : widgets)
+   RESIDENT EVIL CARD v223 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -5324,7 +5324,7 @@ class ResidentEvilCard extends LitElement {
 
         <!-- SOLDE PRINCIPAL -->
         <div style="padding:20px 16px 14px;border-bottom:1px solid var(--re-wg)12;text-align:center;">
-          <div style="font-size:13px;letter-spacing:3px;color:var(--re-wg);margin-bottom:10px;">
+          <div style="font-size:14px;letter-spacing:2px;color:var(--re-wt);margin-bottom:10px;">
             ÉCONOMIES RÉALISÉES — CUMUL ANNUEL
           </div>
           <div style="font-size:48px;font-weight:900;color:var(--re-wg);letter-spacing:2px;line-height:1;">
