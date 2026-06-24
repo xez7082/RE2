@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v225 (version RICHE : widgets)
+   RESIDENT EVIL CARD v226 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -6630,6 +6630,23 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'plant_image',l:'Image',t:T},{k:'battery_sensor',l:'Batterie',t:E},
       ],
       solar:   [ {k:'active_tab',l:'Onglet (0=Sol 1=Météo 2=Batt 3=Éco)',t:S,o:['0','1','2','3']} ],
+      solar_flow: [
+        {k:'header_title',l:'Titre header',t:T},{k:'header_sub',l:'Sous-titre header',t:T},
+        {k:'p1_name',l:'Install. 1 — Nom',t:T},{k:'p1_color',l:'Install. 1 — Couleur',t:'color',d:'#f59e0b'},
+        {k:'p1_w_entity',l:'Install. 1 — Puissance (W)',t:E},{k:'p1_d_entity',l:'Install. 1 — Prod. jour (kWh)',t:E},{k:'p1_m_entity',l:'Install. 1 — Prod. mois (kWh)',t:E},
+        {k:'p2_name',l:'Install. 2 — Nom',t:T},{k:'p2_color',l:'Install. 2 — Couleur',t:'color',d:'#22c55e'},
+        {k:'p2_w_entity',l:'Install. 2 — Puissance (W)',t:E},{k:'p2_d_entity',l:'Install. 2 — Prod. jour (kWh)',t:E},{k:'p2_m_entity',l:'Install. 2 — Prod. mois (kWh)',t:E},
+        {k:'p3_name',l:'Install. 3 — Nom',t:T},{k:'p3_color',l:'Install. 3 — Couleur',t:'color',d:'#38bdf8'},
+        {k:'p3_w_entity',l:'Install. 3 — Puissance (W)',t:E},{k:'p3_d_entity',l:'Install. 3 — Prod. jour (kWh)',t:E},{k:'p3_m_entity',l:'Install. 3 — Prod. mois (kWh)',t:E},
+        {k:'total_entity',l:'Production totale (W)',t:E},{k:'cons_entity',l:'Consommation maison (W)',t:E},
+        {k:'grid_entity',l:'Flux réseau (+ import / - export)',t:E},{k:'autoconso_entity',l:'Autoconsommation (%)',t:E},
+        {k:'day_entity',l:'Production du jour (kWh)',t:E},{k:'month_entity',l:'Production du mois (kWh)',t:E},
+        {k:'night_entity',l:'Conso nuit (kWh)',t:E},{k:'obj_pct_entity',l:'Progression objectif (%)',t:E},{k:'obj_kwh_entity',l:'Objectif mensuel (kWh)',t:E},
+        {k:'lbl_prod',l:'Texte — Production',t:T},{k:'lbl_cons',l:'Texte — Consommation',t:T},
+        {k:'lbl_grid_in',l:'Texte — Import réseau',t:T},{k:'lbl_grid_out',l:'Texte — Injection',t:T},
+        {k:'lbl_autoconso',l:'Texte — Autoconsommation',t:T},{k:'lbl_day',l:'Texte — Prod. jour',t:T},
+        {k:'lbl_month',l:'Texte — Prod. mois',t:T},{k:'lbl_night',l:'Texte — Conso nuit',t:T},
+      ],
       economies: [
         {k:'header_title',l:'Titre header',t:T},{k:'header_sub',l:'Sous-titre header',t:T},{k:'main_label',l:'Label cumul',t:T},
         {k:'eco_money',l:'Économies cumulées (€)',t:E},{k:'eco_day',l:'Gain du jour (€)',t:E},
