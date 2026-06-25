@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v244 (version RICHE : widgets)
+   RESIDENT EVIL CARD v245 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -861,6 +861,7 @@ class ResidentEvilCard extends LitElement {
       case 'tracker':   return this._renderTrackerWidget(w, sizeStyle, noBorder);
       case 'map':       return this._renderMapWidget(w, sizeStyle, noBorder);
       case 'appliance': return this._renderApplianceWidget(w, sizeStyle, noBorder);
+      case 'atelier':   return this._renderAtelierWidget(w, sizeStyle, noBorder);
       case 'progress':   return this._renderProgressWidget(w, sizeStyle, noBorder);
       case 'button':     return this._renderButtonWidget(w, sizeStyle, noBorder);
       case 'foundry':    return this._renderFoundryWidget(w, sizeStyle, noBorder);
@@ -3002,9 +3003,118 @@ class ResidentEvilCard extends LitElement {
   }
 
   
+  _renderAtelierWidget(w, sizeStyle, noBorder=false) {
+    const fv  = (eid) => { if(!eid) return null; const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const fmt = (v, d=0, suf='') => v!=null ? v.toFixed(d).replace('.',',')+suf : '--';
+
+    const machines = (w.machines||[]).map(m => ({
+      name:    m.name||'Machine',
+      icon:    m.icon||'⚙',
+      power:   fv(m.power_entity),
+      voltage: fv(m.voltage_entity),
+      current: fv(m.current_entity),
+      day:     fv(m.day_entity),
+      color:   m.color||'#f59e0b',
+    }));
+
+    const circuitMax  = parseFloat(w.circuit_max_a) || 16;
+    const totalW      = machines.reduce((s,m) => s+(m.power||0), 0);
+    const totalA      = machines.reduce((s,m) => s+(m.current||0), 0);
+    const availA      = Math.max(0, circuitMax - totalA);
+    const loadPct     = Math.min(100, (totalA / circuitMax) * 100);
+    const loadCol     = loadPct>85?'#ff3300':loadPct>65?'#f59e0b':'#22c55e';
+    const circuitOk   = loadPct < 90;
+
+    const cA = w.col_accent  || '#f59e0b';
+    const cD = w.col_danger  || '#ef4444';
+    const cG = w.col_ok      || '#22c55e';
+
+    return html`
+      <div style="${sizeStyle}background:#050505;border:1px solid ${cD}22;border-radius:8px;
+                  overflow:hidden;font-family:'Courier New',monospace;">
+        <style>
+          @keyframes _at_scan{0%{left:-40%}100%{left:110%}}
+          @keyframes _at_pulse{0%,100%{opacity:1}50%{opacity:0.25}}
+          @keyframes _at_blink{0%,100%{opacity:1}50%{opacity:0}}
+        </style>
+
+        <!-- HEADER -->
+        <div style="background:#0d0008;border-bottom:1px solid ${cD}18;padding:10px 14px;
+                    display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;">
+            <div style="position:absolute;width:40%;height:1px;background:${cD}55;animation:_at_scan 4s linear infinite;"></div>
+          </div>
+          <div style="font-size:14px;color:${cD};font-weight:700;letter-spacing:2px;">
+            ${w.title||'⚡ SÉCURITÉ ÉLECTRIQUE — ATELIER'}
+          </div>
+          <div style="font-size:12px;font-weight:700;padding:3px 12px;border-radius:3px;
+                      background:${circuitOk?cG+'22':cD+'22'};color:${circuitOk?cG:cD};
+                      border:1px solid ${circuitOk?cG+'44':cD+'44'};">
+            ${circuitOk?'✓ CIRCUIT OK':'⚠ SURCHARGE'}
+          </div>
+        </div>
+
+        <!-- MÉTRIQUES CIRCUIT -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;
+                    border-bottom:1px solid ${cD}10;">
+          ${[[`${fmt(totalW,0)} W`,'CHARGE TOTALE',cD],[`${fmt(totalA,1)} A`,'COURANT',cA],[`${circuitMax} A`,'CIRCUIT MAX','#475569'],[`${fmt(availA,1)} A`,'DISPONIBLE',cG]].map(([v,l,c])=>html`
+            <div style="padding:10px 12px;border-right:1px solid ${cD}08;">
+              <div style="font-size:11px;color:${c};letter-spacing:1px;margin-bottom:4px;">${l}</div>
+              <div style="font-size:20px;font-weight:900;color:${c};">${v}</div>
+            </div>`)}
+        </div>
+
+        <!-- BARRE DE CHARGE -->
+        <div style="padding:8px 14px;border-bottom:1px solid ${cD}10;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;">
+            <span style="color:${cD}55;">0 A</span>
+            <span style="color:${loadCol};font-weight:700;">${fmt(totalA,1)}A / ${circuitMax}A — ${loadPct.toFixed(0)}% DU CIRCUIT</span>
+            <span style="color:${cD}55;">${circuitMax} A</span>
+          </div>
+          <div style="height:5px;background:#1a0005;border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${loadPct}%;background:linear-gradient(90deg,${cG},${cA},${loadCol});
+                         border-radius:3px;transition:width .8s;"></div>
+          </div>
+        </div>
+
+        <!-- LISTE MACHINES -->
+        <div style="padding:8px 14px;">
+          <div style="font-size:11px;color:${cA}55;letter-spacing:2px;margin-bottom:8px;">
+            UNITÉS SURVEILLÉES — ${machines.filter(m=>m.power>0).length} / ${machines.length} ACTIVES
+          </div>
+          ${machines.map(m => {
+            const on = m.power != null && m.power > (parseFloat(w.threshold)||5);
+            const mc = on ? (m.color||cA) : '#334155';
+            const barPct = totalW>0 && m.power ? Math.min(100,(m.power/totalW)*100) : 0;
+            return html`
+              <div style="display:flex;align-items:center;gap:10px;padding:7px 0;
+                           border-bottom:1px solid ${cD}08;">
+                <div style="width:9px;height:9px;border-radius:50%;background:${mc};flex-shrink:0;
+                             ${on?'animation:_at_pulse 2s ease-in-out infinite;':''}"></div>
+                <div style="flex:1;font-size:13px;color:${on?'#e2e8f0':'#475569'};">${m.name}</div>
+                <div style="width:70px;display:flex;flex-direction:column;gap:2px;">
+                  <div style="height:3px;background:#1a0005;border-radius:1px;overflow:hidden;">
+                    <div style="height:100%;width:${barPct}%;background:${mc};transition:width .5s;"></div>
+                  </div>
+                </div>
+                <span style="font-size:11px;color:#475569;width:45px;text-align:right;">${fmt(m.voltage,0)} V</span>
+                <span style="font-size:11px;color:#818cf8;width:45px;text-align:right;">${fmt(m.current,1)} A</span>
+                <span style="font-size:14px;font-weight:700;color:${mc};width:70px;text-align:right;">${fmt(m.power,0)} W</span>
+                ${m.day!=null?html`<span style="font-size:11px;color:#475569;width:55px;text-align:right;">${fmt(m.day,2)} kWh</span>`:html``}
+              </div>`;
+          })}
+        </div>
+
+        <!-- FOOTER -->
+        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:11px;
+                    color:${cD}33;border-top:1px solid ${cD}08;">
+          <span>CIRCUIT ${w.circuit_label||'ATELIER'} · ${w.circuit_voltage||230}V / ${circuitMax}A</span>
+          <span style="animation:_at_blink 1.2s step-end infinite;color:${cG}44;">● LIVE</span>
+        </div>
+      </div>`;
+  }
+
   _renderApplianceWidget(w, sizeStyle, noBorder=false) {
-    const categories = w.categories || [];
-    const tabKey     = '_appTab_' + (w.widget_id || 'def');
     const activeTab  = this[tabKey] || 0;
     const setTab     = (i) => { this[tabKey] = i; this.requestUpdate(); };
 
@@ -6891,6 +7001,14 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'col_home',l:'Couleur — À domicile',t:'color',d:'#22c55e'},
         {k:'col_away',l:'Couleur — Absent',t:'color',d:'#f59e0b'},
       ],
+      atelier: [
+        {k:'title',l:'Titre',t:T},
+        {k:'circuit_max_a',l:'Circuit max (A)',t:N},{k:'circuit_voltage',l:'Tension (V)',t:N},
+        {k:'circuit_label',l:'Label circuit',t:T},{k:'threshold',l:'Seuil actif (W)',t:N},
+        {k:'col_accent',l:'Couleur accent',t:'color',d:'#f59e0b'},
+        {k:'col_ok',l:'Couleur OK',t:'color',d:'#22c55e'},
+        {k:'col_danger',l:'Couleur alerte',t:'color',d:'#ef4444'},
+      ],
       appliance: [
         {k:'view',l:'Catégorie affichée (0=Élect 1=Robots 2=Atelier)',t:S,o:['0','1','2']},
         {k:'col_active',l:'Couleur — Actif',t:'color',d:'#00ff44'},
@@ -7366,6 +7484,12 @@ class ResidentEvilCardEditor extends LitElement {
         {k:`mp_g${wi}`,t:'CARTE & NAVIGATION',i:'🗺',c:'#38bdf8',
          keys:['zoom','hours_to_show','home_lat','home_lon','col_home','col_away']},
       ],
+      atelier:[
+        {k:`at_c${wi}`,t:'CIRCUIT ÉLECTRIQUE',i:'⚡',c:'#ef4444',
+         keys:['title','circuit_max_a','circuit_voltage','circuit_label','threshold']},
+        {k:`at_d${wi}`,t:'COULEURS',i:'🎨',c:'#818cf8',
+         keys:['col_accent','col_ok','col_danger']},
+      ],
       appliance:[
         {k:`ap_g${wi}`,t:'CONFIGURATION',i:'⚙',c:'#f59e0b',
          keys:['view','unit_prefix','show_power_bar','max_power_w']},
@@ -7497,6 +7621,25 @@ class ResidentEvilCardEditor extends LitElement {
                   </div>`)}
                 ${this._btn('＋ Batterie',()=>this._mutate(cfg=>{const ww=cfg.categories[ci].submenus[si].widgets[wi];if(!ww.cells)ww.cells=[];ww.cells.push({name:'Nouvelle batterie',color:'#00ccff',soc_entity:'',power_entity:'',temp_entity:'',stored_entity:'',stored_unit:'Wh',capacity_wh:5120});}),'#22c55e')}
               </div>`, `${(wg.cells||[]).length} batterie(s)`) : html``}
+            ${wg.type==='atelier' ? this._accordion(`at_m${wi}`,'MACHINES SURVEILLÉES','🔧','#f59e0b', html`
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${(wg.machines||[]).map((m,mi) => html`
+                  <div style="background:#060b12;border:1px solid #f59e0b22;border-radius:6px;padding:10px;">
+                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                      <div style="flex:1;">${this._lbl('Nom')}${this._txt(m.name,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].machines[mi].name=v;}),'ex: Scie sous-table')}</div>
+                      ${this._color(m.color||'#f59e0b','#f59e0b',v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].machines[mi].color=v;}))}
+                      ${this._btn('🗑',()=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].machines.splice(mi,1);}),'#ef4444')}
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                      <div>${this._lbl('Puissance (W)')}${this._txt(m.power_entity,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].machines[mi].power_entity=v;}),'sensor.…_power','re2ents')}</div>
+                      <div>${this._lbl('Tension (V)')}${this._txt(m.voltage_entity,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].machines[mi].voltage_entity=v;}),'sensor.…_voltage','re2ents')}</div>
+                      <div>${this._lbl('Courant (A)')}${this._txt(m.current_entity,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].machines[mi].current_entity=v;}),'sensor.…_current','re2ents')}</div>
+                      <div>${this._lbl('Conso/jour (kWh)')}${this._txt(m.day_entity,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].machines[mi].day_entity=v;}),'sensor.…_jour','re2ents')}</div>
+                    </div>
+                  </div>`)}
+                ${this._btn('＋ Machine',()=>this._mutate(c=>{const ww=c.categories[ci].submenus[si].widgets[wi];if(!ww.machines)ww.machines=[];ww.machines.push({name:'Nouvelle machine',color:'#f59e0b',power_entity:'',voltage_entity:'',current_entity:'',day_entity:''});}),'#f59e0b')}
+              </div>
+            `, `${(wg.machines||[]).length} machine(s)`) : html``}
             ${wg.type==='appliance' ? html`
               <div style="margin-top:4px;">
                 ${this._lbl('🔧 CAPTEURS PAR ÉQUIPEMENT')}
