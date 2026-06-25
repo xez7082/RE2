@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v235 (version RICHE : widgets)
+   RESIDENT EVIL CARD v236 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -6855,6 +6855,29 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'plant_image',l:'Image',t:T},{k:'battery_sensor',l:'Batterie',t:E},
       ],
       solar:   [ {k:'active_tab',l:'Onglet (0=Sol 1=Météo 2=Batt 3=Éco)',t:S,o:['0','1','2','3']} ],
+      power_cell: [
+        {k:'title',l:'Titre du widget',t:T},
+      ],
+      tracker: [
+        {k:'title',l:'Titre radar',t:T},
+        {k:'size',l:'Taille radar (px)',t:N},
+      ],
+      map: [
+        {k:'zoom',l:'Zoom initial',t:N},{k:'hours_to_show',l:'Heures affichées',t:N},
+        {k:'home_lat',l:'Latitude domicile',t:T},{k:'home_lon',l:'Longitude domicile',t:T},
+      ],
+      dossier: [
+        {k:'name',l:'Prénom',t:T},{k:'archiveId',l:'N° de dossier',t:T},{k:'image',l:'Photo (URL)',t:T},
+        {k:'weight_entity',l:'Poids (entité)',t:E},{k:'weight_start',l:'Poids initial (kg)',t:N},{k:'weight_ideal',l:'Poids idéal (kg)',t:N},
+      ],
+      health: [
+        {k:'title',l:'Titre',t:T},
+      ],
+      button: [
+        {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},{k:'icon',l:'Icône (mdi:…)',t:T},
+        {k:'action',l:'Action',t:S,o:['toggle','turn_on','turn_off','call_service']},
+        {k:'show_state',l:'Afficher état',t:'bool'},{k:'style',l:'Style',t:S,o:['default','pill','icon']},
+      ],
       consumption: [
         {k:'header_title',l:'Titre header',t:T},{k:'header_sub',l:'Sous-titre header',t:T},
         {k:'total_entity',l:'Conso totale (W)',t:E},{k:'solar_entity',l:'Production solaire (W)',t:E},
@@ -7358,6 +7381,27 @@ class ResidentEvilCardEditor extends LitElement {
               {k:'name',l:'Nom'},{k:'person',l:'person.…',e:true,flex:1.3},
               {k:'geocoded_entity',l:'Lieu géocodé',e:true,flex:1.3},{k:'distance_entity',l:'Distance',e:true,flex:1.3},
             ], ()=>({name:'',person:''}))}
+          </div>` : html``}
+        ${wg.type==='power_cell' ? html`
+          <div style="margin-top:10px;">
+            ${this._lbl('🔋 BATTERIES (cells)')}
+            ${(wg.cells||[]).map((cell, ci2) => html`
+              <div style="margin-bottom:8px;background:#080e18;border:1px solid #00ccff22;border-radius:6px;padding:10px;">
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                  <div style="flex:1;">${this._lbl('Nom')}${this._txt(cell.name, v => this._mutate(cfg => { cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].name = v; }), 'ex: Venus E 3.0')}</div>
+                  ${this._color(cell.color||'#00ccff','#00ccff',v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].color=v;}))}
+                  <div style="width:90px;">${this._lbl('Capa Wh')}${this._num(cell.capacity_wh,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].capacity_wh=v;}),0,100000)}</div>
+                  ${this._btn('🗑',()=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells.splice(ci2,1);}),'#ef4444')}
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                  <div>${this._lbl('SOC %')}${this._txt(cell.soc_entity,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].soc_entity=v;}),'sensor.…','re2ents')}</div>
+                  <div>${this._lbl('Puissance')}${this._txt(cell.power_entity,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].power_entity=v;}),'sensor.…','re2ents')}</div>
+                  <div>${this._lbl('Température')}${this._txt(cell.temp_entity,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].temp_entity=v;}),'sensor.…','re2ents')}</div>
+                  <div>${this._lbl('Énergie stockée')}${this._txt(cell.stored_entity,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].stored_entity=v;}),'sensor.…','re2ents')}</div>
+                  <div>${this._lbl('Unité (Wh/kWh)')}${this._txt(cell.stored_unit||'Wh',v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].stored_unit=v;}),'Wh')}</div>
+                </div>
+              </div>`)}
+            ${this._btn('＋ Batterie',()=>this._mutate(cfg=>{const ww=cfg.categories[ci].submenus[si].widgets[wi];if(!ww.cells)ww.cells=[];ww.cells.push({name:'Nouvelle batterie',color:'#00ccff',soc_entity:'',power_entity:'',temp_entity:'',stored_entity:'',stored_unit:'Wh',capacity_wh:5120});}),'#22c55e')}
           </div>` : html``}
         ${wg.type==='consumption' ? html`
           <div style="margin-top:10px;">
