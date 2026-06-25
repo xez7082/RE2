@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v238 (version RICHE : widgets)
+   RESIDENT EVIL CARD v239 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -7447,6 +7447,16 @@ class ResidentEvilCardEditor extends LitElement {
                 ${field({k:'bgImage',l:'Image de fond',t:'text'})}
                 ${field({k:'color',l:'Couleur accent',t:'color',d:'#00ff88'})}
               </div>`) : html``}
+            ${wg.type==='plant' ? this._accordion(`pl_sensors${wi}`,'CAPTEURS DE LA PLANTE','🌱','#22c55e', html`
+              <div style="font-size:12px;color:#64748b;margin-bottom:8px;">Humidité, luminosité, conductivité, température…</div>
+              ${listRows('sensors',[{k:'name',l:'Nom'},{k:'entity',l:'Entité',e:true,flex:1.4}],()=>({name:'',entity:''}))}
+            `, `${(wg.sensors||[]).length} capteur(s)`) : html``}
+            ${(wg.type==='tracker'||wg.type==='map') ? this._accordion(`pers_${wi}`,'PERSONNES SUIVIES','👥','#818cf8', html`
+              ${listRows('persons',[
+                {k:'name',l:'Nom'},{k:'person',l:'person.…',e:true,flex:1.3},
+                {k:'geocoded_entity',l:'Lieu géocodé',e:true,flex:1.3},{k:'distance_entity',l:'Distance',e:true,flex:1.3},
+              ],()=>({name:'',person:''}))}
+            `, `${(wg.persons||[]).length} personne(s)`) : html``}
           </div>
         </div>`;
     }
