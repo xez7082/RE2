@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v240 (version RICHE : widgets)
+   RESIDENT EVIL CARD v241 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -6967,7 +6967,6 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'solcast_total',l:'Solcast — total du jour',t:E},{k:'wind_entity',l:'Vitesse du vent',t:E},
         {k:'moon_entity',l:'Phase de la lune',t:E},
       ],
-      appliance: [ {k:'view',l:'Catégorie figée (0/1/2)',t:S,o:['0','1','2']} ],
       gauge: [
         {k:'entity',l:'Entité',t:E},{k:'label',l:'Libellé',t:T},
         {k:'min',l:'Min',t:N},{k:'max',l:'Max',t:N},
@@ -7441,6 +7440,43 @@ class ResidentEvilCardEditor extends LitElement {
                   </div>`)}
                 ${this._btn('＋ Batterie',()=>this._mutate(cfg=>{const ww=cfg.categories[ci].submenus[si].widgets[wi];if(!ww.cells)ww.cells=[];ww.cells.push({name:'Nouvelle batterie',color:'#00ccff',soc_entity:'',power_entity:'',temp_entity:'',stored_entity:'',stored_unit:'Wh',capacity_wh:5120});}),'#22c55e')}
               </div>`, `${(wg.cells||[]).length} batterie(s)`) : html``}
+            ${wg.type==='appliance' ? html`
+              <div style="margin-top:4px;">
+                ${this._lbl('🔧 CAPTEURS PAR ÉQUIPEMENT')}
+                ${(wg.categories||[]).map((cat, catIdx) => html`
+                  <div style="margin-top:6px;">
+                    <div style="font-size:11px;letter-spacing:2px;color:#f59e0b88;margin-bottom:5px;
+                                padding:3px 0;border-bottom:1px solid #1a2744;">
+                      ${(cat.label||'CAT '+catIdx).toUpperCase()}
+                    </div>
+                    ${(cat.items||[]).map((item, itemIdx) => html`
+                      <div style="margin-bottom:6px;background:#080e18;border:1px solid #1a2744;
+                                  border-radius:6px;padding:8px;">
+                        <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:6px;
+                                    display:flex;align-items:center;gap:6px;">
+                          ${item.img?html`<img src="${item.img}" style="width:20px;height:20px;object-fit:contain;opacity:0.7;">`:html``}
+                          ${item.name||'Item '+itemIdx}
+                          <span style="font-size:10px;color:#475569;">${(item.sensors||[]).length} capteur(s)</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                          ${(item.sensors||[]).map((eid, sIdx) => html`
+                            <div style="display:flex;gap:5px;align-items:center;">
+                              ${this._txt(eid, v=>this._mutate(cfg=>{
+                                cfg.categories[ci].submenus[si].widgets[wi].categories[catIdx].items[itemIdx].sensors[sIdx]=v;
+                              }),'sensor.…','re2ents')}
+                              ${this._btn('🗑',()=>this._mutate(cfg=>{
+                                cfg.categories[ci].submenus[si].widgets[wi].categories[catIdx].items[itemIdx].sensors.splice(sIdx,1);
+                              }),'#ef4444')}
+                            </div>`)}
+                          ${this._btn('＋',()=>this._mutate(cfg=>{
+                            const itm=cfg.categories[ci].submenus[si].widgets[wi].categories[catIdx].items[itemIdx];
+                            if(!itm.sensors)itm.sensors=[];
+                            itm.sensors.push('');
+                          }),'#22c55e')}
+                        </div>
+                      </div>`)}
+                  </div>`)}
+              </div>` : html``}
             ${wg.type==='spa_temp' ? this._accordion(`spa_cfg${wi}`,'VUE & STYLE','⚙','#64748b', html`
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 ${field({k:'view',l:'Vue active',t:'select',o:['home','chem','sw','prog','cam']})}
