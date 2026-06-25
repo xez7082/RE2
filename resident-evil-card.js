@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v237 (version RICHE : widgets)
+   RESIDENT EVIL CARD v238 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3054,6 +3054,11 @@ class ResidentEvilCard extends LitElement {
       const col   = isOn ? 'var(--re-wg)' : '#334155';
       const borderCol = isOn ? 'var(--re-wg)30' : '#0f1a0f';
       const unitId = String(idx+1).padStart(3,'0');
+      const unitPfx = w.unit_prefix || 'UNIT-';
+      const maxW2 = parseFloat(w.max_power_w) || 2500;
+      const nameFs = w.name_size ? w.name_size+'px' : '13px';
+      const lblFs2 = w.label_size ? w.label_size+'px' : '9px';
+      const valFs2 = w.value_size ? w.value_size+'px' : '14px';
       // Puissance pour la barre
       const pwrSt = (item.sensors||[]).map(e=>this.hass?.states[e]).find(s=>s?.attributes?.unit_of_measurement==='W');
       const pwr = pwrSt ? parseFloat(pwrSt.state) : 0;
@@ -6851,8 +6856,49 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'gauge_size',l:'Taille des jauges CPU/RAM/HDD (défaut 80)',t:'number'},
       ],
       plant: [
-        {k:'plant_name',l:'Nom',t:T},{k:'latin_name',l:'Nom latin',t:T},
-        {k:'plant_image',l:'Image',t:T},{k:'battery_sensor',l:'Batterie',t:E},
+        {k:'plant_name',l:'Nom de la plante',t:T},{k:'latin_name',l:'Nom latin',t:T},
+        {k:'plant_image',l:'Image (URL)',t:T},{k:'battery_sensor',l:'Batterie',t:E},
+        {k:'col_ok',l:'Couleur — État OK',t:'color',d:'#22c55e'},
+        {k:'col_warn',l:'Couleur — Attention',t:'color',d:'#f59e0b'},
+        {k:'col_bad',l:'Couleur — Critique',t:'color',d:'#ef4444'},
+        {k:'label_size',l:'Taille labels (px)',t:N},{k:'value_size',l:'Taille valeurs (px)',t:N},
+      ],
+      tank: [
+        {k:'tank_title',l:'Titre',t:T},{k:'subtitle',l:'Sous-titre',t:T},
+        {k:'capacity',l:'Capacité (L)',t:N},
+        {k:'tank_level_entity',l:'Niveau (%)',t:E},{k:'tank_volume_entity',l:'Volume (L)',t:E},
+        {k:'depth_entity',l:'Profondeur',t:E},{k:'alert_entity',l:'Alerte',t:E},
+        {k:'sensor_state_entity',l:'État capteur',t:E},
+        {k:'inflow_entity',l:'Entrée directe',t:E},{k:'rain_entity',l:'Précipitations',t:E},
+        {k:'temp_entity',l:'Temp. extérieure',t:E},{k:'temp_cabane_entity',l:'Temp. cabane',t:E},
+        {k:'temp_min_entity',l:'Temp. min annuel',t:E},{k:'temp_max_entity',l:'Temp. max annuel',t:E},
+        {k:'col_water',l:'Couleur eau',t:'color',d:'#38bdf8'},{k:'col_alert',l:'Couleur alerte',t:'color',d:'#ef4444'},
+        {k:'title_size',l:'Taille titre (px)',t:N},{k:'value_size',l:'Taille valeurs (px)',t:N},
+      ],
+      tracker: [
+        {k:'title',l:'Titre',t:T},{k:'size',l:'Taille radar (px)',t:N},
+        {k:'col_radar',l:'Couleur radar',t:'color',d:'#00ff44'},
+        {k:'col_person1',l:'Couleur personne 1',t:'color',d:'#00ff44'},
+        {k:'col_person2',l:'Couleur personne 2',t:'color',d:'#00ccff'},
+        {k:'radar_range_km',l:'Portée radar (km)',t:N},
+        {k:'label_size',l:'Taille labels (px)',t:N},
+      ],
+      map: [
+        {k:'zoom',l:'Zoom initial',t:N},{k:'hours_to_show',l:'Heures affichées',t:N},
+        {k:'home_lat',l:'Latitude domicile',t:T},{k:'home_lon',l:'Longitude domicile',t:T},
+        {k:'col_home',l:'Couleur — À domicile',t:'color',d:'#22c55e'},
+        {k:'col_away',l:'Couleur — Absent',t:'color',d:'#f59e0b'},
+      ],
+      appliance: [
+        {k:'view',l:'Catégorie affichée (0=Élect 1=Robots 2=Atelier)',t:S,o:['0','1','2']},
+        {k:'col_active',l:'Couleur — Actif',t:'color',d:'#00ff44'},
+        {k:'col_inactive',l:'Couleur — Inactif',t:'color',d:'#334155'},
+        {k:'col_alert',l:'Couleur — Alerte conso',t:'color',d:'#ff3300'},
+        {k:'unit_prefix',l:'Préfixe unité (ex: UNIT-)',t:T},
+        {k:'show_power_bar',l:'Afficher barre puissance',t:'bool'},
+        {k:'max_power_w',l:'Puissance max référence (W)',t:N},
+        {k:'label_size',l:'Taille labels (px)',t:N},{k:'value_size',l:'Taille valeurs (px)',t:N},
+        {k:'name_size',l:'Taille nom appareil (px)',t:N},
       ],
       solar:   [ {k:'active_tab',l:'Onglet (0=Sol 1=Météo 2=Batt 3=Éco)',t:S,o:['0','1','2','3']} ],
       power_cell: [
@@ -7289,6 +7335,38 @@ class ResidentEvilCardEditor extends LitElement {
       power_cell:[
         {k:`pc_g${wi}`,t:'CONFIGURATION GÉNÉRALE',i:'🔋',c:'#00ccff',
          keys:['title']},
+      ],
+      plant:[
+        {k:`pl_id${wi}`,t:'IDENTITÉ & PHOTO',i:'🌿',c:'#22c55e',
+         keys:['plant_name','latin_name','plant_image','battery_sensor']},
+        {k:`pl_co${wi}`,t:'COULEURS & TAILLES',i:'🎨',c:'#818cf8',
+         keys:['col_ok','col_warn','col_bad','label_size','value_size']},
+      ],
+      tank:[
+        {k:`tk_g${wi}`,t:'TITRE & CAPACITÉ',i:'💧',c:'#38bdf8',
+         keys:['tank_title','subtitle','capacity']},
+        {k:`tk_s${wi}`,t:'CAPTEURS NIVEAU & VOLUME',i:'📊',c:'#22c55e',
+         keys:['tank_level_entity','tank_volume_entity','depth_entity','alert_entity','sensor_state_entity']},
+        {k:`tk_e${wi}`,t:'EAU & PLUIE',i:'🌧',c:'#818cf8',
+         keys:['inflow_entity','rain_entity']},
+        {k:`tk_t${wi}`,t:'TEMPÉRATURES',i:'🌡',c:'#f59e0b',
+         keys:['temp_entity','temp_cabane_entity','temp_min_entity','temp_max_entity']},
+        {k:`tk_c${wi}`,t:'COULEURS & TAILLES',i:'🎨',c:'#94a3b8',
+         keys:['col_water','col_alert','title_size','value_size']},
+      ],
+      tracker:[
+        {k:`tr_g${wi}`,t:'RADAR DE PRÉSENCE',i:'📡',c:'#818cf8',
+         keys:['title','size','radar_range_km','col_radar','col_person1','col_person2','label_size']},
+      ],
+      map:[
+        {k:`mp_g${wi}`,t:'CARTE & NAVIGATION',i:'🗺',c:'#38bdf8',
+         keys:['zoom','hours_to_show','home_lat','home_lon','col_home','col_away']},
+      ],
+      appliance:[
+        {k:`ap_g${wi}`,t:'CONFIGURATION',i:'⚙',c:'#f59e0b',
+         keys:['view','unit_prefix','show_power_bar','max_power_w']},
+        {k:`ap_c${wi}`,t:'COULEURS & TAILLES',i:'🎨',c:'#818cf8',
+         keys:['col_active','col_inactive','col_alert','label_size','value_size','name_size']},
       ],
       foundry:[
         {k:`fo_g${wi}`,t:'CONFIGURATION YAML',i:'📄',c:'#818cf8',
