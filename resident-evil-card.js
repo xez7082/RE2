@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v236 (version RICHE : widgets)
+   RESIDENT EVIL CARD v237 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -7261,6 +7261,39 @@ class ResidentEvilCardEditor extends LitElement {
         {k:`do_w${wi}`,t:'POIDS & OBJECTIF',i:'⚖',c:'#f59e0b',
          keys:['weight_entity','weight_start','weight_ideal']},
       ],
+      spa_temp:[
+        {k:`spa_g${wi}`,t:'GÉNÉRAL — EAU & AIR',i:'🌡',c:'#00ccff',
+         keys:['entity','targetEntity','target_temp_min','target_temp_max',
+               'extTempEntity','extHumEntity','airTempEntity','airHumEntity',
+               'powerEntity','energyEntity']},
+        {k:`spa_c${wi}`,t:'CHIMIE — pH / ORP / SEL / TDS',i:'🧪',c:'#00ff88',
+         keys:['phEntity','ph_min','ph_max','ph_offset',
+               'orpEntity','orp_min','orp_max','orp_offset',
+               'tdsEntity','tds_min','tds_max','tds_offset',
+               'saltEntity','salt_min','salt_max','salt_offset']},
+        {k:`spa_m${wi}`,t:'MAINTENANCE — FILTRES & CHLORE',i:'🔧',c:'#f59e0b',
+         keys:['filterEntity','filterMax','resetFilterEntity',
+               'chlorineEntity','chlorineMax','resetChlorineEntity',
+               'leakEntity','tamperEntity','floodBatEntity']},
+        {k:`spa_p${wi}`,t:'PROGRAMMATION',i:'⏰',c:'#818cf8',
+         keys:['scheduleEntity','progEnableEntity','lz_volume','lz_power_w','lz_heat_loss']},
+        {k:`spa_s${wi}`,t:'INTERRUPTEURS (1–15)',i:'🔌',c:'#ef4444',
+         keys:['switch_1','name_switch_1','switch_2','name_switch_2','switch_3','name_switch_3',
+               'switch_4','name_switch_4','switch_5','name_switch_5','switch_6','name_switch_6',
+               'switch_7','name_switch_7','switch_8','name_switch_8','switch_9','name_switch_9',
+               'switch_10','name_switch_10','switch_11','name_switch_11','switch_12','name_switch_12',
+               'switch_13','name_switch_13','switch_14','name_switch_14','switch_15','name_switch_15']},
+        {k:`spa_cam${wi}`,t:'CAMÉRA & AFFICHAGE',i:'📷',c:'#94a3b8',
+         keys:['cameraEntity','bgImage','color','view']},
+      ],
+      power_cell:[
+        {k:`pc_g${wi}`,t:'CONFIGURATION GÉNÉRALE',i:'🔋',c:'#00ccff',
+         keys:['title']},
+      ],
+      foundry:[
+        {k:`fo_g${wi}`,t:'CONFIGURATION YAML',i:'📄',c:'#818cf8',
+         keys:['foundry_yaml','clip']},
+      ],
     };
     const sections = SECTIONS[wg.type];
 
@@ -7310,6 +7343,32 @@ class ResidentEvilCardEditor extends LitElement {
               return this._accordion(sec.k, sec.t, sec.i, sec.c, html`${fl.map(f=>field(f))}`,
                 entCt>0?`${valCt}/${entCt} ✓`:null);
             })}
+            ${wg.type==='power_cell' ? this._accordion(`pc_cells${wi}`,'BATTERIES','⚡','#00ccff', html`
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${(wg.cells||[]).map((cell, ci2) => html`
+                  <div style="background:#060b12;border:1px solid #00ccff22;border-radius:6px;padding:10px;">
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                      <div style="flex:1;">${this._lbl('Nom')}${this._txt(cell.name,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].name=v;}),'ex: Venus E 3.0')}</div>
+                      ${this._color(cell.color||'#00ccff','#00ccff',v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].color=v;}))}
+                      <div style="width:90px;">${this._lbl('Capacité Wh')}${this._num(cell.capacity_wh,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].capacity_wh=v;}),0,100000)}</div>
+                      ${this._btn('🗑',()=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells.splice(ci2,1);}),'#ef4444')}
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                      <div>${this._lbl('SOC %')}${this._txt(cell.soc_entity,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].soc_entity=v;}),'sensor.…','re2ents')}</div>
+                      <div>${this._lbl('Puissance W')}${this._txt(cell.power_entity,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].power_entity=v;}),'sensor.…','re2ents')}</div>
+                      <div>${this._lbl('Température')}${this._txt(cell.temp_entity,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].temp_entity=v;}),'sensor.…','re2ents')}</div>
+                      <div>${this._lbl('Énergie stockée')}${this._txt(cell.stored_entity,v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].stored_entity=v;}),'sensor.…','re2ents')}</div>
+                      <div>${this._lbl('Unité (Wh/kWh)')}${this._txt(cell.stored_unit||'Wh',v=>this._mutate(cfg=>{cfg.categories[ci].submenus[si].widgets[wi].cells[ci2].stored_unit=v;}),'Wh')}</div>
+                    </div>
+                  </div>`)}
+                ${this._btn('＋ Batterie',()=>this._mutate(cfg=>{const ww=cfg.categories[ci].submenus[si].widgets[wi];if(!ww.cells)ww.cells=[];ww.cells.push({name:'Nouvelle batterie',color:'#00ccff',soc_entity:'',power_entity:'',temp_entity:'',stored_entity:'',stored_unit:'Wh',capacity_wh:5120});}),'#22c55e')}
+              </div>`, `${(wg.cells||[]).length} batterie(s)`) : html``}
+            ${wg.type==='spa_temp' ? this._accordion(`spa_cfg${wi}`,'VUE & STYLE','⚙','#64748b', html`
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                ${field({k:'view',l:'Vue active',t:'select',o:['home','chem','sw','prog','cam']})}
+                ${field({k:'bgImage',l:'Image de fond',t:'text'})}
+                ${field({k:'color',l:'Couleur accent',t:'color',d:'#00ff88'})}
+              </div>`) : html``}
           </div>
         </div>`;
     }
