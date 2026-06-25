@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v233 (version RICHE : widgets)
+   RESIDENT EVIL CARD v234 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -6538,19 +6538,74 @@ class ResidentEvilCardEditor extends LitElement {
     return { hass: {}, _config: {}, _tab: { type: Number }, _ci: { type: Number }, _si: { type: Number } };
   }
 
-  constructor() { super(); this._tab = 0; this._ci = 0; this._si = 0; }
-  setConfig(config) { this._config = JSON.parse(JSON.stringify(config)); }
+  constructor() { super(); this._tab = 0; this._ci = 0; this._si = 0; this._undoStack = []; this._redoStack = []; }
+  setConfig(config) { this._config = JSON.parse(JSON.stringify(config)); this._undoStack = []; this._redoStack = []; }
   _fire() { this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true })); }
-  _mutate(fn) { const c = JSON.parse(JSON.stringify(this._config)); fn(c); this._config = c; this._fire(); }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._kbHandler = (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); this._undo(); }
+      if (e.key === 'y' || e.key === 'Y') { e.preventDefault(); this._redo(); }
+    };
+    document.addEventListener('keydown', this._kbHandler);
+  }
+  disconnectedCallback() { super.disconnectedCallback(); document.removeEventListener('keydown', this._kbHandler); }
+
+  _mutate(fn) {
+    // Sauvegarder l'état avant modification (undo)
+    this._undoStack.push(JSON.stringify(this._config));
+    if (this._undoStack.length > 20) this._undoStack.shift();
+    this._redoStack = [];
+    const c = JSON.parse(JSON.stringify(this._config));
+    fn(c);
+    this._config = c;
+    this._fire();
+    this.requestUpdate();
+  }
+
+  _undo() {
+    if (!this._undoStack.length) return;
+    this._redoStack.push(JSON.stringify(this._config));
+    this._config = JSON.parse(this._undoStack.pop());
+    this._fire();
+    this.requestUpdate();
+  }
+
+  _redo() {
+    if (!this._redoStack.length) return;
+    this._undoStack.push(JSON.stringify(this._config));
+    this._config = JSON.parse(this._redoStack.pop());
+    this._fire();
+    this.requestUpdate();
+  }
 
   // ─── petits helpers UI ───
   _lbl(t) { return html`<div style="font-size:13px;color:#7dd3fc;font-weight:700;letter-spacing:.5px;margin:2px 0 4px;">${t}</div>`; }
   _txt(val, cb, ph='', list='') {
-    return html`<input type="text" list="${list}" placeholder="${ph}" .value="${val ?? ''}"
-      style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;
-             padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;"
-      @input="${(e)=>cb(e.target.value)}"
-      @change="${(e)=>cb(e.target.value)}" />`;
+    // Validation entité si c'est un champ entité (list='re2ents')
+    const isEntity = list === 're2ents';
+    const entState = isEntity && val && this.hass?.states[val] ? this.hass.states[val] : null;
+    const entMissing = isEntity && val && val.includes('.') && !entState;
+    const entVal = entState ? (() => {
+      const v = parseFloat(entState.state);
+      const unit = entState.attributes?.unit_of_measurement || '';
+      if (!isNaN(v)) return `${v.toFixed(1).replace(/\.0$/,'')} ${unit}`.trim();
+      return entState.state?.substring(0, 16);
+    })() : null;
+    return html`<div style="display:flex;align-items:center;gap:6px;">
+      <input type="text" list="${list}" placeholder="${ph}" .value="${val ?? ''}"
+        style="flex:1;box-sizing:border-box;background:#0d1117;border:1px solid ${entMissing?'#ef444488':entState?'#22c55e44':'#2a3a52'};color:#e2e8f0;
+               padding:8px 10px;font-size:13px;border-radius:6px;font-family:inherit;outline:none;min-width:0;"
+        @input="${e=>cb(e.target.value)}" @change="${e=>cb(e.target.value)}"/>
+      ${isEntity && val && val.includes('.') ? html`
+        <div title="${entMissing?'Entité introuvable dans HA':entVal||entState?.state||''}"
+             style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+          <div style="width:8px;height:8px;border-radius:50%;background:${entMissing?'#ef4444':'#22c55e'};flex-shrink:0;"></div>
+          ${entVal ? html`<span style="font-size:11px;color:${entMissing?'#ef4444':'#22c55e'};white-space:nowrap;max-width:70px;overflow:hidden;text-overflow:ellipsis;">${entVal}</span>` : html``}
+        </div>` : html``}
+    </div>`;
   }
   _num(val, cb, min=8, max=60, step) {
     const conv = (raw) => {
@@ -7277,6 +7332,20 @@ class ResidentEvilCardEditor extends LitElement {
                      color:${this._tab===i?'#fff':'#94a3b8'};"
         @click="${()=>{ this._tab = i; this.requestUpdate(); }}">${label}</button>`;
 
+    // Boutons Undo / Redo
+    const undoBar = html`
+      <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
+        ${this._btn(`↩ Annuler${this._undoStack.length?' ('+this._undoStack.length+')':''}`,
+          () => this._undo(),
+          this._undoStack.length ? '#334155' : '#1a2433',
+          'Ctrl+Z')}
+        ${this._btn(`↪ Rétablir${this._redoStack.length?' ('+this._redoStack.length+')':''}`,
+          () => this._redo(),
+          this._redoStack.length ? '#334155' : '#1a2433',
+          'Ctrl+Y')}
+        <span style="font-size:11px;color:#334155;margin-left:4px;">Ctrl+Z / Ctrl+Y</span>
+      </div>`;
+
     // ═════════ ONGLET GÉNÉRAL ═════════
     const renderGeneral = () => html`
       <div style="display:flex;flex-direction:column;gap:14px;">
@@ -7685,6 +7754,7 @@ class ResidentEvilCardEditor extends LitElement {
           <div style="font-size:16px;font-weight:800;color:#ef4444;letter-spacing:2px;margin-bottom:10px;">
             ☣ RESIDENT EVIL CARD — ÉDITEUR
           </div>
+          ${undoBar}
           <div style="display:flex;gap:6px;">
             ${tabBtn(0,'GÉNÉRAL')}
             ${tabBtn(1,'THÈME')}
