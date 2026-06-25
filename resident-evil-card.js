@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v247 (version RICHE : widgets)
+   RESIDENT EVIL CARD v248 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3133,6 +3133,8 @@ class ResidentEvilCard extends LitElement {
 
 
   _renderApplianceWidget(w, sizeStyle, noBorder=false) {
+    const categories = w.categories || [];
+    const tabKey     = '_appTab_' + (w.widget_id || 'def');
     const activeTab  = this[tabKey] || 0;
     const setTab     = (i) => { this[tabKey] = i; this.requestUpdate(); };
 
