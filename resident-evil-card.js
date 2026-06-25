@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v234 (version RICHE : widgets)
+   RESIDENT EVIL CARD v235 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -6538,7 +6538,7 @@ class ResidentEvilCardEditor extends LitElement {
     return { hass: {}, _config: {}, _tab: { type: Number }, _ci: { type: Number }, _si: { type: Number } };
   }
 
-  constructor() { super(); this._tab = 0; this._ci = 0; this._si = 0; this._undoStack = []; this._redoStack = []; }
+  constructor() { super(); this._tab = 0; this._ci = 0; this._si = 0; this._undoStack = []; this._redoStack = []; this._accOpen = {}; }
   setConfig(config) { this._config = JSON.parse(JSON.stringify(config)); this._undoStack = []; this._redoStack = []; }
   _fire() { this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true })); }
 
@@ -6582,6 +6582,24 @@ class ResidentEvilCardEditor extends LitElement {
   }
 
   // ─── petits helpers UI ───
+  _accordion(key, title, icon, color, content, count=null) {
+    const open = this._accOpen[key] !== false;
+    return html`
+      <div style="border:1px solid ${color}33;border-radius:8px;overflow:hidden;margin-bottom:6px;">
+        <button @click="${()=>{ this._accOpen[key]=!open; this.requestUpdate(); }}"
+          style="width:100%;padding:10px 12px;background:${open?color+'18':'#080d14'};border:none;
+                 cursor:pointer;display:flex;align-items:center;gap:8px;border-left:3px solid ${color};
+                 font-family:inherit;">
+          <span style="font-size:15px;">${icon}</span>
+          <span style="flex:1;font-size:13px;font-weight:700;color:${open?color:'#64748b'};
+                       letter-spacing:1px;text-align:left;">${title}</span>
+          ${count!=null?html`<span style="font-size:10px;color:${color}66;border:1px solid ${color}22;
+              padding:1px 7px;border-radius:10px;">${count}</span>`:html``}
+          <span style="color:${color}55;font-size:11px;">${open?'▲':'▼'}</span>
+        </button>
+        ${open?html`<div style="padding:10px 12px;background:#060b12;display:flex;flex-direction:column;gap:10px;">${content}</div>`:html``}
+      </div>`;
+  }
   _lbl(t) { return html`<div style="font-size:13px;color:#7dd3fc;font-weight:700;letter-spacing:.5px;margin:2px 0 4px;">${t}</div>`; }
   _txt(val, cb, ph='', list='') {
     // Validation entité si c'est un champ entité (list='re2ents')
@@ -7176,6 +7194,105 @@ class ResidentEvilCardEditor extends LitElement {
 
   _renderWidgetEditor(ci, si, wi, wg) {
     const schema = (this.constructor.WIDGET_SCHEMAS[wg.type] || []);
+    const selStyle = "width:100%;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;";
+
+    // ─── Sections accordéon par type ────────────────────────────────
+    const SECTIONS = {
+      solar_flow:[
+        {k:`sf_i${wi}`,t:'INSTALLATIONS SOLAIRES',i:'⚡',c:'#f59e0b',
+         keys:['p1_name','p1_color','p1_w_entity','p1_d_entity','p1_m_entity',
+               'p2_name','p2_color','p2_w_entity','p2_d_entity','p2_m_entity',
+               'p3_name','p3_color','p3_w_entity','p3_d_entity','p3_m_entity']},
+        {k:`sf_f${wi}`,t:'FLUX ENERGIE',i:'📊',c:'#818cf8',
+         keys:['total_entity','cons_entity','grid_entity','autoconso_entity']},
+        {k:`sf_p${wi}`,t:'PRODUCTION & OBJECTIFS',i:'🎯',c:'#22c55e',
+         keys:['day_entity','month_entity','night_entity','obj_pct_entity','obj_kwh_entity']},
+        {k:`sf_t${wi}`,t:'TEXTES & EN-TETE',i:'✏',c:'#94a3b8',
+         keys:['header_title','header_sub','lbl_prod','lbl_cons','lbl_grid_in',
+               'lbl_grid_out','lbl_autoconso','lbl_day','lbl_month','lbl_night']},
+      ],
+      consumption:[
+        {k:`co_m${wi}`,t:'MESURES PRINCIPALES',i:'📊',c:'#ef4444',
+         keys:['total_entity','solar_entity','night_entity','kwh_price','kwh_price_val']},
+        {k:`co_c${wi}`,t:'CONFIGURATION',i:'⚙',c:'#94a3b8',
+         keys:['max_power','threshold','top_count']},
+        {k:`co_t${wi}`,t:'TEXTES & COULEURS',i:'🎨',c:'#818cf8',
+         keys:['header_title','header_sub','lbl_total','lbl_cost','lbl_solar',
+               'lbl_night','tarif_label','col_total','col_solar','col_night']},
+      ],
+      economies:[
+        {k:`ec_c${wi}`,t:'CAPTEURS & VALEURS',i:'💰',c:'#22c55e',
+         keys:['eco_money','eco_day','eco_month','eco_year','kwh_price','eco_target','eco_pct']},
+        {k:`ec_t${wi}`,t:'TEXTES PERSONNALISES',i:'✏',c:'#94a3b8',
+         keys:['header_title','header_sub','main_label']},
+      ],
+      previsions:[
+        {k:`pr_s${wi}`,t:'TRAJECTOIRE SOLAIRE',i:'☀',c:'#f59e0b',
+         keys:['azimuth_entity','elevation_entity','solcast_pic','solcast_total']},
+        {k:`pr_m${wi}`,t:'METEO & ENVIRONNEMENT',i:'🌤',c:'#38bdf8',
+         keys:['weather_entity','wind_entity','moon_entity']},
+      ],
+      dossier:[
+        {k:`do_i${wi}`,t:'IDENTITE',i:'👤',c:'#ef4444',
+         keys:['name','archiveId','image']},
+        {k:`do_w${wi}`,t:'POIDS & OBJECTIF',i:'⚖',c:'#f59e0b',
+         keys:['weight_entity','weight_start','weight_ideal']},
+      ],
+    };
+    const sections = SECTIONS[wg.type];
+
+    // ─── Champ générique selon son type ─────────────────────────────
+    const field = (f) => {
+      const cur = this._wgGet(wg, f.k);
+      if (f.t === 'select')   return html`<div>${this._lbl(f.l)}<select style="${selStyle}" @change="${e=>this._wgSet(ci,si,wi,f.k, isNaN(parseInt(e.target.value))?e.target.value:(f.k==='view'||f.k==='active_tab'?parseInt(e.target.value):e.target.value))}">${f.o.map(o=>html`<option value="${o}" ?selected="${String(cur)===String(o)}">${o}</option>`)}</select></div>`;
+      if (f.t === 'number')   return html`<div>${this._lbl(f.l)}${this._num(cur, v=>this._wgSet(ci,si,wi,f.k,v), -100000, 100000, f.step!=null?f.step:'any')}</div>`;
+      if (f.t === 'color')    return html`<div>${this._lbl(f.l)}${this._color(cur, f.d||'#00ff00', v=>this._wgSet(ci,si,wi,f.k,v))}</div>`;
+      if (f.t === 'bool')     return html`<div>${this._lbl(f.l)}<select style="${selStyle}" @change="${e=>this._wgSet(ci,si,wi,f.k,e.target.value==='oui')}"><option value="non" ?selected="${!cur}">non</option><option value="oui" ?selected="${!!cur}">oui</option></select></div>`;
+      if (f.t === 'textarea') return html`<div>${this._lbl(f.l)}<textarea style="${selStyle}min-height:150px;resize:vertical;font-family:monospace;font-size:13px;line-height:1.4;white-space:pre;" @input="${e=>this._wgSet(ci,si,wi,f.k,e.target.value)}" @change="${e=>this._wgSet(ci,si,wi,f.k,e.target.value)}" placeholder="type: foundry-gauge-card&#10;entity: sensor.xxx&#10;...">${cur||''}</textarea></div>`;
+      return html`<div>${this._lbl(f.l)}${this._txt(cur, v=>this._wgSet(ci,si,wi,f.k,v), f.l, f.t==='entity'?'re2ents':'')}</div>`;
+    };
+
+    // ─── Fil d'Ariane ───────────────────────────────────────────────
+    const breadcrumb = html`
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#060b12;
+                  border-bottom:1px solid #1a2744;font-size:11px;flex-wrap:wrap;">
+        <span style="color:#475569;">${(this._config.categories||[])[ci]?.name||'?'}</span>
+        <span style="color:#334155;">›</span>
+        <span style="color:#475569;">${(this._config.categories||[])[ci]?.submenus?.[si]?.name||'?'}</span>
+        <span style="color:#334155;">›</span>
+        <span style="font-weight:700;color:#a5b4fc;">${(wg.type||'?').toUpperCase()}</span>
+        <span style="margin-left:auto;display:flex;gap:6px;">
+          <span style="color:#334155;font-size:10px;">W:${wg.widthPct||'?'}%</span>
+          ${wg.heightPx?html`<span style="color:#334155;font-size:10px;">H:${wg.heightPx}px</span>`:html``}
+        </span>
+      </div>`;
+
+    // ─── Si sections définies → accordéon ───────────────────────────
+    if (sections) {
+      const schemaByKey = {};
+      schema.forEach(f => { schemaByKey[f.k] = f; });
+      return html`
+        <div style="border:1px solid #818cf833;border-radius:8px;overflow:hidden;margin-top:6px;">
+          ${breadcrumb}
+          <div style="padding:10px;display:flex;flex-direction:column;gap:2px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;padding:8px;background:#060b12;border-radius:6px;">
+              <div>${this._lbl('Largeur %')}${this._num(wg.widthPct, v=>this._wgSet(ci,si,wi,'widthPct',v), 5, 100)}</div>
+              <div>${this._lbl('Hauteur px')}${this._num(wg.heightPx, v=>this._wgSet(ci,si,wi,'heightPx',v), 50, 2000)}</div>
+              <div style="display:flex;align-items:flex-end;">${this._btn(wg.noBorder?'Bordure OFF':'Bordure ON',()=>this._wgSet(ci,si,wi,'noBorder',!wg.noBorder),wg.noBorder?'#334155':'#22c55e')}</div>
+            </div>
+            ${sections.map(sec => {
+              const fl = sec.keys.map(k=>schemaByKey[k]).filter(Boolean);
+              const entCt = fl.filter(f=>f.t==='entity').length;
+              const valCt = fl.filter(f=>f.t==='entity'&&this.hass?.states[this._wgGet(wg,f.k)]).length;
+              return this._accordion(sec.k, sec.t, sec.i, sec.c, html`${fl.map(f=>field(f))}`,
+                entCt>0?`${valCt}/${entCt} ✓`:null);
+            })}
+          </div>
+        </div>`;
+    }
+
+    // ─── Sinon → schema plat + listes spécifiques ───────────────────
+    const listRows = (path, cols, mk) => {
     const selStyle = 'width:100%;background:#0d1117;border:1px solid #2a3a52;color:#e2e8f0;padding:9px 10px;font-size:14px;border-radius:6px;font-family:inherit;';
     const field = (f) => {
       const cur = this._wgGet(wg, f.k);
@@ -7308,6 +7425,8 @@ class ResidentEvilCardEditor extends LitElement {
           </div>
         ` : html``}
       </div>`;
+  }
+  // _renderWidgetEditor end
   }
 
   _setTheme(key, val) {
