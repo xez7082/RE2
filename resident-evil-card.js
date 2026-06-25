@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v231 (version RICHE : widgets)
+   RESIDENT EVIL CARD v232 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -5441,9 +5441,9 @@ class ResidentEvilCard extends LitElement {
                     display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-size:14px;letter-spacing:2px;color:${cT};">${w.header_title||'SURVEILLANCE ÉNERGÉTIQUE — RÉSIDENCE'}</div>
-            <div style="font-size:12px;color:var(--re-wtd);margin-top:2px;">${w.header_sub||'LINKY + ECOJOKO · CAPTEURS ACTIFS'}</div>
+            <div style="font-size:14px;color:var(--re-wtd);margin-top:2px;">${w.header_sub||'LINKY + ECOJOKO · CAPTEURS ACTIFS'}</div>
           </div>
-          <div style="font-size:11px;color:${cN};border:1px solid ${cN}33;padding:3px 10px;border-radius:2px;">
+          <div style="font-size:13px;color:${cN};border:1px solid ${cN}33;padding:3px 10px;border-radius:2px;">
             ${lTarif} · ${fmt(tarif,3)} €/kWh
           </div>
         </div>
@@ -5452,15 +5452,15 @@ class ResidentEvilCard extends LitElement {
         <div style="padding:14px;border-bottom:1px solid ${cT}12;display:flex;gap:16px;align-items:center;">
           <!-- Grande valeur -->
           <div style="flex:1;">
-            <div style="font-size:12px;color:${cT};letter-spacing:2px;margin-bottom:6px;opacity:0.7;">${lTotal}</div>
+            <div style="font-size:14px;color:${cT};letter-spacing:2px;margin-bottom:6px;opacity:1;">${lTotal}</div>
             <div style="font-size:44px;font-weight:900;color:${cT};line-height:1;">
               ${totalW!=null?Math.round(totalW).toLocaleString('fr-FR'):'--'}
-              <span style="font-size:18px;opacity:0.5;"> W</span>
+              <span style="font-size:18px;opacity:0.85;"> W</span>
             </div>
             <div style="margin-top:10px;height:5px;background:#1a0005;border-radius:3px;overflow:hidden;">
               <div style="height:100%;width:${capPct}%;background:linear-gradient(90deg,#22c55e,${cN},${capCol});border-radius:3px;transition:width .8s;"></div>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:${cT};opacity:0.35;margin-top:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:${cT};opacity:0.8;margin-top:4px;">
               <span>0 W</span>
               <span>${capPct.toFixed(0)}% DE LA CAPACITÉ</span>
               <span>${(maxW/1000).toFixed(0)} kW</span>
@@ -5469,15 +5469,15 @@ class ResidentEvilCard extends LitElement {
           <!-- 3 métriques côté droit -->
           <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0;min-width:140px;">
             <div style="padding:9px 12px;background:#0a0002;border:1px solid ${cT}22;border-radius:4px;">
-              <div style="font-size:10px;color:${cT};opacity:0.6;margin-bottom:3px;">${lCost}</div>
+              <div style="font-size:13px;color:${cT};opacity:0.9;margin-bottom:3px;">${lCost}</div>
               <div style="font-size:20px;font-weight:900;color:${cT};">${fmt(costPerH,2)} €</div>
             </div>
             <div style="padding:9px 12px;background:#020a02;border:1px solid ${cS}22;border-radius:4px;">
-              <div style="font-size:10px;color:${cS};opacity:0.6;margin-bottom:3px;">${lSolar}</div>
+              <div style="font-size:13px;color:${cS};opacity:0.9;margin-bottom:3px;">${lSolar}</div>
               <div style="font-size:20px;font-weight:900;color:${cS};">${fmt(solarW,0)} W</div>
             </div>
             <div style="padding:9px 12px;background:#0a0500;border:1px solid ${cN}22;border-radius:4px;">
-              <div style="font-size:10px;color:${cN};opacity:0.6;margin-bottom:3px;">${lNight}</div>
+              <div style="font-size:13px;color:${cN};opacity:0.9;margin-bottom:3px;">${lNight}</div>
               <div style="font-size:20px;font-weight:900;color:${cN};">${fmt(nightKwh,1)} kWh</div>
             </div>
           </div>
@@ -5485,14 +5485,14 @@ class ResidentEvilCard extends LitElement {
 
         <!-- TOP APPAREILS ACTIFS -->
         <div style="padding:10px 14px;">
-          <div style="font-size:11px;color:${cT};letter-spacing:2px;margin-bottom:8px;opacity:0.5;">
+          <div style="font-size:13px;color:${cT};letter-spacing:2px;margin-bottom:8px;opacity:0.85;">
             TOP CONSOMMATEURS ACTIFS — ${devices.length} / ${(w.devices||[]).length} UNITÉS
           </div>
           ${devices.length ? devices.map(d => {
             const barW = maxDev>0 ? Math.min(100,(d.val/maxDev)*100) : 0;
             const dc = d.color || cT;
             return html`
-              <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid ${cT}08;">
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid ${cT}25;">
                 <div style="width:9px;height:9px;border-radius:50%;background:${dc};flex-shrink:0;animation:_co_pulse 2s ease-in-out infinite;"></div>
                 <div style="flex:1;font-size:13px;color:var(--re-wt);">${d.name||d.entity.split('.').pop()}</div>
                 <div style="width:80px;height:3px;background:#1a0005;border-radius:2px;overflow:hidden;">
@@ -5501,15 +5501,15 @@ class ResidentEvilCard extends LitElement {
                 <div style="font-size:14px;font-weight:700;color:${dc};min-width:65px;text-align:right;">${fmt(d.val,0)} W</div>
               </div>`;
           }) : html`
-            <div style="font-size:12px;color:var(--re-wtd);padding:10px 0;text-align:center;opacity:0.5;">
+            <div style="font-size:14px;color:var(--re-wtd);padding:10px 0;text-align:center;opacity:0.85;">
               Aucun appareil actif · configurez les appareils dans l'éditeur
             </div>`}
         </div>
 
         <!-- FOOTER -->
-        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:10px;color:${cT}22;border-top:1px solid ${cT}08;">
+        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:13px;color:${cT}77;border-top:1px solid ${cT}08;">
           <span>SURVEILLANCE MULTI-CAPTEURS</span>
-          <span style="animation:_co_blink 1.2s step-end infinite;color:${cS}44;">● TEMPS RÉEL</span>
+          <span style="animation:_co_blink 1.2s step-end infinite;color:${cS}88;">● TEMPS RÉEL</span>
         </div>
       </div>`;
   }
