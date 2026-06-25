@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v232 (version RICHE : widgets)
+   RESIDENT EVIL CARD v233 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -5388,128 +5388,150 @@ class ResidentEvilCard extends LitElement {
       </div>`;
   }
 
-    _renderConsumptionWidget(w, sizeStyle, noBorder=false) {
-    const fv  = (eid) => { const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
-    const fmt = (v,d=0,suf='') => v!=null ? v.toFixed(d).replace('.',',')+suf : '--';
+  _renderConsumptionWidget(w, sizeStyle, noBorder=false) {
+    const fv = (eid) => {
+      if (!eid) return null;
+      const s = this.hass?.states[eid];
+      if (!s) return null;
+      const v = parseFloat(s.state);
+      return isNaN(v) ? null : v;
+    };
+    const fmt = (v, d=0) => v != null ? v.toFixed(d).replace('.', ',') : '--';
 
-    const totalW  = fv(w.total_entity);
-    const solarW  = fv(w.solar_entity);
-    const nightKwh= fv(w.night_entity);
-    const tarif   = fv(w.kwh_price) || parseFloat(w.kwh_price_val) || 0.194;
-    const maxW    = parseFloat(w.max_power) || 5000;
-    const thresh  = parseFloat(w.threshold) || 5;
-    const topN    = parseInt(w.top_count) || 6;
+    const totalW   = fv(w.total_entity);
+    const solarW   = fv(w.solar_entity);
+    const nightKwh = fv(w.night_entity);
+    const tarif    = fv(w.kwh_price) || parseFloat(w.kwh_price_val) || 0.194;
+    const maxW     = parseFloat(w.max_power) || 5000;
+    const thresh   = parseFloat(w.threshold) || 5;
+    const topN     = parseInt(w.top_count)   || 6;
 
-    const cT = w.col_total  || '#ef4444';
-    const cS = w.col_solar  || '#22c55e';
-    const cN = w.col_night  || '#f59e0b';
+    const cT = w.col_total || '#ef4444';
+    const cS = w.col_solar || '#22c55e';
+    const cN = w.col_night || '#f59e0b';
 
-    const lTotal = w.lbl_total  || 'CONSOMMATION INSTANTANÉE';
-    const lCost  = w.lbl_cost   || 'COÛT / HEURE';
-    const lSolar = w.lbl_solar  || 'SOLAIRE ACTUEL';
-    const lNight = w.lbl_night  || 'CONSO NUIT';
-    const lTarif = w.tarif_label || 'TARIF EDF';
+    const lTotal = w.lbl_total    || 'CONSOMMATION INSTANTANÉE';
+    const lCost  = w.lbl_cost     || 'COÛT / HEURE';
+    const lSolar = w.lbl_solar    || 'SOLAIRE ACTUEL';
+    const lNight = w.lbl_night    || 'CONSO NUIT';
+    const lTarif = w.tarif_label  || 'TARIF EDF';
 
-    const costPerH = totalW!=null && tarif ? totalW/1000*tarif : null;
-    const capPct   = totalW!=null ? Math.min(100,(totalW/maxW)*100) : 0;
-    const capCol   = capPct>80?'#ff3300':capPct>50?'#f59e0b':'#22c55e';
+    const costPerH = (totalW != null && tarif) ? (totalW / 1000 * tarif) : null;
+    const capPct   = totalW != null ? Math.min(100, (totalW / maxW) * 100) : 0;
+    const capCol   = capPct > 80 ? '#ff3300' : capPct > 50 ? '#f59e0b' : '#22c55e';
 
-    // Devices triés par puissance décroissante
-    const devices = (w.devices||[]).map(d => ({
-      ...d,
-      val: fv(d.entity),
-    })).filter(d => d.val!=null && d.val>=thresh)
-      .sort((a,b)=>(b.val||0)-(a.val||0))
-      .slice(0, topN);
+    // Devices actifs triés par puissance
+    const allDevices = Array.isArray(w.devices) ? w.devices : [];
+    const devices = allDevices.map(d => ({
+      entity: d.entity || '',
+      name:   d.name   || (d.entity || '').split('.').pop(),
+      color:  d.color  || cT,
+      val:    fv(d.entity),
+    })).filter(d => d.val != null && d.val >= thresh)
+       .sort((a, b) => (b.val || 0) - (a.val || 0))
+       .slice(0, topN);
 
-    const maxDev = devices.length ? Math.max(...devices.map(d=>d.val||0)) : 1;
+    const maxDev = devices.length ? Math.max(...devices.map(d => d.val || 0)) : 1;
+
+    const wTotal = totalW != null ? Math.round(totalW).toLocaleString('fr-FR') : '--';
 
     return html`
       <div style="${sizeStyle}background:#080005;border:1px solid ${cT}22;border-radius:6px;
                   overflow:hidden;font-family:'Courier New',monospace;position:relative;">
         <style>
-          @keyframes _co_scan{0%{left:-40%}100%{left:110%}}
-          @keyframes _co_pulse{0%,100%{opacity:1}50%{opacity:0.25}}
-          @keyframes _co_blink{0%,100%{opacity:1}50%{opacity:0}}
+          @keyframes _co_scan2{0%{left:-40%}100%{left:110%}}
+          @keyframes _co_pulse2{0%,100%{opacity:1}50%{opacity:0.25}}
+          @keyframes _co_blink2{0%,100%{opacity:1}50%{opacity:0}}
         </style>
+        <!-- Scan line -->
         <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;z-index:1;">
-          <div style="position:absolute;width:40%;height:1px;background:${cT}55;animation:_co_scan 4s linear infinite;"></div>
+          <div style="position:absolute;width:40%;height:1px;background:${cT}55;
+                       animation:_co_scan2 4s linear infinite;"></div>
         </div>
 
         <!-- HEADER -->
-        <div style="background:#0d0008;border-bottom:1px solid ${cT}18;padding:9px 14px;
+        <div style="background:#0d0008;border-bottom:1px solid ${cT}22;padding:10px 14px;
                     display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:14px;letter-spacing:2px;color:${cT};">${w.header_title||'SURVEILLANCE ÉNERGÉTIQUE — RÉSIDENCE'}</div>
-            <div style="font-size:14px;color:var(--re-wtd);margin-top:2px;">${w.header_sub||'LINKY + ECOJOKO · CAPTEURS ACTIFS'}</div>
+            <div style="font-size:14px;letter-spacing:2px;color:${cT};">
+              ${w.header_title || 'SURVEILLANCE ÉNERGÉTIQUE — RÉSIDENCE'}
+            </div>
+            <div style="font-size:12px;color:var(--re-wtd);margin-top:3px;">
+              ${w.header_sub || 'LINKY + ECOJOKO · CAPTEURS ACTIFS'}
+            </div>
           </div>
-          <div style="font-size:13px;color:${cN};border:1px solid ${cN}33;padding:3px 10px;border-radius:2px;">
-            ${lTarif} · ${fmt(tarif,3)} €/kWh
+          <div style="font-size:12px;color:${cN};border:1px solid ${cN}44;padding:4px 12px;border-radius:3px;">
+            ${lTarif} · ${fmt(tarif, 3)} €/kWh
           </div>
         </div>
 
-        <!-- CONSO TOTALE + 3 MÉTRIQUES -->
-        <div style="padding:14px;border-bottom:1px solid ${cT}12;display:flex;gap:16px;align-items:center;">
+        <!-- CONSO TOTALE + 3 MÉTRIQUES CÔTÉ DROIT -->
+        <div style="padding:16px 14px;border-bottom:1px solid ${cT}18;display:flex;gap:16px;align-items:center;">
           <!-- Grande valeur -->
           <div style="flex:1;">
-            <div style="font-size:14px;color:${cT};letter-spacing:2px;margin-bottom:6px;opacity:1;">${lTotal}</div>
-            <div style="font-size:44px;font-weight:900;color:${cT};line-height:1;">
-              ${totalW!=null?Math.round(totalW).toLocaleString('fr-FR'):'--'}
-              <span style="font-size:18px;opacity:0.85;"> W</span>
+            <div style="font-size:13px;color:${cT};letter-spacing:2px;margin-bottom:8px;">${lTotal}</div>
+            <div style="font-size:48px;font-weight:900;color:${cT};line-height:1;">
+              ${wTotal}<span style="font-size:20px;color:${cT};margin-left:6px;">W</span>
             </div>
-            <div style="margin-top:10px;height:5px;background:#1a0005;border-radius:3px;overflow:hidden;">
-              <div style="height:100%;width:${capPct}%;background:linear-gradient(90deg,#22c55e,${cN},${capCol});border-radius:3px;transition:width .8s;"></div>
+            <div style="margin-top:12px;height:6px;background:#1a0005;border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${capPct}%;
+                           background:linear-gradient(90deg,#22c55e,${cN},${capCol});
+                           border-radius:3px;transition:width .8s;"></div>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:${cT};opacity:0.8;margin-top:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:${cT};margin-top:5px;">
               <span>0 W</span>
-              <span>${capPct.toFixed(0)}% DE LA CAPACITÉ</span>
-              <span>${(maxW/1000).toFixed(0)} kW</span>
+              <span style="font-weight:700;">${capPct.toFixed(0)}% DE LA CAPACITÉ</span>
+              <span>${(maxW / 1000).toFixed(0)} kW</span>
             </div>
           </div>
-          <!-- 3 métriques côté droit -->
-          <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0;min-width:140px;">
-            <div style="padding:9px 12px;background:#0a0002;border:1px solid ${cT}22;border-radius:4px;">
-              <div style="font-size:13px;color:${cT};opacity:0.9;margin-bottom:3px;">${lCost}</div>
-              <div style="font-size:20px;font-weight:900;color:${cT};">${fmt(costPerH,2)} €</div>
+          <!-- 3 métriques -->
+          <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;min-width:150px;">
+            <div style="padding:10px 14px;background:#0a0002;border:1px solid ${cT}33;border-radius:5px;">
+              <div style="font-size:12px;color:${cT};letter-spacing:1px;margin-bottom:4px;">${lCost}</div>
+              <div style="font-size:24px;font-weight:900;color:${cT};">${fmt(costPerH, 2)} €</div>
             </div>
-            <div style="padding:9px 12px;background:#020a02;border:1px solid ${cS}22;border-radius:4px;">
-              <div style="font-size:13px;color:${cS};opacity:0.9;margin-bottom:3px;">${lSolar}</div>
-              <div style="font-size:20px;font-weight:900;color:${cS};">${fmt(solarW,0)} W</div>
+            <div style="padding:10px 14px;background:#020a02;border:1px solid ${cS}33;border-radius:5px;">
+              <div style="font-size:12px;color:${cS};letter-spacing:1px;margin-bottom:4px;">${lSolar}</div>
+              <div style="font-size:24px;font-weight:900;color:${cS};">${fmt(solarW, 0)} W</div>
             </div>
-            <div style="padding:9px 12px;background:#0a0500;border:1px solid ${cN}22;border-radius:4px;">
-              <div style="font-size:13px;color:${cN};opacity:0.9;margin-bottom:3px;">${lNight}</div>
-              <div style="font-size:20px;font-weight:900;color:${cN};">${fmt(nightKwh,1)} kWh</div>
+            <div style="padding:10px 14px;background:#0a0500;border:1px solid ${cN}33;border-radius:5px;">
+              <div style="font-size:12px;color:${cN};letter-spacing:1px;margin-bottom:4px;">${lNight}</div>
+              <div style="font-size:24px;font-weight:900;color:${cN};">${fmt(nightKwh, 1)} kWh</div>
             </div>
           </div>
         </div>
 
-        <!-- TOP APPAREILS ACTIFS -->
-        <div style="padding:10px 14px;">
-          <div style="font-size:13px;color:${cT};letter-spacing:2px;margin-bottom:8px;opacity:0.85;">
-            TOP CONSOMMATEURS ACTIFS — ${devices.length} / ${(w.devices||[]).length} UNITÉS
+        <!-- TOP APPAREILS -->
+        <div style="padding:12px 14px;">
+          <div style="font-size:13px;color:${cT};letter-spacing:2px;margin-bottom:10px;">
+            TOP CONSOMMATEURS ACTIFS — ${devices.length} / ${allDevices.length} UNITÉS
           </div>
-          ${devices.length ? devices.map(d => {
-            const barW = maxDev>0 ? Math.min(100,(d.val/maxDev)*100) : 0;
-            const dc = d.color || cT;
+          ${devices.length > 0 ? devices.map(d => {
+            const barPct = maxDev > 0 ? Math.min(100, (d.val / maxDev) * 100) : 0;
             return html`
-              <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid ${cT}25;">
-                <div style="width:9px;height:9px;border-radius:50%;background:${dc};flex-shrink:0;animation:_co_pulse 2s ease-in-out infinite;"></div>
-                <div style="flex:1;font-size:13px;color:var(--re-wt);">${d.name||d.entity.split('.').pop()}</div>
-                <div style="width:80px;height:3px;background:#1a0005;border-radius:2px;overflow:hidden;">
-                  <div style="height:100%;width:${barW}%;background:${dc};transition:width .5s;"></div>
+              <div style="display:flex;align-items:center;gap:10px;padding:7px 0;
+                           border-bottom:1px solid ${cT}20;">
+                <div style="width:10px;height:10px;border-radius:50%;background:${d.color};flex-shrink:0;
+                             animation:_co_pulse2 2s ease-in-out infinite;"></div>
+                <div style="flex:1;font-size:14px;color:var(--re-wt);">${d.name}</div>
+                <div style="width:90px;height:4px;background:#1a0005;border-radius:2px;overflow:hidden;">
+                  <div style="height:100%;width:${barPct}%;background:${d.color};transition:width .5s;"></div>
                 </div>
-                <div style="font-size:14px;font-weight:700;color:${dc};min-width:65px;text-align:right;">${fmt(d.val,0)} W</div>
+                <div style="font-size:15px;font-weight:700;color:${d.color};min-width:70px;text-align:right;">
+                  ${fmt(d.val, 0)} W
+                </div>
               </div>`;
           }) : html`
-            <div style="font-size:14px;color:var(--re-wtd);padding:10px 0;text-align:center;opacity:0.85;">
-              Aucun appareil actif · configurez les appareils dans l'éditeur
+            <div style="font-size:14px;color:var(--re-wtd);padding:12px 0;text-align:center;">
+              Aucun appareil actif (seuil : ${thresh} W)
             </div>`}
         </div>
 
         <!-- FOOTER -->
-        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:13px;color:${cT}77;border-top:1px solid ${cT}08;">
+        <div style="padding:6px 14px;display:flex;justify-content:space-between;font-size:12px;
+                    color:${cT}77;border-top:1px solid ${cT}15;">
           <span>SURVEILLANCE MULTI-CAPTEURS</span>
-          <span style="animation:_co_blink 1.2s step-end infinite;color:${cS}88;">● TEMPS RÉEL</span>
+          <span style="animation:_co_blink2 1.2s step-end infinite;color:${cS};">● LIVE</span>
         </div>
       </div>`;
   }
