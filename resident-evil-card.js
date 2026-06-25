@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v239 (version RICHE : widgets)
+   RESIDENT EVIL CARD v240 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -7449,13 +7449,33 @@ class ResidentEvilCardEditor extends LitElement {
               </div>`) : html``}
             ${wg.type==='plant' ? this._accordion(`pl_sensors${wi}`,'CAPTEURS DE LA PLANTE','🌱','#22c55e', html`
               <div style="font-size:12px;color:#64748b;margin-bottom:8px;">Humidité, luminosité, conductivité, température…</div>
-              ${listRows('sensors',[{k:'name',l:'Nom'},{k:'entity',l:'Entité',e:true,flex:1.4}],()=>({name:'',entity:''}))}
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                ${(wg.sensors||[]).map((s,si2) => html`
+                  <div style="display:flex;gap:6px;align-items:center;">
+                    <div style="flex:1;">${this._txt(s.name, v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].sensors[si2].name=v;}), 'Nom (ex: Humidité)')}</div>
+                    <div style="flex:2;">${this._txt(s.entity, v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].sensors[si2].entity=v;}), 'sensor.…', 're2ents')}</div>
+                    ${this._btn('🗑',()=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].sensors.splice(si2,1);}),'#ef4444')}
+                  </div>`)}
+                ${this._btn('＋ Capteur',()=>this._mutate(c=>{const ww=c.categories[ci].submenus[si].widgets[wi];if(!ww.sensors)ww.sensors=[];ww.sensors.push({name:'',entity:''});}),'#22c55e')}
+              </div>
             `, `${(wg.sensors||[]).length} capteur(s)`) : html``}
             ${(wg.type==='tracker'||wg.type==='map') ? this._accordion(`pers_${wi}`,'PERSONNES SUIVIES','👥','#818cf8', html`
-              ${listRows('persons',[
-                {k:'name',l:'Nom'},{k:'person',l:'person.…',e:true,flex:1.3},
-                {k:'geocoded_entity',l:'Lieu géocodé',e:true,flex:1.3},{k:'distance_entity',l:'Distance',e:true,flex:1.3},
-              ],()=>({name:'',person:''}))}
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                ${(wg.persons||[]).map((p,pi) => html`
+                  <div style="background:#080e18;border:1px solid #1a2744;border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:5px;">
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      <div style="flex:1;">${this._lbl('Nom')}${this._txt(p.name,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].persons[pi].name=v;}),'Prénom')}</div>
+                      ${this._btn('🗑',()=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].persons.splice(pi,1);}),'#ef4444')}
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                      <div>${this._lbl('Entité person.*')}${this._txt(p.person,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].persons[pi].person=v;}),'person.…','re2ents')}</div>
+                      <div>${this._lbl('Distance')}${this._txt(p.distance_entity,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].persons[pi].distance_entity=v;}),'sensor.…','re2ents')}</div>
+                      <div>${this._lbl('Lieu géocodé')}${this._txt(p.geocoded_entity,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].persons[pi].geocoded_entity=v;}),'sensor.…','re2ents')}</div>
+                      <div>${this._lbl('Batterie')}${this._txt(p.battery_entity,v=>this._mutate(c=>{c.categories[ci].submenus[si].widgets[wi].persons[pi].battery_entity=v;}),'sensor.…','re2ents')}</div>
+                    </div>
+                  </div>`)}
+                ${this._btn('＋ Personne',()=>this._mutate(c=>{const ww=c.categories[ci].submenus[si].widgets[wi];if(!ww.persons)ww.persons=[];ww.persons.push({name:'',person:'',distance_entity:'',geocoded_entity:'',battery_entity:''});}),'#818cf8')}
+              </div>
             `, `${(wg.persons||[]).length} personne(s)`) : html``}
           </div>
         </div>`;
