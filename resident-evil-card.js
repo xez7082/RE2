@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v245 (version RICHE : widgets)
+   RESIDENT EVIL CARD v246 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3005,11 +3005,10 @@ class ResidentEvilCard extends LitElement {
   
   _renderAtelierWidget(w, sizeStyle, noBorder=false) {
     const fv  = (eid) => { if(!eid) return null; const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
-    const fmt = (v, d=0, suf='') => v!=null ? v.toFixed(d).replace('.',',')+suf : '--';
+    const fmt = (v, d=0) => v!=null ? v.toFixed(d).replace('.',',') : '--';
 
     const machines = (w.machines||[]).map(m => ({
       name:    m.name||'Machine',
-      icon:    m.icon||'⚙',
       power:   fv(m.power_entity),
       voltage: fv(m.voltage_entity),
       current: fv(m.current_entity),
@@ -3017,102 +3016,104 @@ class ResidentEvilCard extends LitElement {
       color:   m.color||'#f59e0b',
     }));
 
-    const circuitMax  = parseFloat(w.circuit_max_a) || 16;
-    const totalW      = machines.reduce((s,m) => s+(m.power||0), 0);
-    const totalA      = machines.reduce((s,m) => s+(m.current||0), 0);
-    const availA      = Math.max(0, circuitMax - totalA);
-    const loadPct     = Math.min(100, (totalA / circuitMax) * 100);
-    const loadCol     = loadPct>85?'#ff3300':loadPct>65?'#f59e0b':'#22c55e';
-    const circuitOk   = loadPct < 90;
+    const circuitMax = parseFloat(w.circuit_max_a) || 16;
+    const totalW     = machines.reduce((s,m) => s+(m.power||0), 0);
+    const totalA     = machines.reduce((s,m) => s+(m.current||0), 0);
+    const availA     = Math.max(0, circuitMax - totalA);
+    const loadPct    = Math.min(100, (totalA / circuitMax) * 100);
+    const loadCol    = loadPct>85?'#ff3300':loadPct>65?'#f59e0b':'#22c55e';
+    const circuitOk  = loadPct < 90;
+    const thresh     = parseFloat(w.threshold)||5;
+    const nbActive   = machines.filter(m=>m.power!=null && m.power>thresh).length;
 
-    const cA = w.col_accent  || '#f59e0b';
-    const cD = w.col_danger  || '#ef4444';
-    const cG = w.col_ok      || '#22c55e';
+    const cA = w.col_accent || '#f59e0b';
+    const cD = w.col_danger || '#ef4444';
+    const cG = w.col_ok     || '#22c55e';
 
     return html`
-      <div style="${sizeStyle}background:#050505;border:1px solid ${cD}22;border-radius:8px;
+      <div style="${sizeStyle}background:#060400;border:1px solid ${cD}33;border-radius:8px;
                   overflow:hidden;font-family:'Courier New',monospace;">
         <style>
-          @keyframes _at_scan{0%{left:-40%}100%{left:110%}}
-          @keyframes _at_pulse{0%,100%{opacity:1}50%{opacity:0.25}}
-          @keyframes _at_blink{0%,100%{opacity:1}50%{opacity:0}}
+          @keyframes _at_scan2{0%{left:-40%}100%{left:110%}}
+          @keyframes _at_pulse2{0%,100%{opacity:1}50%{opacity:0.3}}
+          @keyframes _at_blink2{0%,100%{opacity:1}50%{opacity:0}}
         </style>
 
         <!-- HEADER -->
-        <div style="background:#0d0008;border-bottom:1px solid ${cD}18;padding:10px 14px;
+        <div style="background:#0d0800;border-bottom:2px solid ${cD}33;padding:12px 16px;
                     display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;">
           <div style="position:absolute;top:0;left:0;right:0;height:1px;overflow:hidden;">
-            <div style="position:absolute;width:40%;height:1px;background:${cD}55;animation:_at_scan 4s linear infinite;"></div>
+            <div style="position:absolute;width:40%;height:1px;background:${cD}77;animation:_at_scan2 4s linear infinite;"></div>
           </div>
-          <div style="font-size:14px;color:${cD};font-weight:700;letter-spacing:2px;">
+          <div style="font-size:16px;color:${cD};font-weight:700;letter-spacing:2px;">
             ${w.title||'⚡ SÉCURITÉ ÉLECTRIQUE — ATELIER'}
           </div>
-          <div style="font-size:12px;font-weight:700;padding:3px 12px;border-radius:3px;
-                      background:${circuitOk?cG+'22':cD+'22'};color:${circuitOk?cG:cD};
-                      border:1px solid ${circuitOk?cG+'44':cD+'44'};">
+          <div style="font-size:13px;font-weight:700;padding:5px 16px;border-radius:4px;
+                      background:${circuitOk?cG+'33':cD+'33'};color:${circuitOk?cG:cD};
+                      border:1px solid ${circuitOk?cG:cD};">
             ${circuitOk?'✓ CIRCUIT OK':'⚠ SURCHARGE'}
           </div>
         </div>
 
-        <!-- MÉTRIQUES CIRCUIT -->
+        <!-- 4 MÉTRIQUES -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;
-                    border-bottom:1px solid ${cD}10;">
-          ${[[`${fmt(totalW,0)} W`,'CHARGE TOTALE',cD],[`${fmt(totalA,1)} A`,'COURANT',cA],[`${circuitMax} A`,'CIRCUIT MAX','#475569'],[`${fmt(availA,1)} A`,'DISPONIBLE',cG]].map(([v,l,c])=>html`
-            <div style="padding:10px 12px;border-right:1px solid ${cD}08;">
-              <div style="font-size:11px;color:${c};letter-spacing:1px;margin-bottom:4px;">${l}</div>
-              <div style="font-size:20px;font-weight:900;color:${c};">${v}</div>
+                    border-bottom:1px solid ${cD}22;background:#090500;">
+          ${[[`${fmt(totalW,0)} W`,'CHARGE TOTALE',cD],[`${fmt(totalA,1)} A`,'COURANT',cA],[`${circuitMax} A`,'CIRCUIT MAX','#64748b'],[`${fmt(availA,1)} A`,'DISPONIBLE',cG]].map(([v,l,col])=>html`
+            <div style="padding:14px 16px;border-right:1px solid ${cD}15;">
+              <div style="font-size:12px;color:${col};letter-spacing:2px;margin-bottom:6px;font-weight:700;">${l}</div>
+              <div style="font-size:28px;font-weight:900;color:${col};">${v}</div>
             </div>`)}
         </div>
 
-        <!-- BARRE DE CHARGE -->
-        <div style="padding:8px 14px;border-bottom:1px solid ${cD}10;">
-          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;">
-            <span style="color:${cD}55;">0 A</span>
-            <span style="color:${loadCol};font-weight:700;">${fmt(totalA,1)}A / ${circuitMax}A — ${loadPct.toFixed(0)}% DU CIRCUIT</span>
-            <span style="color:${cD}55;">${circuitMax} A</span>
+        <!-- BARRE CHARGE -->
+        <div style="padding:10px 16px;border-bottom:1px solid ${cD}15;background:#070400;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:6px;">
+            <span style="color:${cD}88;">0 A</span>
+            <span style="color:${loadCol};">${fmt(totalA,1)}A / ${circuitMax}A — ${loadPct.toFixed(0)}% DU CIRCUIT</span>
+            <span style="color:${cD}88;">${circuitMax} A</span>
           </div>
-          <div style="height:5px;background:#1a0005;border-radius:3px;overflow:hidden;">
-            <div style="height:100%;width:${loadPct}%;background:linear-gradient(90deg,${cG},${cA},${loadCol});
-                         border-radius:3px;transition:width .8s;"></div>
+          <div style="height:8px;background:#1a0800;border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:${loadPct||0.5}%;background:linear-gradient(90deg,${cG},${cA},${loadCol});
+                         border-radius:4px;transition:width .8s;min-width:4px;"></div>
           </div>
         </div>
 
         <!-- LISTE MACHINES -->
-        <div style="padding:8px 14px;">
-          <div style="font-size:11px;color:${cA}55;letter-spacing:2px;margin-bottom:8px;">
-            UNITÉS SURVEILLÉES — ${machines.filter(m=>m.power>0).length} / ${machines.length} ACTIVES
+        <div style="padding:10px 16px;">
+          <div style="font-size:12px;color:${cA};letter-spacing:2px;margin-bottom:10px;font-weight:700;">
+            UNITÉS SURVEILLÉES — ${nbActive} / ${machines.length} ACTIVES
           </div>
           ${machines.map(m => {
-            const on = m.power != null && m.power > (parseFloat(w.threshold)||5);
-            const mc = on ? (m.color||cA) : '#334155';
-            const barPct = totalW>0 && m.power ? Math.min(100,(m.power/totalW)*100) : 0;
+            const on  = m.power!=null && m.power>thresh;
+            const mc  = on ? (m.color||cA) : '#475569';
+            const barW= totalW>0&&m.power ? Math.min(100,(m.power/totalW)*100) : 0;
             return html`
-              <div style="display:flex;align-items:center;gap:10px;padding:7px 0;
-                           border-bottom:1px solid ${cD}08;">
-                <div style="width:9px;height:9px;border-radius:50%;background:${mc};flex-shrink:0;
-                             ${on?'animation:_at_pulse 2s ease-in-out infinite;':''}"></div>
-                <div style="flex:1;font-size:13px;color:${on?'#e2e8f0':'#475569'};">${m.name}</div>
-                <div style="width:70px;display:flex;flex-direction:column;gap:2px;">
-                  <div style="height:3px;background:#1a0005;border-radius:1px;overflow:hidden;">
-                    <div style="height:100%;width:${barPct}%;background:${mc};transition:width .5s;"></div>
-                  </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;
+                           border-bottom:1px solid ${cA}15;">
+                <div style="width:11px;height:11px;border-radius:50%;background:${mc};flex-shrink:0;
+                             ${on?'animation:_at_pulse2 2s ease-in-out infinite;':'opacity:0.4;'}"></div>
+                <div style="flex:1;font-size:14px;font-weight:700;
+                             color:${on?'#e2e8f0':'#64748b'};">${m.name}</div>
+                <div style="width:80px;height:3px;background:#1a0800;border-radius:2px;overflow:hidden;flex-shrink:0;">
+                  <div style="height:100%;width:${barW}%;background:${mc};transition:width .5s;"></div>
                 </div>
-                <span style="font-size:11px;color:#475569;width:45px;text-align:right;">${fmt(m.voltage,0)} V</span>
-                <span style="font-size:11px;color:#818cf8;width:45px;text-align:right;">${fmt(m.current,1)} A</span>
-                <span style="font-size:14px;font-weight:700;color:${mc};width:70px;text-align:right;">${fmt(m.power,0)} W</span>
-                ${m.day!=null?html`<span style="font-size:11px;color:#475569;width:55px;text-align:right;">${fmt(m.day,2)} kWh</span>`:html``}
+                <span style="font-size:13px;color:#64748b;width:52px;text-align:right;flex-shrink:0;">${fmt(m.voltage,0)} V</span>
+                <span style="font-size:13px;color:#818cf8;font-weight:700;width:52px;text-align:right;flex-shrink:0;">${fmt(m.current,2)} A</span>
+                <span style="font-size:16px;font-weight:900;color:${mc};width:72px;text-align:right;flex-shrink:0;">${fmt(m.power,0)} W</span>
+                ${m.day!=null?html`<span style="font-size:12px;color:#475569;width:60px;text-align:right;flex-shrink:0;">${fmt(m.day,2)} kWh</span>`:html``}
               </div>`;
           })}
         </div>
 
         <!-- FOOTER -->
-        <div style="padding:5px 14px;display:flex;justify-content:space-between;font-size:11px;
-                    color:${cD}33;border-top:1px solid ${cD}08;">
+        <div style="padding:6px 16px;display:flex;justify-content:space-between;font-size:12px;
+                    color:${cA}44;border-top:1px solid ${cA}11;">
           <span>CIRCUIT ${w.circuit_label||'ATELIER'} · ${w.circuit_voltage||230}V / ${circuitMax}A</span>
-          <span style="animation:_at_blink 1.2s step-end infinite;color:${cG}44;">● LIVE</span>
+          <span style="animation:_at_blink2 1.2s step-end infinite;color:${cG}88;">● LIVE</span>
         </div>
       </div>`;
   }
+
 
   _renderApplianceWidget(w, sizeStyle, noBorder=false) {
     const activeTab  = this[tabKey] || 0;
