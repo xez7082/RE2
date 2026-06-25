@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v242 (version RICHE : widgets)
+   RESIDENT EVIL CARD v243 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -5511,22 +5511,24 @@ class ResidentEvilCard extends LitElement {
           <div style="font-size:13px;color:${cT};letter-spacing:2px;margin-bottom:10px;">
             TOP CONSOMMATEURS ACTIFS — ${devices.length} / ${allDevices.length} UNITÉS
           </div>
-          ${devices.length > 0 ? devices.map(d => {
-            const barPct = maxDev > 0 ? Math.min(100, (d.val / maxDev) * 100) : 0;
-            return html`
-              <div style="display:flex;align-items:center;gap:10px;padding:7px 0;
-                           border-bottom:1px solid ${cT}20;">
-                <div style="width:10px;height:10px;border-radius:50%;background:${d.color};flex-shrink:0;
-                             animation:_co_pulse2 2s ease-in-out infinite;"></div>
-                <div style="flex:1;font-size:14px;color:var(--re-wt);">${d.name}</div>
-                <div style="width:90px;height:4px;background:#1a0005;border-radius:2px;overflow:hidden;">
-                  <div style="height:100%;width:${barPct}%;background:${d.color};transition:width .5s;"></div>
-                </div>
-                <div style="font-size:15px;font-weight:700;color:${d.color};min-width:70px;text-align:right;">
-                  ${fmt(d.val, 0)} W
-                </div>
-              </div>`;
-          }) : html`
+          ${devices.length > 0 ? html`
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;">
+              ${devices.map(d => {
+                const barPct = maxDev > 0 ? Math.min(100, (d.val / maxDev) * 100) : 0;
+                return html`
+                  <div style="display:flex;align-items:center;gap:8px;padding:6px 0;
+                               border-bottom:1px solid ${cT}20;">
+                    <div style="width:9px;height:9px;border-radius:50%;background:${d.color};flex-shrink:0;
+                                 animation:_co_pulse2 2s ease-in-out infinite;"></div>
+                    <div style="flex:1;font-size:13px;color:var(--re-wt);white-space:nowrap;
+                                 overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+                    <div style="font-size:14px;font-weight:700;color:${d.color};
+                                 white-space:nowrap;flex-shrink:0;">
+                      ${fmt(d.val, 0)} W
+                    </div>
+                  </div>`;
+              })}
+            </div>` : html`
             <div style="font-size:14px;color:var(--re-wtd);padding:12px 0;text-align:center;">
               Aucun appareil actif (seuil : ${thresh} W)
             </div>`}
