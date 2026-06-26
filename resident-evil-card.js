@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v259 (version RICHE : widgets)
+   RESIDENT EVIL CARD v260 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3064,17 +3064,172 @@ class ResidentEvilCard extends LitElement {
   }
 
   _renderMovaWidget(w, sizeStyle, noBorder=false) {
-    const fakeConfig = {
-      ...w,
-      categories:[{ label:'Robots', icon:'mdi:robot-vacuum', items:[{
-        type:'robot_mower', name: w.name||'MOVA', subtitle: w.subtitle||'ViAX 250',
-        entity: w.entity||'lawn_mower.eve', map_camera: w.map_camera||'camera.eve_carte',
-        mower_prefix: w.mower_prefix||'eve',
-        img: w.img||'/local/images/viax.png',
-      }]}],
-      view: 0,
+    const p      = w.mower_prefix || 'eve';
+    const st     = this.hass?.states['lawn_mower.' + p];
+    const state  = st?.state || 'unknown';
+    const attr   = st?.attributes || {};
+    const batSt  = this.hass?.states['sensor.' + p + '_batterie'];
+    const bat    = batSt ? parseFloat(batSt.state) : (attr.battery_level || null);
+    const batCol = bat == null ? '#475569' : bat >= 70 ? '#22c55e' : bat >= 30 ? '#f59e0b' : '#ef4444';
+    const isOn   = state === 'mowing';
+    const stMap  = {docked:'CHARGE COMPLÈTE',mowing:'TONTE EN COURS',paused:'EN PAUSE',
+                    returning:'RETOUR BASE',error:'ERREUR',edgedocking:'RETOUR',docking:'RETOUR'};
+    const stLbl  = stMap[state] || state.toUpperCase();
+    const stCol  = isOn ? '#22c55e' : state === 'docked' ? '#38bdf8' : '#475569';
+    const camUrl = w.map_camera && this.hass?.states[w.map_camera]?.attributes?.entity_picture;
+    const progSt = this.hass?.states['sensor.' + p + '_progression_de_la_tonte'];
+    const prog   = progSt && !['unavailable','unknown'].includes(progSt.state) ? parseFloat(progSt.state) : null;
+    const fv     = (eid) => { if(!eid) return null; const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const lames  = fv('sensor.'+p+'_etat_des_lames');
+    const maint  = fv('sensor.'+p+'_etat_de_maintenance');
+    const brosse = fv('sensor.'+p+'_etat_de_la_brosse');
+    const mapSt  = this.hass?.states['select.'+p+'_map'];
+    const zoneSt = this.hass?.states['select.'+p+'_zone'];
+    const actSt  = this.hass?.states['select.'+p+'_mowing_action'];
+    const callMow = (svc, data={}) => this.hass.callService('lawn_mower', svc, {entity_id:'lawn_mower.'+p, ...data});
+    const callBtn = (eid) => this.hass.callService('button', 'press', {entity_id: eid});
+    const callSel = (eid, opt) => this.hass.callService('select', 'select_option', {entity_id: eid, option: opt});
+    const trOpt  = (s) => ({'All area':'Toute la surface','all_area':'Toute la surface','Select zone':'Par zones','select_zone':'Par zones','Edge':'Bordure','edge':'Bordure','Spot':'Ponctuelle'}[s]||s);
+    const cG = '#22c55e'; const cA = '#f59e0b'; const cB = '#38bdf8'; const cR = '#ef4444';
+
+    const bar = (label, val, col, btnEid) => {
+      if (val == null) return html``;
+      const c = val <= 20 ? cR : val <= 50 ? cA : col || cG;
+      return html`
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-size:11px;color:#64748b;white-space:nowrap;width:60px;">${label}</div>
+          <div style="flex:1;height:5px;background:#1a1a1a;border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${Math.min(val,100)}%;background:${c};border-radius:3px;"></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:${c};width:36px;text-align:right;">${val.toFixed(0)}%</div>
+          <button title="Réinitialiser" @click="${(e)=>{e.stopPropagation();callBtn(btnEid);}}"
+            style="padding:2px 7px;background:${c}15;border:1px solid ${c}33;border-radius:3px;
+                   font-family:inherit;font-size:11px;color:${c};cursor:pointer;">↺</button>
+        </div>`;
     };
-    return this._renderApplianceWidget(fakeConfig, sizeStyle, noBorder);
+
+    const selRow = (label, eid, st2) => {
+      if (!st2) return html``;
+      const opts = st2.attributes.options || [];
+      const cur  = st2.state;
+      if (!opts.length) return html``;
+      return html`
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-size:11px;color:#64748b;white-space:nowrap;width:60px;">${label}</div>
+          <select style="flex:1;background:#0d1117;border:1px solid ${cG}33;color:#e2e8f0;padding:4px 6px;
+                          font-size:12px;border-radius:4px;font-family:inherit;"
+            @change="${(e)=>{e.stopPropagation();callSel(eid,e.target.value);}}">\
+            ${opts.map(o=>html`<option value="${o}" ?selected="${o===cur}">${trOpt(o)}</option>`)}
+          </select>
+        </div>`;
+    };
+
+    return html`
+      <div style="${sizeStyle}background:#020a02;border:1px solid ${cG}33;border-radius:8px;
+                  overflow:hidden;font-family:'Courier New',monospace;">
+        <style>
+          @keyframes _mv_scan{0%{left:-40%}100%{left:110%}}
+          @keyframes _mv_pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+          @keyframes _mv_blink{0%,100%{opacity:1}50%{opacity:0}}
+        </style>
+
+        <!-- HEADER -->
+        <div style="background:#030e03;border-bottom:2px solid ${cG}33;padding:10px 16px;
+                    display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;overflow:hidden;">
+            <div style="position:absolute;width:40%;height:2px;background:${cG};animation:_mv_scan 4s linear infinite;"></div>
+          </div>
+          ${w.img?html`<img src="${w.img}" style="width:52px;height:52px;border-radius:8px;object-fit:contain;
+                       background:#0a1a0a;border:2px solid ${cG}33;flex-shrink:0;">`:html``}
+          <div style="flex:1;">
+            <div style="font-size:17px;font-weight:900;color:${cG};letter-spacing:2px;">${w.name||'MOVA'}</div>
+            <div style="font-size:12px;color:#475569;margin-top:2px;">${w.subtitle||'ViAX 250'} · lawn_mower.${p}</div>
+          </div>
+          <div style="text-align:center;padding:6px 12px;background:#0a1a0a;border:1px solid ${batCol}33;border-radius:5px;">
+            <div style="font-size:10px;color:${batCol};margin-bottom:2px;">BATTERIE</div>
+            <div style="font-size:22px;font-weight:900;color:${batCol};">${bat!=null?bat+'%':'--'}</div>
+          </div>
+          <div style="padding:6px 14px;background:${stCol}15;border:1px solid ${stCol}44;border-radius:5px;
+                      font-size:13px;font-weight:700;color:${stCol};">
+            ${isOn?html`<span style="animation:_mv_pulse 1.5s infinite;">●</span> `:html``}${stLbl}
+          </div>
+        </div>
+
+        <!-- CORPS : 2 COLONNES -->
+        <div style="display:grid;grid-template-columns:1fr 220px;gap:0;">
+
+          <!-- COLONNE GAUCHE -->
+          <div style="padding:12px 16px;border-right:1px solid ${cG}12;display:flex;flex-direction:column;gap:10px;">
+
+            <!-- PROGRESSION -->
+            ${prog!=null?html`
+            <div>
+              <div style="font-size:11px;color:${cG}77;letter-spacing:2px;margin-bottom:5px;">PROGRESSION TONTE</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="flex:1;height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden;">
+                  <div style="height:100%;width:${prog}%;background:linear-gradient(90deg,${cG},#86efac);border-radius:4px;"></div>
+                </div>
+                <span style="font-size:15px;font-weight:900;color:${cG};">${prog.toFixed(0)}%</span>
+              </div>
+            </div>`:html``}
+
+            <!-- SÉLECTEURS -->
+            <div>
+              <div style="font-size:11px;color:${cG}77;letter-spacing:2px;margin-bottom:6px;">CONFIGURATION</div>
+              <div style="display:flex;flex-direction:column;gap:5px;">
+                ${selRow('CARTE',  'select.'+p+'_map',          mapSt)}
+                ${selRow('ZONE',   'select.'+p+'_zone',         zoneSt)}
+                ${selRow('ACTION', 'select.'+p+'_mowing_action',actSt)}
+              </div>
+            </div>
+
+            <!-- CONSOMMABLES -->
+            <div>
+              <div style="font-size:11px;color:${cA}77;letter-spacing:2px;margin-bottom:6px;">CONSOMMABLES</div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                ${bar('LAMES',  lames,  cG, 'button.'+p+'_reinitialiser_le_compteur_des_lames')}
+                ${bar('MAINT.', maint,  cB, 'button.'+p+'_reinitialiser_le_compteur_de_maintenance')}
+                ${bar('BROSSE', brosse, '#818cf8', 'button.'+p+'_reinitialiser_le_compteur_de_brosse')}
+              </div>
+            </div>
+
+            <!-- BOUTONS -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:auto;">
+              ${[[`▶ TONDRE`,()=>callMow('start_mowing'),cG],[`⏸ PAUSE`,()=>callMow('pause'),cA],
+                 [`⌂ BASE`,()=>callMow('dock'),cB],[`⌂ BASE DOUX`,()=>callBtn('button.'+p+'_revenir_a_la_base_sans_arreter_la_tache'),'#475569']
+                ].map(([l,fn,c])=>html`
+              <button @click="${(e)=>{e.stopPropagation();fn();}}"
+                style="padding:8px 6px;background:${c}18;border:1px solid ${c}44;border-radius:5px;
+                       font-family:inherit;font-size:13px;font-weight:700;color:${c};cursor:pointer;">${l}</button>`)}
+            </div>
+          </div>
+
+          <!-- COLONNE DROITE : CARTE -->
+          <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:11px;color:${cG}55;letter-spacing:2px;">📷 CARTE LIVE</div>
+            ${camUrl?html`
+              <div style="flex:1;background:#0a1a0a;border:1px solid ${cG}22;border-radius:6px;overflow:hidden;
+                           position:relative;min-height:180px;">
+                <img src="${camUrl+'&_t='+(Math.floor(Date.now()/5000)*5000)}"
+                     style="width:100%;height:100%;object-fit:contain;">
+                ${isOn?html`<div style="position:absolute;top:5px;right:5px;font-size:11px;color:${cG};
+                             background:#000000aa;padding:2px 6px;border:1px solid ${cG}44;border-radius:3px;
+                             animation:_mv_blink 1.5s step-end infinite;">● LIVE</div>`:html``}
+              </div>`:html`
+              <div style="flex:1;background:#0a1a0a;border:1px solid ${cG}15;border-radius:6px;
+                           display:flex;align-items:center;justify-content:center;min-height:180px;">
+                <div style="text-align:center;color:${cG}33;font-size:12px;">📷 ${w.map_camera||'camera.eve_carte'}</div>
+              </div>`}
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="padding:5px 16px;border-top:1px solid ${cG}15;display:flex;justify-content:space-between;
+                    font-size:11px;color:${cG}55;">
+          <span>UNIT-MOW-01 · lawn_mower.${p}</span>
+          <span style="animation:_mv_blink 2s step-end infinite;color:${cG}88;">● LIVE</span>
+        </div>
+      </div>`;
   }
 
   _renderAtelierWidget(w, sizeStyle, noBorder=false) {
