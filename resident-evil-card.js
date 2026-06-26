@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v253 (version RICHE : widgets)
+   RESIDENT EVIL CARD v254 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1965,10 +1965,24 @@ class ResidentEvilCard extends LitElement {
               <div style="font-size:14px;font-weight:900;color:${cR};">${corpVal.toUpperCase()}</div>
             </div>`:html``}
           </div>
+          <!-- PAS -->
+          <div style="text-align:center;padding:8px 12px;background:#0a0800;border:1px solid ${cA}44;border-radius:6px;">
+            <div style="font-size:11px;color:${cA};letter-spacing:1px;margin-bottom:3px;">👣 PAS</div>
+            <div style="font-size:22px;font-weight:900;color:${cA};">
+              ${fmt(fv(sensors.find(s=>s.entity?.includes('steps'))?.entity),0)}
+            </div>
+          </div>
+          <!-- CALORIES -->
+          <div style="text-align:center;padding:8px 12px;background:#0a0400;border:1px solid #ff6b0044;border-radius:6px;">
+            <div style="font-size:11px;color:#ff6b00;letter-spacing:1px;margin-bottom:3px;">🔥 CALORIES</div>
+            <div style="font-size:22px;font-weight:900;color:#ff6b00;">
+              ${fmt(fv(sensors.find(s=>s.entity?.includes('total_calor'))?.entity),0)}
+            </div>
+          </div>
           <!-- BPM -->
-          <div style="text-align:center;padding:8px 14px;background:#0a0002;border:1px solid ${cR}44;border-radius:6px;">
+          <div style="text-align:center;padding:8px 12px;background:#0a0002;border:1px solid ${cR}44;border-radius:6px;">
             <div style="font-size:11px;color:${cR};letter-spacing:1px;margin-bottom:3px;">❤ BPM</div>
-            <div style="font-size:26px;font-weight:900;color:${cR};animation:_do_bpm 1.2s ease-in-out infinite;">
+            <div style="font-size:22px;font-weight:900;color:${cR};animation:_do_bpm 1.2s ease-in-out infinite;">
               ${bpmVal!=null?Math.round(bpmVal):'--'}
             </div>
           </div>
@@ -2050,10 +2064,14 @@ class ResidentEvilCard extends LitElement {
         </div>
 
         <!-- FOOTER -->
-        <div style="padding:6px 18px;display:flex;justify-content:space-between;font-size:12px;
-                    color:${cR}44;border-top:1px solid ${cR}15;">
-          <span>SOURCE: WITHINGS · HOME ASSISTANT</span>
-          <span style="animation:_do_blink 2s step-end infinite;color:${cV}44;">● SYNC</span>
+        <div style="padding:8px 18px;display:flex;justify-content:space-between;align-items:center;
+                    border-top:2px solid ${cR}22;background:#0a0006;">
+          <span style="font-size:13px;font-weight:700;color:#94a3b8;letter-spacing:1px;">
+            📡 SOURCE : WITHINGS · HOME ASSISTANT
+          </span>
+          <span style="font-size:13px;font-weight:900;animation:_do_blink 2s step-end infinite;color:${cV};">
+            ● SYNC LIVE
+          </span>
         </div>
       </div>`;
   }
