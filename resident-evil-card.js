@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v260 (version RICHE : widgets)
+   RESIDENT EVIL CARD v261 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1538,14 +1538,18 @@ class ResidentEvilCard extends LitElement {
       </div>`;
 
     const renderProg = () => {
-      const vol    = Number(w.lz_volume   || 500);
-      const power  = Number(w.lz_power_w  || 2000);
-      const loss   = Number(w.lz_heat_loss || 25) / 100;
-      const effP   = power * (1 - loss);
-      const deltaT = (tTemp || 34) - (wTemp || 20);
-      const ttrMin = deltaT > 0 ? Math.round((vol * 4186 * deltaT) / (effP * 60)) : 0;
+      const vol    = Number(w.lz_volume    || 500);
+      const power  = Number(w.lz_power_w   || 2000);
+      const lossW  = Number(w.lz_heat_loss || 25);   // W/°C pertes
+      const tCur   = wTemp  || 20;
+      const tTgt   = tTemp  || 34;
+      const deltaT = Math.max(0, tTgt - tCur);
+      const pEff   = power - lossW * (deltaT / 2);   // puissance nette moyenne
+      const ttrSec = deltaT > 0 && pEff > 0 ? (vol * 4186 * deltaT) / pEff : 0;
+      const ttrMin = Math.round(ttrSec / 60);
       const ttrH   = Math.floor(ttrMin / 60);
       const ttrM   = ttrMin % 60;
+      const ttrStr = `${ttrH}h ${String(ttrM).padStart(2,'0')}m`;
 
       const readyStr = schedState
         ? `${String(schedH).padStart(2,'0')}:${String(schedM).padStart(2,'0')}`
@@ -1558,90 +1562,97 @@ class ResidentEvilCard extends LitElement {
         ? `${String(startH).padStart(2,'0')}:${String(startM).padStart(2,'0')}`
         : '--:--';
 
-      const ttrEntity = w.ttrEntity ? this.hass?.states[w.ttrEntity] : null;
-      const ttrDisplay = ttrEntity
-        ? ttrEntity.state + ' ' + (ttrEntity.attributes.unit_of_measurement || '')
-        : `${ttrH}h ${String(ttrM).padStart(2,'0')}m`;
+      // Temps restant avant démarrage
+      const now  = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const startMin = startH * 60 + startM;
+      let diffMin = startMin - nowMin;
+      if (diffMin < 0) diffMin += 1440;
+      const diffStr = schedState
+        ? (diffMin > 60 ? `dans ${Math.floor(diffMin/60)}h ${diffMin%60}m` : `dans ${diffMin} min`)
+        : '';
+
+      // Coût estimé (kWh × tarif si dispo)
+      const tarif   = w.kwh_price ? (parseFloat(this.hass?.states[w.kwh_price]?.state) || 0) : 0;
+      const energyKwh = (power * (ttrMin / 60)) / 1000;
+      const coutStr  = tarif > 0 ? (energyKwh * tarif).toFixed(2) + ' €' : energyKwh.toFixed(2) + ' kWh';
+
+      // Progression temp actuelle
+      const tempMin = Number(w.target_temp_min || 10);
+      const tempPct = tTgt > tempMin ? Math.min(100, Math.max(0, ((tCur - tempMin) / (tTgt - tempMin)) * 100)) : 0;
+
+      // Prog enable
+      const pe   = w.progEnableEntity ? this.hass?.states[w.progEnableEntity] : null;
+      const pOn  = pe?.state === 'on';
+
+      const cB = '#00ccff'; const cG = '#22c55e'; const cA = '#f59e0b'; const cR = '#ef4444';
 
       return html`
-        <div style="display:flex;flex-direction:column;gap:8px;height:100%;">
-          ${schedId && schedState ? html`
-            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px;flex-shrink:0;">
-              <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1px;margin-bottom:8px;">
-                <ha-icon icon="mdi:clock-time-four-outline" style="--mdc-icon-size:14px;color:#6b8eff;"></ha-icon>
-                HEURE SOUHAITÉE PRÊT
-              </div>
-              <div style="text-align:center;font-size:42px;font-weight:800;color:#fff;letter-spacing:-1px;line-height:1;">
-                ${readyStr}
-              </div>
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;">
-                ${[[-1,0,'-1h'],[0,-15,'-15m'],[0,15,'+15m'],[1,0,'+1h']].map(([dh,dm,lbl]) => html`
-                  <button style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);
-                                 border-radius:8px;padding:7px 0;color:#fff;font-size:12px;
-                                 font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;"
-                    @click="${(e)=>{e.stopPropagation();changeSchedTime(dh,dm);}}">${lbl}</button>`)}
-              </div>
-            </div>
-          ` : html`
-            <div style="color:rgba(255,255,255,.3);font-size:12px;text-align:center;padding:10px;">
-              Configurez scheduleEntity pour activer la programmation
-            </div>`}
+        <div style="display:flex;flex-direction:column;gap:8px;height:100%;font-family:'Courier New',monospace;">
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-shrink:0;">
-            <div style="background:rgba(107,142,255,.06);border:1px solid rgba(107,142,255,.2);border-radius:12px;padding:10px;text-align:center;">
-              <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:1px;margin-bottom:4px;">TEMPS DE CHAUFFE</div>
-              <div style="font-size:22px;font-weight:800;color:#6b8eff;line-height:1;">${ttrDisplay}</div>
-              <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;">${vol}L · ${power}W · -${Math.round(loss*100)}% pertes</div>
+          <!-- TOGGLE PROGRAMMATION -->
+          ${pe ? html`
+          <div style="display:flex;align-items:center;justify-content:space-between;
+                      padding:8px 12px;background:${pOn?cG+'12':'#0a0a0a'};
+                      border:1px solid ${pOn?cG+'44':'#1a1a1a'};border-radius:6px;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:700;color:${pOn?cG:'#475569'};letter-spacing:1px;">
+              ⏰ PROGRAMMATION ${pOn?'ACTIVE':'INACTIVE'}
+            </span>
+            <button @click="${(e)=>{e.stopPropagation();this.hass.callService('input_boolean','toggle',{entity_id:w.progEnableEntity});}}"
+              style="padding:5px 16px;background:${pOn?cG+'22':'#1a1a1a'};border:1px solid ${pOn?cG+'55':'#333'};
+                     border-radius:4px;color:${pOn?cG:'#64748b'};font-size:12px;font-weight:700;
+                     cursor:pointer;font-family:inherit;">${pOn?'◼ DÉSACTIVER':'▶ ACTIVER'}</button>
+          </div>`:html``}
+
+          <!-- 3 GRANDES MÉTRIQUES -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;
+                      background:#030e18;border:1px solid ${cB}22;border-radius:6px;overflow:hidden;flex-shrink:0;">
+            <!-- HEURE DE PRÊT -->
+            <div style="padding:10px 14px;border-right:1px solid ${cB}15;cursor:pointer;">
+              <div style="font-size:10px;color:${cB}77;letter-spacing:2px;margin-bottom:4px;">HEURE DE PRÊT</div>
+              <div style="font-size:32px;font-weight:900;color:${cB};line-height:1;">${readyStr}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:3px;margin-top:6px;">
+                ${[[-1,0,'-1h'],[0,-15,'-15m'],[0,15,'+15m'],[1,0,'+1h']].map(([dh,dm,lbl])=>html`
+                <button @click="${(e)=>{e.stopPropagation();changeSchedTime(dh,dm);}}"
+                  style="padding:3px 0;background:${cB}10;border:1px solid ${cB}22;border-radius:3px;
+                         color:${cB};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">${lbl}</button>`)}
+              </div>
             </div>
-            <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:10px;text-align:center;">
-              <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:1px;margin-bottom:4px;">LANCER LA CHAUFFE À</div>
-              <div style="font-size:22px;font-weight:800;color:#10b981;line-height:1;">${startStr}</div>
-              <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;">${wTemp!=null?wTemp.toFixed(2)+'°':'--°'} → ${tTemp!=null?tTemp+'°':'--°'} eau</div>
+            <!-- TEMP ACTUELLE -->
+            <div style="padding:10px 14px;border-right:1px solid ${cB}15;">
+              <div style="font-size:10px;color:${cA}77;letter-spacing:2px;margin-bottom:4px;">TEMP. ACTUELLE</div>
+              <div style="font-size:32px;font-weight:900;color:${cA};line-height:1;">${wTemp!=null?wTemp.toFixed(1):'-'} °C</div>
+              <div style="font-size:12px;color:#475569;margin-top:4px;">→ objectif ${tTgt}°C</div>
+              <div style="margin-top:5px;height:4px;background:#0a0a0a;border-radius:2px;overflow:hidden;">
+                <div style="height:100%;width:${tempPct.toFixed(1)}%;background:linear-gradient(90deg,${cB},${cA});border-radius:2px;"></div>
+              </div>
+            </div>
+            <!-- DÉMARRAGE AUTO -->
+            <div style="padding:10px 14px;">
+              <div style="font-size:10px;color:${cG}77;letter-spacing:2px;margin-bottom:4px;">DÉMARRAGE AUTO</div>
+              <div style="font-size:32px;font-weight:900;color:${cG};line-height:1;">${startStr}</div>
+              <div style="font-size:12px;color:#475569;margin-top:4px;">${diffStr}</div>
             </div>
           </div>
 
-          ${wTemp!=null && tTemp!=null ? html`
-            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px;flex-shrink:0;">
-              <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:6px;">
-                <span style="color:rgba(255,255,255,.5);">Température actuelle</span>
-                <span style="color:${tc};">${wTemp.toFixed(2)}° / ${tTemp}°</span>
-              </div>
-              <div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;">
-                <div style="height:100%;width:${Math.min(100,(wTemp/tTemp)*100).toFixed(2)}%;
-                            background:linear-gradient(90deg,#6b8eff,${tc});
-                            border-radius:4px;transition:width .6s ease;"></div>
-              </div>
-            </div>
-          ` : html``}
+          <!-- GRILLE CALCULS -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;flex-shrink:0;">
+            ${[[`${vol} L`,'VOLUME',cB],[`${deltaT.toFixed(1)} °C`,'DELTA T',cA],
+               [`${ttrStr}`,'DURÉE EST.',cG],[coutStr,'COÛT EST.',cR]
+              ].map(([v,l,col])=>html`
+            <div style="background:#0a1a2a;border:1px solid ${col}18;border-radius:5px;padding:8px 10px;text-align:center;">
+              <div style="font-size:9px;color:${col}88;letter-spacing:1px;margin-bottom:3px;">${l}</div>
+              <div style="font-size:14px;font-weight:700;color:${col};">${v}</div>
+            </div>`)}
+          </div>
 
-          <!-- ACTIONS : programmation auto + chauffe immédiate -->
-          <div style="display:grid;grid-template-columns:${w.progEnableEntity ? '1fr 1fr' : '1fr'};gap:8px;flex-shrink:0;">
-            ${w.progEnableEntity ? (() => {
-              const pe  = this.hass?.states[w.progEnableEntity];
-              const pOn = pe?.state === 'on';
-              return html`
-                <button style="border:2px solid ${pOn?'#10b981':'rgba(255,255,255,.18)'};
-                               background:${pOn?'rgba(16,185,129,.15)':'rgba(255,255,255,.05)'};
-                               border-radius:12px;padding:12px 8px;cursor:pointer;font-family:inherit;
-                               display:flex;flex-direction:column;align-items:center;gap:4px;transition:.2s;"
-                  @click="${(e)=>{e.stopPropagation();this.hass.callService('input_boolean','toggle',{entity_id:w.progEnableEntity});}}">
-                  <span style="font-size:13px;font-weight:800;letter-spacing:1px;color:${pOn?'#10b981':'rgba(255,255,255,.5)'};">
-                    ⏰ PROGRAMMATION ${pOn?'ACTIVE':'INACTIVE'}
-                  </span>
-                  <span style="font-size:12px;color:rgba(255,255,255,.45);">
-                    ${pOn ? 'chauffe auto à ' + startStr : 'toucher pour activer'}
-                  </span>
-                </button>`;
-            })() : html``}
-            <button style="border:2px solid ${isOn?'#ff9900':'#ef4444'};
-                           background:${isOn?'rgba(255,153,0,.15)':'rgba(239,68,68,.12)'};
-                           border-radius:12px;padding:12px 8px;cursor:pointer;font-family:inherit;
-                           display:flex;flex-direction:column;align-items:center;gap:4px;transition:.2s;"
-              @click="${(e)=>{e.stopPropagation();if(tid)this.hass.callService('climate','set_hvac_mode',{entity_id:tid,hvac_mode:isOn?'off':'heat'});}}">
-              <span style="font-size:13px;font-weight:800;letter-spacing:1px;color:${isOn?'#ff9900':'#ef4444'};">
-                ${isOn ? '■ ARRÊTER LA CHAUFFE' : '🔥 CHAUFFER MAINTENANT'}
-              </span>
-              <span style="font-size:12px;color:rgba(255,255,255,.45);">${isOn ? 'chauffe en cours' : 'démarrage immédiat'}</span>
+          <!-- BOUTON CHAUFFE IMMÉDIATE -->
+          <div style="flex-shrink:0;">
+            <button @click="${(e)=>{e.stopPropagation();if(tid)this.hass.callService('climate','set_hvac_mode',{entity_id:tid,hvac_mode:isOn?'off':'heat'});}}"
+              style="width:100%;padding:10px;background:${isOn?cA+'18':cR+'12'};border:1px solid ${isOn?cA+'55':cR+'33'};
+                     border-radius:6px;color:${isOn?cA:cR};font-size:14px;font-weight:700;
+                     cursor:pointer;font-family:inherit;letter-spacing:1px;">
+              ${isOn ? '■ ARRÊTER LA CHAUFFE' : '🔥 CHAUFFER MAINTENANT'}
             </button>
           </div>
         </div>`;
