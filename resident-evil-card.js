@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v251 (version RICHE : widgets)
+   RESIDENT EVIL CARD v252 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1921,9 +1921,9 @@ class ResidentEvilCard extends LitElement {
 
     const metricRow = (label, val, col) => html`
       <div style="display:flex;justify-content:space-between;align-items:center;
-                  padding:6px 0;border-bottom:1px solid ${col}15;">
-        <span style="font-size:14px;color:#94a3b8;">${label}</span>
-        <span style="font-size:16px;font-weight:700;color:${col};">${val}</span>
+                  padding:4px 0;border-bottom:1px solid ${col}12;">
+        <span style="font-size:13px;color:#94a3b8;">${label}</span>
+        <span style="font-size:15px;font-weight:700;color:${col};">${val}</span>
       </div>`;
 
     return html`
@@ -1936,8 +1936,8 @@ class ResidentEvilCard extends LitElement {
         </style>
 
         <!-- HEADER : photo + identité + IMC + BPM -->
-        <div style="background:#0d0008;border-bottom:2px solid ${cR}33;padding:14px 18px;
-                    display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;">
+        <div style="background:#0d0008;border-bottom:2px solid ${cR}33;padding:10px 16px;
+                    display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;">
           <div style="position:absolute;top:0;left:0;right:0;height:2px;overflow:hidden;">
             <div style="position:absolute;width:40%;height:2px;background:${cR}88;animation:_do_scan 4s linear infinite;"></div>
           </div>
@@ -1969,7 +1969,7 @@ class ResidentEvilCard extends LitElement {
         </div>
 
         <!-- BARRE OBJECTIF POIDS -->
-        <div style="padding:14px 18px;border-bottom:1px solid ${cR}18;background:#090006;">
+        <div style="padding:10px 16px;border-bottom:1px solid ${cR}18;background:#090006;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
             <span style="font-size:13px;color:${cA};font-weight:700;letter-spacing:1px;">🎯 MISSION PERTE DE POIDS</span>
             <div style="display:flex;align-items:baseline;gap:6px;">
@@ -2000,8 +2000,8 @@ class ResidentEvilCard extends LitElement {
         <div style="display:grid;grid-template-columns:1fr 1fr;">
 
           <!-- 💪 COMPOSITION CORPORELLE -->
-          <div style="padding:14px 18px;border-right:1px solid ${cR}10;border-bottom:1px solid ${cR}10;">
-            <div style="font-size:12px;color:${cB};letter-spacing:2px;margin-bottom:10px;font-weight:700;">💪 COMPOSITION</div>
+          <div style="padding:10px 14px;border-right:1px solid ${cR}10;border-bottom:1px solid ${cR}10;">
+            <div style="font-size:11px;color:${cB};letter-spacing:2px;margin-bottom:8px;font-weight:700;">💪 COMPOSITION</div>
             ${byCat('composition').map(s=>
               metricRow(s.name, sv(s),
                 s.entity?.includes('graisse')||s.entity?.includes('taux')?cR:
@@ -2010,8 +2010,8 @@ class ResidentEvilCard extends LitElement {
           </div>
 
           <!-- 🏃 ACTIVITÉ -->
-          <div style="padding:14px 18px;border-bottom:1px solid ${cR}10;">
-            <div style="font-size:12px;color:${cA};letter-spacing:2px;margin-bottom:10px;font-weight:700;">🏃 ACTIVITÉ</div>
+          <div style="padding:10px 14px;border-bottom:1px solid ${cR}10;">
+            <div style="font-size:11px;color:${cA};letter-spacing:2px;margin-bottom:8px;font-weight:700;">🏃 ACTIVITÉ</div>
             ${byCat('activite').map(s=>
               metricRow(s.name, sv(s),
                 s.entity?.includes('heart')||s.entity?.includes('pulse')?cR:
@@ -2022,16 +2022,16 @@ class ResidentEvilCard extends LitElement {
           </div>
 
           <!-- 🌙 SOMMEIL -->
-          <div style="padding:14px 18px;border-right:1px solid ${cR}10;">
-            <div style="font-size:12px;color:${cB};letter-spacing:2px;margin-bottom:10px;font-weight:700;">🌙 SOMMEIL</div>
+          <div style="padding:10px 14px;border-right:1px solid ${cR}10;">
+            <div style="font-size:11px;color:${cB};letter-spacing:2px;margin-bottom:8px;font-weight:700;">🌙 SOMMEIL</div>
             ${byCat('sommeil').length>0?byCat('sommeil').map((s,i)=>
               metricRow(s.name, sv(s), i===0?cV:cB)
             ):html`<div style="font-size:13px;color:#334155;padding:8px 0;">Aucun capteur sommeil</div>`}
           </div>
 
           <!-- 📊 SANTÉ -->
-          <div style="padding:14px 18px;">
-            <div style="font-size:12px;color:${cV};letter-spacing:2px;margin-bottom:10px;font-weight:700;">📊 SANTÉ</div>
+          <div style="padding:10px 14px;">
+            <div style="font-size:11px;color:${cV};letter-spacing:2px;margin-bottom:8px;font-weight:700;">📊 SANTÉ</div>
             ${corpVal?html`
               <div style="font-size:20px;font-weight:900;color:${cR};margin-bottom:6px;">${corpVal.toUpperCase()}</div>`:html``}
             ${imcVal!=null?metricRow('IMC', fmt(imcVal,1), cB):html``}
