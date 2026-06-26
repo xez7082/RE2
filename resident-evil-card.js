@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v255 (version RICHE : widgets)
+   RESIDENT EVIL CARD v256 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1914,7 +1914,7 @@ class ResidentEvilCard extends LitElement {
     const bpmVal = bpm ? fv(bpm.entity) : null;
     const imc = sensors.find(s=>s.entity?.includes('imc'));
     const imcVal = imc ? fv(imc.entity) : null;
-    const corp = sensors.find(s=>s.entity?.includes('corpulence'));
+    const corp = sensors.find(s=>s.cat==='sante'&&s.name?.toLowerCase().includes('corpulence'));
     const corpVal = corp ? fs(corp.entity) : null;
 
     const cR='#ef4444', cV='#22c55e', cB='#818cf8', cA='#f59e0b', cC='#22d3ee';
@@ -2036,7 +2036,7 @@ class ResidentEvilCard extends LitElement {
               metricRow(s.name, sv(s),
                 s.entity?.includes('heart')||s.entity?.includes('pulse')?cR:
                 s.entity?.includes('calor')?'#ff6b00':
-                s.entity?.includes('perte')||s.entity?.includes('difference')||s.entity?.includes('diff')?cV:
+                s.entity?.includes('perte')||s.entity?.includes('difference')||s.entity?.includes('diff')||s.entity?.includes('pesee')?cV:
                 cA)
             )}
           </div>
