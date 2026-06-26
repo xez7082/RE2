@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v252 (version RICHE : widgets)
+   RESIDENT EVIL CARD v253 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1953,11 +1953,17 @@ class ResidentEvilCard extends LitElement {
             <div style="font-size:20px;font-weight:900;color:${cR};letter-spacing:3px;">${w.name||'PATRICK'}</div>
             <div style="font-size:12px;color:#475569;margin-top:3px;letter-spacing:1px;">DOSSIER MÉDICAL UMBRELLA CORP. · ACTIF</div>
           </div>
-          <!-- IMC -->
-          <div style="text-align:center;padding:8px 14px;background:#0a0015;border:1px solid ${cB}44;border-radius:6px;">
-            <div style="font-size:11px;color:${cB};letter-spacing:1px;margin-bottom:3px;">IMC</div>
-            <div style="font-size:26px;font-weight:900;color:${cB};">${fmt(imcVal,1)}</div>
-            ${corpVal?html`<div style="font-size:10px;color:${cB};opacity:0.7;margin-top:2px;">${corpVal.toUpperCase()}</div>`:html``}
+          <!-- IMC + CORPULENCE -->
+          <div style="padding:8px 14px;background:#0a0015;border:1px solid ${cB}44;border-radius:6px;display:flex;gap:14px;align-items:center;">
+            <div style="text-align:center;">
+              <div style="font-size:11px;color:${cB};letter-spacing:1px;margin-bottom:3px;">IMC</div>
+              <div style="font-size:26px;font-weight:900;color:${cB};">${fmt(imcVal,1)}</div>
+            </div>
+            ${corpVal?html`
+            <div style="border-left:1px solid ${cB}33;padding-left:14px;">
+              <div style="font-size:10px;color:${cB};opacity:0.7;margin-bottom:3px;letter-spacing:1px;">CORPULENCE</div>
+              <div style="font-size:14px;font-weight:900;color:${cR};">${corpVal.toUpperCase()}</div>
+            </div>`:html``}
           </div>
           <!-- BPM -->
           <div style="text-align:center;padding:8px 14px;background:#0a0002;border:1px solid ${cR}44;border-radius:6px;">
@@ -1996,11 +2002,11 @@ class ResidentEvilCard extends LitElement {
           </div>
         </div>
 
-        <!-- 4 SECTIONS EN 2×2 -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;">
+        <!-- SECTIONS EN 3 COLONNES -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;">
 
-          <!-- 💪 COMPOSITION CORPORELLE -->
-          <div style="padding:10px 14px;border-right:1px solid ${cR}10;border-bottom:1px solid ${cR}10;">
+          <!-- 💪 COMPOSITION — col 1 -->
+          <div style="padding:10px 14px;border-right:1px solid ${cR}15;">
             <div style="font-size:11px;color:${cB};letter-spacing:2px;margin-bottom:8px;font-weight:700;">💪 COMPOSITION</div>
             ${byCat('composition').map(s=>
               metricRow(s.name, sv(s),
@@ -2009,8 +2015,8 @@ class ResidentEvilCard extends LitElement {
             )}
           </div>
 
-          <!-- 🏃 ACTIVITÉ -->
-          <div style="padding:10px 14px;border-bottom:1px solid ${cR}10;">
+          <!-- 🏃 ACTIVITÉ — col 2 -->
+          <div style="padding:10px 14px;border-right:1px solid ${cR}15;">
             <div style="font-size:11px;color:${cA};letter-spacing:2px;margin-bottom:8px;font-weight:700;">🏃 ACTIVITÉ</div>
             ${byCat('activite').map(s=>
               metricRow(s.name, sv(s),
@@ -2021,26 +2027,26 @@ class ResidentEvilCard extends LitElement {
             )}
           </div>
 
-          <!-- 🌙 SOMMEIL -->
-          <div style="padding:10px 14px;border-right:1px solid ${cR}10;">
-            <div style="font-size:11px;color:${cB};letter-spacing:2px;margin-bottom:8px;font-weight:700;">🌙 SOMMEIL</div>
-            ${byCat('sommeil').length>0?byCat('sommeil').map((s,i)=>
-              metricRow(s.name, sv(s), i===0?cV:cB)
-            ):html`<div style="font-size:13px;color:#334155;padding:8px 0;">Aucun capteur sommeil</div>`}
-          </div>
-
-          <!-- 📊 SANTÉ -->
+          <!-- 📊 SANTÉ — col 3 -->
           <div style="padding:10px 14px;">
             <div style="font-size:11px;color:${cV};letter-spacing:2px;margin-bottom:8px;font-weight:700;">📊 SANTÉ</div>
-            ${corpVal?html`
-              <div style="font-size:20px;font-weight:900;color:${cR};margin-bottom:6px;">${corpVal.toUpperCase()}</div>`:html``}
-            ${imcVal!=null?metricRow('IMC', fmt(imcVal,1), cB):html``}
             ${byCat('sante').filter(s=>!s.entity?.includes('corpulence')).map(s=>
               metricRow(s.name, sv(s),
                 s.entity?.includes('graisse')||s.entity?.includes('visceral')||s.entity?.includes('fat_mass')?cR:
                 s.entity?.includes('maigre')||s.entity?.includes('fat_free')?cV:cA)
             )}
           </div>
+
+          <!-- 🌙 SOMMEIL — pleine largeur si données présentes -->
+          ${byCat('sommeil').length>0?html`
+          <div style="grid-column:1/-1;padding:10px 14px;border-top:1px solid ${cR}15;">
+            <div style="font-size:11px;color:${cB};letter-spacing:2px;margin-bottom:8px;font-weight:700;">🌙 SOMMEIL</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 14px;">
+              ${byCat('sommeil').map((s,i)=>
+                metricRow(s.name, sv(s), i===0?cV:cB)
+              )}
+            </div>
+          </div>`:html``}
         </div>
 
         <!-- FOOTER -->
