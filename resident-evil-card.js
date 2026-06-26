@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v257 (version RICHE : widgets)
+   RESIDENT EVIL CARD v258 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3129,39 +3129,37 @@ class ResidentEvilCard extends LitElement {
           <div style="font-size:12px;color:${cA};letter-spacing:2px;margin-bottom:8px;font-weight:700;">
             UNITÉS SURVEILLÉES — ${nbActive} / ${machines.length} ACTIVES
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
             ${machines.map(m => {
               const on  = (m.power!=null&&m.power>thresh)||(m.current!=null&&m.current>0.1&&m.power==null);
               const mc  = on ? (m.color||cA) : '#475569';
               return html`
-                <div style="background:${on?mc+'18':'#0a0800'};border:1px solid ${mc}${on?'55':'22'};
-                             border-radius:6px;padding:10px;">
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <div style="width:10px;height:10px;border-radius:50%;background:${mc};flex-shrink:0;
+                <div style="background:${on?mc+'15':'#0a0800'};border:1px solid ${mc}${on?'44':'18'};
+                             border-radius:6px;padding:8px 10px;">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+                    <div style="width:9px;height:9px;border-radius:50%;background:${mc};flex-shrink:0;
                                  ${on?'animation:_at2_pulse 2s ease-in-out infinite;':''}"></div>
-                    <div style="font-size:14px;font-weight:700;color:${on?'#f1f5f9':'#64748b'};
-                                 flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                      ${m.name}
-                    </div>
+                    <div style="font-size:13px;font-weight:700;color:${on?'#f1f5f9':'#64748b'};
+                                 flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.name}</div>
                   </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-                    <div style="background:#0d1117;border:1px solid #1e2744;border-radius:4px;padding:5px 8px;">
-                      <div style="font-size:10px;color:#475569;margin-bottom:1px;">TENSION</div>
-                      <div style="font-size:15px;font-weight:700;color:#e2e8f0;">${fmt(m.voltage,0)} V</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr ${m.day!=null?'1fr':''} 1fr;gap:3px;">
+                    <div style="background:#0d1117;border:1px solid #1e2744;border-radius:3px;padding:3px 6px;">
+                      <div style="font-size:9px;color:#475569;">TENSION</div>
+                      <div style="font-size:13px;font-weight:700;color:#e2e8f0;">${fmt(m.voltage,0)} V</div>
                     </div>
-                    <div style="background:#0d1117;border:1px solid #1e2744;border-radius:4px;padding:5px 8px;">
-                      <div style="font-size:10px;color:#475569;margin-bottom:1px;">COURANT</div>
-                      <div style="font-size:15px;font-weight:700;color:#818cf8;">${fmt(m.current,2)} A</div>
-                    </div>
-                    <div style="background:${on?mc+'22':'#0d1117'};border:1px solid ${on?mc+'55':'#1e2744'};border-radius:4px;padding:5px 8px;">
-                      <div style="font-size:10px;color:#475569;margin-bottom:1px;">PUISSANCE</div>
-                      <div style="font-size:16px;font-weight:900;color:${mc};">${fmt(m.power,0)} W</div>
+                    <div style="background:#0d1117;border:1px solid #1e2744;border-radius:3px;padding:3px 6px;">
+                      <div style="font-size:9px;color:#475569;">COURANT</div>
+                      <div style="font-size:13px;font-weight:700;color:#818cf8;">${fmt(m.current,2)} A</div>
                     </div>
                     ${m.day!=null?html`
-                    <div style="background:#0d1117;border:1px solid #1e2744;border-radius:4px;padding:5px 8px;">
-                      <div style="font-size:10px;color:#475569;margin-bottom:1px;">CONSO/J</div>
-                      <div style="font-size:14px;font-weight:700;color:#94a3b8;">${fmt(m.day,2)} kWh</div>
+                    <div style="background:#0d1117;border:1px solid #1e2744;border-radius:3px;padding:3px 6px;">
+                      <div style="font-size:9px;color:#475569;">CONSO/J</div>
+                      <div style="font-size:13px;font-weight:700;color:#94a3b8;">${fmt(m.day,2)} kWh</div>
                     </div>`:html``}
+                    <div style="background:${on?mc+'22':'#0d1117'};border:1px solid ${on?mc+'44':'#1e2744'};border-radius:3px;padding:3px 6px;">
+                      <div style="font-size:9px;color:#475569;">PUISSANCE</div>
+                      <div style="font-size:14px;font-weight:900;color:${mc};">${fmt(m.power,0)} W</div>
+                    </div>
                   </div>
                 </div>`;
             })}
