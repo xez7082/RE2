@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v261 (version RICHE : widgets)
+   RESIDENT EVIL CARD v262 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1655,6 +1655,42 @@ class ResidentEvilCard extends LitElement {
               ${isOn ? '■ ARRÊTER LA CHAUFFE' : '🔥 CHAUFFER MAINTENANT'}
             </button>
           </div>
+
+          <!-- TIMELINE VISUELLE -->
+          ${schedState ? html`
+          <div style="flex:1;padding:10px 12px;background:#030e18;border:1px solid ${cB}15;border-radius:6px;display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:10px;color:${cB}55;letter-spacing:2px;">CHRONOLOGIE</div>
+            <!-- Ligne de temps -->
+            <div style="position:relative;height:6px;background:#0a0a0a;border-radius:3px;overflow:hidden;margin:4px 0 20px;">
+              <div style="position:absolute;left:0;top:0;height:100%;
+                           width:${Math.min(100,Math.max(0,(tCur - tempMin)/(tTgt - tempMin)*100)).toFixed(1)}%;
+                           background:linear-gradient(90deg,${cB},${cA});border-radius:3px;"></div>
+            </div>
+            <!-- Étapes -->
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              ${[
+                [startStr, `Démarrage chauffe`, cG, '▶'],
+                [readyStr, `Prêt à ${tTgt}°C`, cB, '●'],
+              ].map(([h, lbl, col, ico]) => html`
+              <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;
+                           background:${col}08;border:1px solid ${col}20;border-radius:5px;">
+                <span style="font-size:18px;font-weight:900;color:${col};width:48px;flex-shrink:0;">${h}</span>
+                <span style="font-size:11px;color:#475569;">${ico}</span>
+                <span style="font-size:13px;color:#94a3b8;">${lbl}</span>
+              </div>`)}
+            </div>
+            <!-- Infos calcul -->
+            <div style="margin-top:auto;display:flex;justify-content:space-between;font-size:11px;color:#334155;
+                         border-top:1px solid ${cB}10;padding-top:8px;">
+              <span>${vol}L · ${power}W</span>
+              <span>Pertes ${lossW} W/°C</span>
+              <span>ΔT ${deltaT.toFixed(1)}°C · ${ttrStr}</span>
+            </div>
+          </div>` : html`
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;
+                       color:#1a2a1a;font-size:13px;letter-spacing:1px;">
+            Configurez scheduleEntity pour activer
+          </div>`}
         </div>`;
     };
 
