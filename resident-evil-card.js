@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v254 (version RICHE : widgets)
+   RESIDENT EVIL CARD v255 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1969,14 +1969,14 @@ class ResidentEvilCard extends LitElement {
           <div style="text-align:center;padding:8px 12px;background:#0a0800;border:1px solid ${cA}44;border-radius:6px;">
             <div style="font-size:11px;color:${cA};letter-spacing:1px;margin-bottom:3px;">👣 PAS</div>
             <div style="font-size:22px;font-weight:900;color:${cA};">
-              ${fmt(fv(sensors.find(s=>s.entity?.includes('steps'))?.entity),0)}
+              ${fmt(fv(w.steps_entity),0)}
             </div>
           </div>
           <!-- CALORIES -->
           <div style="text-align:center;padding:8px 12px;background:#0a0400;border:1px solid #ff6b0044;border-radius:6px;">
             <div style="font-size:11px;color:#ff6b00;letter-spacing:1px;margin-bottom:3px;">🔥 CALORIES</div>
             <div style="font-size:22px;font-weight:900;color:#ff6b00;">
-              ${fmt(fv(sensors.find(s=>s.entity?.includes('total_calor'))?.entity),0)}
+              ${fmt(fv(w.calories_entity),0)}
             </div>
           </div>
           <!-- BPM -->
@@ -7100,6 +7100,8 @@ class ResidentEvilCardEditor extends LitElement {
       dossier: [
         {k:'name',l:'Prénom',t:T},{k:'archiveId',l:'N° de dossier',t:T},{k:'image',l:'Photo (URL)',t:T},
         {k:'weight_entity',l:'Poids (entité)',t:E},{k:'weight_start',l:'Poids initial (kg)',t:N},{k:'weight_ideal',l:'Poids idéal (kg)',t:N},
+        {k:'steps_entity',l:'Pas du jour (entité)',t:E},
+        {k:'calories_entity',l:'Calories brûlées (entité)',t:E},
       ],
       health: [
         {k:'title',l:'Titre',t:T},
@@ -7496,6 +7498,8 @@ class ResidentEvilCardEditor extends LitElement {
          keys:['name','archiveId','image']},
         {k:`do_w${wi}`,t:'POIDS & OBJECTIF',i:'⚖',c:'#f59e0b',
          keys:['weight_entity','weight_start','weight_ideal']},
+        {k:`do_a${wi}`,t:'ACTIVITÉ EN-TÊTE',i:'🏃',c:'#22c55e',
+         keys:['steps_entity','calories_entity']},
       ],
       spa_temp:[
         {k:`spa_g${wi}`,t:'GENERAL — EAU & AIR',i:'🌡',c:'#00ccff',
