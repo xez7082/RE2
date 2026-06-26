@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v249 (version RICHE : widgets)
+   RESIDENT EVIL CARD v250 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1889,147 +1889,163 @@ class ResidentEvilCard extends LitElement {
   // Style « Dossier S.T.A.R.S. » : un widget = une personne. Pour séparer Patrick
   // et Sandra, créer deux widgets `dossier` dans deux sous-menus distincts.
   _renderDossierWidget(w, sizeStyle, noBorder=false) {
-    const getSt = (eid) => eid && this.hass?.states[eid] ? this.hass.states[eid].state : null;
-    const numSt = (eid) => { const v = getSt(eid); const n = v!=null ? parseFloat(v) : null; return (n!=null && !isNaN(n)) ? n : null; };
-    const fmtV  = (v, u) => {
-      if (v == null || v === '') return '--';
-      const n = parseFloat(v);
-      const s = isNaN(n) ? String(v) : n.toLocaleString('fr-FR',{maximumFractionDigits:2});
-      return s + (u||'');
-    };
-    // Affiche la valeur numérique formatée + unité, ou — si le capteur renvoie
-    // du texte (ex: "Obésité de classe II (sévère)") — l'état brut tel quel.
-    const dispVal = (s) => {
-      if (s.val != null) return fmtV(s.val, s.unit);
-      if (s.raw != null && !['unavailable','unknown',''].includes(String(s.raw))) return s.raw;
-      return '--';
-    };
+    const fv  = (eid) => { if(!eid) return null; const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
+    const fs  = (eid) => { if(!eid) return null; const s=this.hass?.states[eid]; return s?.state ?? null; };
+    const fmt = (v, d=0, suf='') => v!=null ? v.toFixed(d).replace('.',',')+suf : '--';
 
-    const name = w.name || 'INCONNU';
-    const initials = name.trim()[0]?.toUpperCase() || '?';
-    const archiveId = w.archiveId || ('#' + String(Math.abs([...name].reduce((h,c)=>h*31+c.charCodeAt(0),7))).slice(0,4).padStart(4,'0'));
+    // Sensors par catégorie
+    const sensors = Array.isArray(w.sensors) ? w.sensors : [];
+    const byCat = (cat) => sensors.filter(s=>s.cat===cat);
+    const sv = (s) => { const v=fv(s.entity); return v!=null ? fmt(v, Number.isInteger(v)?0:1)+(s.unit||'') : (fs(s.entity)||'--'); };
 
-    const CAT_CFG = {
-      forme:     { label: '⚡ Forme',     color: '#22d3ee' },
-      sante:     { label: '🩺 Santé',     color: '#10b981' },
-      sommeil:   { label: '🌙 Sommeil',   color: '#818cf8' },
-      nutrition: { label: '🥗 Nutrition', color: '#f59e0b' },
-    };
-    const CAT_ORDER = ['forme','sante','sommeil','nutrition'];
+    // Poids
+    const poidsCur = fv(w.weight_entity);
+    const poidsStart = parseFloat(w.weight_start)||0;
+    const poidsIdeal = parseFloat(w.weight_ideal)||0;
+    const perteTotale = poidsStart - poidsIdeal;
+    const perteActuelle = poidsCur!=null ? Math.max(0, poidsStart - poidsCur) : 0;
+    const poidsTarget = poidsCur!=null ? Math.max(0, poidsCur - poidsIdeal) : perteTotale;
+    const poidsPct  = perteTotale>0 ? Math.min(100,(perteActuelle/perteTotale)*100) : 0;
+    // Position du marqueur objectif (à 100% de la barre)
+    const markerPct = 100;
 
-    const sensors = w.sensors || [];
-    let anyAlert = false;
-    const groups = {};
-    sensors.forEach(s => {
-      const c = s.cat || 'forme';
-      if (!groups[c]) groups[c] = [];
-      const val = numSt(s.entity);
-      const raw = getSt(s.entity);
-      const outOfRange = (s.min != null && val != null && val < parseFloat(s.min))
-                       || (s.max != null && val != null && val > parseFloat(s.max));
-      if (outOfRange) anyAlert = true;
-      groups[c].push({ ...s, val, raw, outOfRange });
-    });
-    const cats = CAT_ORDER.filter(k => groups[k]?.length > 0);
+    // Senseurs spécifiques
+    const bpm = sensors.find(s=>s.entity?.includes('heart_pulse'));
+    const bpmVal = bpm ? fv(bpm.entity) : null;
+    const imc = sensors.find(s=>s.entity?.includes('imc'));
+    const imcVal = imc ? fv(imc.entity) : null;
+    const corp = sensors.find(s=>s.entity?.includes('corpulence'));
+    const corpVal = corp ? fs(corp.entity) : null;
 
-    // ── Poids ──
-    const wCur  = w.weight_entity ? numSt(w.weight_entity) : null;
-    const wSt   = parseFloat(w.weight_start) || wCur || null;
-    const wId   = parseFloat(w.weight_ideal) || null;
-    const wDiff = (wCur != null && wSt != null) ? wCur - wSt : null;
-    const wCol  = wDiff != null && wDiff <= 0 ? '#00ff00' : '#ff3b3b';
-    const wPct  = (wCur != null && wSt != null && wId != null && Math.abs(wSt - wId) > 0.01)
-      ? Math.min(100, Math.max(0, (Math.abs(wSt - wCur) / Math.abs(wSt - wId)) * 100))
-      : 0;
+    const cR='#ef4444', cV='#22c55e', cB='#818cf8', cA='#f59e0b', cC='#22d3ee';
 
-    // ── Capteur BPM (heart-pulse) ──
-    const heartSensor = sensors.find(s => s.icon === 'mdi:heart-pulse' || (s.unit||'').toLowerCase().includes('bpm'));
-    const heartVal = heartSensor ? numSt(heartSensor.entity) : null;
+    const metricRow = (label, val, col) => html`
+      <div style="display:flex;justify-content:space-between;align-items:center;
+                  padding:6px 0;border-bottom:1px solid ${col}15;">
+        <span style="font-size:14px;color:#94a3b8;">${label}</span>
+        <span style="font-size:16px;font-weight:700;color:${col};">${val}</span>
+      </div>`;
 
     return html`
-      <div class="dw-card ${noBorder?'no-border':''}" style="${sizeStyle}
-           background:#050505; border:2px solid #8b0000; border-radius:3px;
-           box-shadow:0 0 18px rgba(139,0,0,.6), inset 0 0 30px rgba(0,0,0,.7);
-           overflow:hidden; position:relative; display:flex; flex-direction:column;
-           font-family:'Courier New',monospace;">
-        <div style="position:absolute;top:4px;left:4px;width:14px;height:14px;
-                    border-top:2px solid #ff0000;border-left:2px solid #ff0000;pointer-events:none;z-index:5;"></div>
-        <div style="position:absolute;bottom:4px;right:4px;width:14px;height:14px;
-                    border-bottom:2px solid #ff0000;border-right:2px solid #ff0000;pointer-events:none;z-index:5;"></div>
+      <div style="${sizeStyle}background:#050005;border:1px solid ${cR}22;border-radius:8px;
+                  overflow:hidden;font-family:'Courier New',monospace;">
+        <style>
+          @keyframes _do_bpm{0%,100%{transform:scale(1)}40%{transform:scale(1.25)}}
+          @keyframes _do_scan{0%{left:-40%}100%{left:110%}}
+          @keyframes _do_blink{0%,100%{opacity:1}50%{opacity:0}}
+        </style>
 
-        <div style="flex-shrink:0;background:#8b0000;color:#1a0000;font-size:12px;font-weight:bold;
-                    letter-spacing:2px;padding:4px 10px;display:flex;justify-content:space-between;">
-          <span>ARCHIVE U.B.C.S.</span><span>DOSSIER ${archiveId}</span>
-        </div>
-
-        <div style="flex-shrink:0;display:flex;gap:12px;padding:14px 14px 10px;align-items:center;
-                    border-bottom:1px solid #2a2a2a;">
-          <div style="width:54px;height:54px;border-radius:4px;background:#161616;border:1px solid #8b0000;
-                      display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
-            ${w.image
-              ? html`<img src="${w.image}" style="width:100%;height:100%;object-fit:cover;" />`
-              : html`<span style="font-size:22px;font-weight:bold;color:#ff0000;text-shadow:0 0 6px rgba(139,0,0,.6);">${initials}</span>`}
+        <!-- HEADER : photo + identité + IMC + BPM -->
+        <div style="background:#0d0008;border-bottom:2px solid ${cR}33;padding:14px 18px;
+                    display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;overflow:hidden;">
+            <div style="position:absolute;width:40%;height:2px;background:${cR}88;animation:_do_scan 4s linear infinite;"></div>
           </div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:18px;font-weight:bold;color:#f1f1f1;letter-spacing:1px;white-space:nowrap;
-                        overflow:hidden;text-overflow:ellipsis;">${name.toUpperCase()}</div>
-            <div style="font-size:12px;margin-top:3px;color:${anyAlert?'#ff3b3b':'#00ff00'};">
-              <span style="opacity:.8;">●</span> STATUT ${anyAlert?'ALERTE':'OPÉRATIONNEL'}
+          <!-- Photo -->
+          ${w.image ? html`
+            <img src="${w.image}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;
+                       border:3px solid ${cR};flex-shrink:0;">` : html`
+            <div style="width:64px;height:64px;border-radius:50%;background:#1a0010;
+                        border:3px solid ${cR};display:flex;align-items:center;justify-content:center;
+                        font-size:28px;flex-shrink:0;">👤</div>`}
+          <!-- Identité -->
+          <div style="flex:1;">
+            <div style="font-size:20px;font-weight:900;color:${cR};letter-spacing:3px;">${w.name||'PATRICK'}</div>
+            <div style="font-size:12px;color:#475569;margin-top:3px;letter-spacing:1px;">DOSSIER MÉDICAL UMBRELLA CORP. · ACTIF</div>
+          </div>
+          <!-- IMC -->
+          <div style="text-align:center;padding:8px 14px;background:#0a0015;border:1px solid ${cB}44;border-radius:6px;">
+            <div style="font-size:11px;color:${cB};letter-spacing:1px;margin-bottom:3px;">IMC</div>
+            <div style="font-size:26px;font-weight:900;color:${cB};">${fmt(imcVal,1)}</div>
+            ${corpVal?html`<div style="font-size:10px;color:${cB};opacity:0.7;margin-top:2px;">${corpVal.toUpperCase()}</div>`:html``}
+          </div>
+          <!-- BPM -->
+          <div style="text-align:center;padding:8px 14px;background:#0a0002;border:1px solid ${cR}44;border-radius:6px;">
+            <div style="font-size:11px;color:${cR};letter-spacing:1px;margin-bottom:3px;">❤ BPM</div>
+            <div style="font-size:26px;font-weight:900;color:${cR};animation:_do_bpm 1.2s ease-in-out infinite;">
+              ${bpmVal!=null?Math.round(bpmVal):'--'}
             </div>
           </div>
-          ${heartVal != null ? html`
-          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;
-                      background:#0d0505;border:1px solid #8b000044;border-radius:4px;padding:6px 10px;">
-            <div style="font-size:9px;letter-spacing:2px;color:#8b0000;margin-bottom:2px;">BPM</div>
-            <div style="font-size:22px;font-weight:900;color:var(--re-wr);line-height:1;
-                        animation:_re_pulse 1s ease-in-out infinite;">
-              ${Math.round(heartVal)}
-            </div>
-            <div style="font-size:9px;color:#8b000088;margin-top:2px;">♥</div>
-          </div>` : html``}
         </div>
 
-        <div style="flex:1;overflow-y:auto;padding:12px 14px;scrollbar-width:none;">
-          ${cats.length === 0 ? html`
-            <div style="color:#666;font-size:13px;text-align:center;padding:30px 10px;">
-              Aucun capteur configuré — renseignez <code>sensors:</code> en YAML
-              (cat: forme/sante/sommeil/nutrition, entity, name, unit, min, max).
-            </div>` : html``}
-          ${cats.map(cat => {
-            const cfg = CAT_CFG[cat];
-            return html`
-              <div style="font-size:12px;letter-spacing:2px;color:${cfg.color};margin:0 0 6px;
-                          text-transform:uppercase;${cat!==cats[0]?'margin-top:12px;':''}">${cfg.label}</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                ${groups[cat].map(s => html`
-                  <div style="display:flex;flex-direction:column;gap:3px;background:#0f0f0f;
-                              border:1px solid ${s.outOfRange?'#8b0000':'#2a2a2a'};border-radius:2px;padding:6px 8px;">
-                    <span style="font-size:12px;color:#999;display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;">
-                      ${s.icon ? html`<ha-icon icon="${s.icon}" style="--mdc-icon-size:14px;color:${s.outOfRange?'#ff3b3b':cfg.color};flex-shrink:0;"></ha-icon>` : html``}
-                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.name||'—'}</span>
-                    </span>
-                    <span style="font-size:13px;font-weight:bold;line-height:1.25;color:${s.outOfRange?'#ff3b3b':cfg.color};
-                                ${s.outOfRange?'text-shadow:0 0 5px rgba(139,0,0,.6);':''}">
-                      ${dispVal(s)}
-                    </span>
-                  </div>`)}
-              </div>`;
-          })}
+        <!-- BARRE OBJECTIF POIDS -->
+        <div style="padding:14px 18px;border-bottom:1px solid ${cR}18;background:#090006;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+            <span style="font-size:13px;color:${cA};font-weight:700;letter-spacing:1px;">🎯 MISSION PERTE DE POIDS</span>
+            <div style="display:flex;align-items:baseline;gap:6px;">
+              <span style="font-size:28px;font-weight:900;color:${cR};">${fmt(poidsCur,1)}</span>
+              <span style="font-size:14px;color:${cR};opacity:0.6;">kg</span>
+              ${perteActuelle>0?html`<span style="font-size:14px;color:${cV};margin-left:8px;">− ${fmt(perteActuelle,1)} kg perdus</span>`:html``}
+            </div>
+          </div>
+          <!-- Barre -->
+          <div style="position:relative;height:12px;background:#1a0005;border-radius:6px;
+                      overflow:visible;margin-bottom:8px;border:1px solid ${cR}22;">
+            <div style="height:100%;width:${Math.max(2,poidsPct)}%;background:linear-gradient(90deg,${cV},${cA},${cR});
+                         border-radius:6px;transition:width 1s;position:relative;overflow:hidden;">
+            </div>
+            <!-- Marqueur position actuelle -->
+            ${poidsPct>2&&poidsPct<98?html`
+              <div style="position:absolute;top:-3px;left:${poidsPct}%;transform:translateX(-50%);
+                           width:4px;height:18px;background:#fff;border-radius:2px;"></div>`:html``}
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;">
+            <span style="color:${cV};">✓ OBJECTIF ${poidsIdeal} kg</span>
+            <span style="color:${cA};">encore ${fmt(poidsTarget,1)} kg à perdre</span>
+            <span style="color:${cR};">DÉPART ${poidsStart} kg</span>
+          </div>
+        </div>
 
-          ${wCur != null ? html`
-            <div style="margin-top:14px;background:#0f0f0f;border:1px solid #2a2a2a;border-radius:3px;padding:8px 10px;">
-              <div style="display:flex;justify-content:space-between;font-size:12px;color:#bbb;margin-bottom:5px;">
-                ${wSt!=null ? html`<span>🏁 ${fmtV(wSt,' kg')}</span>` : html`<span></span>`}
-                <span style="color:${wCol};font-weight:bold;">
-                  ${fmtV(wCur,' kg')}${wDiff!=null?html` (${wDiff>0?'+':''}${wDiff.toFixed(2)} kg)`:html``}
-                </span>
-                ${wId!=null ? html`<span>🎯 ${fmtV(wId,' kg')}</span>` : html`<span></span>`}
-              </div>
-              <div style="height:6px;background:#1c1c1c;border-radius:3px;overflow:hidden;">
-                <div style="height:100%;width:${wPct.toFixed(2)}%;background:linear-gradient(90deg,#00ff00,#0a8a0a);
-                            border-radius:3px;transition:width 1.2s;"></div>
-              </div>
-            </div>` : html``}
+        <!-- 4 SECTIONS EN 2×2 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;">
+
+          <!-- 💪 COMPOSITION CORPORELLE -->
+          <div style="padding:14px 18px;border-right:1px solid ${cR}10;border-bottom:1px solid ${cR}10;">
+            <div style="font-size:12px;color:${cB};letter-spacing:2px;margin-bottom:10px;font-weight:700;">💪 COMPOSITION</div>
+            ${byCat('sante').filter(s=>!s.entity?.includes('imc')&&!s.entity?.includes('corpulence')).map(s=>
+              metricRow(s.name, sv(s), s.entity?.includes('graisse')||s.entity?.includes('visceral')?cR:s.entity?.includes('hydrat')?cC:cV)
+            )}
+          </div>
+
+          <!-- 🏃 ACTIVITÉ DU JOUR -->
+          <div style="padding:14px 18px;border-bottom:1px solid ${cR}10;">
+            <div style="font-size:12px;color:${cA};letter-spacing:2px;margin-bottom:10px;font-weight:700;">🏃 ACTIVITÉ DU JOUR</div>
+            ${byCat('forme').filter(s=>!s.entity?.includes('heart_pulse')&&!s.entity?.includes('perte')).map(s=>
+              metricRow(s.name, sv(s), s.entity?.includes('calorie')||s.entity?.includes('calor')?'#ff6b00':cA)
+            )}
+            ${byCat('forme').filter(s=>s.entity?.includes('perte')).map(s=>
+              metricRow(s.name, sv(s), cV)
+            )}
+          </div>
+
+          <!-- 🌙 SOMMEIL -->
+          <div style="padding:14px 18px;border-right:1px solid ${cR}10;">
+            <div style="font-size:12px;color:${cB};letter-spacing:2px;margin-bottom:10px;font-weight:700;">🌙 SOMMEIL</div>
+            ${byCat('sommeil').map((s,i)=>
+              metricRow(s.name, sv(s), i===0?cV:cB)
+            )}
+          </div>
+
+          <!-- 📊 CORPULENCE -->
+          <div style="padding:14px 18px;">
+            <div style="font-size:12px;color:${cV};letter-spacing:2px;margin-bottom:10px;font-weight:700;">📊 CORPULENCE</div>
+            ${corpVal?html`
+              <div style="font-size:22px;font-weight:900;color:${cR};margin-bottom:6px;">${corpVal.toUpperCase()}</div>`:html``}
+            ${metricRow('IMC', fmt(imcVal,1), cB)}
+            ${byCat('sante').filter(s=>s.entity?.includes('hydrat')).map(s=>
+              metricRow(s.name, sv(s), cC)
+            )}
+            ${byCat('sante').filter(s=>s.entity?.includes('visceral')||s.entity?.includes('graisse')).map(s=>
+              metricRow(s.name, sv(s), cR)
+            )}
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="padding:6px 18px;display:flex;justify-content:space-between;font-size:12px;
+                    color:${cR}44;border-top:1px solid ${cR}15;">
+          <span>SOURCE: WITHINGS · HOME ASSISTANT</span>
+          <span style="animation:_do_blink 2s step-end infinite;color:${cV}44;">● SYNC</span>
         </div>
       </div>`;
   }
