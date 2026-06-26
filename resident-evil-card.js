@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v262 (version RICHE : widgets)
+   RESIDENT EVIL CARD v263 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -1609,7 +1609,7 @@ class ResidentEvilCard extends LitElement {
                       background:#030e18;border:1px solid ${cB}22;border-radius:6px;overflow:hidden;flex-shrink:0;">
             <!-- HEURE DE PRÊT -->
             <div style="padding:10px 14px;border-right:1px solid ${cB}15;cursor:pointer;">
-              <div style="font-size:10px;color:${cB}77;letter-spacing:2px;margin-bottom:4px;">HEURE DE PRÊT</div>
+              <div style="font-size:12px;color:${cB};font-weight:700;letter-spacing:2px;margin-bottom:4px;">HEURE DE PRÊT</div>
               <div style="font-size:32px;font-weight:900;color:${cB};line-height:1;">${readyStr}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:3px;margin-top:6px;">
                 ${[[-1,0,'-1h'],[0,-15,'-15m'],[0,15,'+15m'],[1,0,'+1h']].map(([dh,dm,lbl])=>html`
@@ -1620,7 +1620,7 @@ class ResidentEvilCard extends LitElement {
             </div>
             <!-- TEMP ACTUELLE -->
             <div style="padding:10px 14px;border-right:1px solid ${cB}15;">
-              <div style="font-size:10px;color:${cA}77;letter-spacing:2px;margin-bottom:4px;">TEMP. ACTUELLE</div>
+              <div style="font-size:12px;color:${cA};font-weight:700;letter-spacing:2px;margin-bottom:4px;">TEMP. ACTUELLE</div>
               <div style="font-size:32px;font-weight:900;color:${cA};line-height:1;">${wTemp!=null?wTemp.toFixed(1):'-'} °C</div>
               <div style="font-size:12px;color:#475569;margin-top:4px;">→ objectif ${tTgt}°C</div>
               <div style="margin-top:5px;height:4px;background:#0a0a0a;border-radius:2px;overflow:hidden;">
@@ -1629,7 +1629,7 @@ class ResidentEvilCard extends LitElement {
             </div>
             <!-- DÉMARRAGE AUTO -->
             <div style="padding:10px 14px;">
-              <div style="font-size:10px;color:${cG}77;letter-spacing:2px;margin-bottom:4px;">DÉMARRAGE AUTO</div>
+              <div style="font-size:12px;color:${cG};font-weight:700;letter-spacing:2px;margin-bottom:4px;">DÉMARRAGE AUTO</div>
               <div style="font-size:32px;font-weight:900;color:${cG};line-height:1;">${startStr}</div>
               <div style="font-size:12px;color:#475569;margin-top:4px;">${diffStr}</div>
             </div>
@@ -1641,8 +1641,8 @@ class ResidentEvilCard extends LitElement {
                [`${ttrStr}`,'DURÉE EST.',cG],[coutStr,'COÛT EST.',cR]
               ].map(([v,l,col])=>html`
             <div style="background:#0a1a2a;border:1px solid ${col}18;border-radius:5px;padding:8px 10px;text-align:center;">
-              <div style="font-size:9px;color:${col}88;letter-spacing:1px;margin-bottom:3px;">${l}</div>
-              <div style="font-size:14px;font-weight:700;color:${col};">${v}</div>
+              <div style="font-size:12px;color:${col};font-weight:700;letter-spacing:1px;margin-bottom:4px;">${l}</div>
+              <div style="font-size:16px;font-weight:700;color:${col};">${v}</div>
             </div>`)}
           </div>
 
@@ -1659,7 +1659,7 @@ class ResidentEvilCard extends LitElement {
           <!-- TIMELINE VISUELLE -->
           ${schedState ? html`
           <div style="flex:1;padding:10px 12px;background:#030e18;border:1px solid ${cB}15;border-radius:6px;display:flex;flex-direction:column;gap:8px;">
-            <div style="font-size:10px;color:${cB}55;letter-spacing:2px;">CHRONOLOGIE</div>
+            <div style="font-size:12px;color:${cB};font-weight:700;letter-spacing:2px;">CHRONOLOGIE</div>
             <!-- Ligne de temps -->
             <div style="position:relative;height:6px;background:#0a0a0a;border-radius:3px;overflow:hidden;margin:4px 0 20px;">
               <div style="position:absolute;left:0;top:0;height:100%;
@@ -1680,7 +1680,7 @@ class ResidentEvilCard extends LitElement {
               </div>`)}
             </div>
             <!-- Infos calcul -->
-            <div style="margin-top:auto;display:flex;justify-content:space-between;font-size:11px;color:#334155;
+            <div style="margin-top:auto;display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;
                          border-top:1px solid ${cB}10;padding-top:8px;">
               <span>${vol}L · ${power}W</span>
               <span>Pertes ${lossW} W/°C</span>
