@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v250 (version RICHE : widgets)
+   RESIDENT EVIL CARD v251 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2002,41 +2002,43 @@ class ResidentEvilCard extends LitElement {
           <!-- 💪 COMPOSITION CORPORELLE -->
           <div style="padding:14px 18px;border-right:1px solid ${cR}10;border-bottom:1px solid ${cR}10;">
             <div style="font-size:12px;color:${cB};letter-spacing:2px;margin-bottom:10px;font-weight:700;">💪 COMPOSITION</div>
-            ${byCat('sante').filter(s=>!s.entity?.includes('imc')&&!s.entity?.includes('corpulence')).map(s=>
-              metricRow(s.name, sv(s), s.entity?.includes('graisse')||s.entity?.includes('visceral')?cR:s.entity?.includes('hydrat')?cC:cV)
+            ${byCat('composition').map(s=>
+              metricRow(s.name, sv(s),
+                s.entity?.includes('graisse')||s.entity?.includes('taux')?cR:
+                s.entity?.includes('hydrat')?cC:cV)
             )}
           </div>
 
-          <!-- 🏃 ACTIVITÉ DU JOUR -->
+          <!-- 🏃 ACTIVITÉ -->
           <div style="padding:14px 18px;border-bottom:1px solid ${cR}10;">
-            <div style="font-size:12px;color:${cA};letter-spacing:2px;margin-bottom:10px;font-weight:700;">🏃 ACTIVITÉ DU JOUR</div>
-            ${byCat('forme').filter(s=>!s.entity?.includes('heart_pulse')&&!s.entity?.includes('perte')).map(s=>
-              metricRow(s.name, sv(s), s.entity?.includes('calorie')||s.entity?.includes('calor')?'#ff6b00':cA)
-            )}
-            ${byCat('forme').filter(s=>s.entity?.includes('perte')).map(s=>
-              metricRow(s.name, sv(s), cV)
+            <div style="font-size:12px;color:${cA};letter-spacing:2px;margin-bottom:10px;font-weight:700;">🏃 ACTIVITÉ</div>
+            ${byCat('activite').map(s=>
+              metricRow(s.name, sv(s),
+                s.entity?.includes('heart')||s.entity?.includes('pulse')?cR:
+                s.entity?.includes('calor')?'#ff6b00':
+                s.entity?.includes('perte')||s.entity?.includes('difference')||s.entity?.includes('diff')?cV:
+                cA)
             )}
           </div>
 
           <!-- 🌙 SOMMEIL -->
           <div style="padding:14px 18px;border-right:1px solid ${cR}10;">
             <div style="font-size:12px;color:${cB};letter-spacing:2px;margin-bottom:10px;font-weight:700;">🌙 SOMMEIL</div>
-            ${byCat('sommeil').map((s,i)=>
+            ${byCat('sommeil').length>0?byCat('sommeil').map((s,i)=>
               metricRow(s.name, sv(s), i===0?cV:cB)
-            )}
+            ):html`<div style="font-size:13px;color:#334155;padding:8px 0;">Aucun capteur sommeil</div>`}
           </div>
 
-          <!-- 📊 CORPULENCE -->
+          <!-- 📊 SANTÉ -->
           <div style="padding:14px 18px;">
-            <div style="font-size:12px;color:${cV};letter-spacing:2px;margin-bottom:10px;font-weight:700;">📊 CORPULENCE</div>
+            <div style="font-size:12px;color:${cV};letter-spacing:2px;margin-bottom:10px;font-weight:700;">📊 SANTÉ</div>
             ${corpVal?html`
-              <div style="font-size:22px;font-weight:900;color:${cR};margin-bottom:6px;">${corpVal.toUpperCase()}</div>`:html``}
-            ${metricRow('IMC', fmt(imcVal,1), cB)}
-            ${byCat('sante').filter(s=>s.entity?.includes('hydrat')).map(s=>
-              metricRow(s.name, sv(s), cC)
-            )}
-            ${byCat('sante').filter(s=>s.entity?.includes('visceral')||s.entity?.includes('graisse')).map(s=>
-              metricRow(s.name, sv(s), cR)
+              <div style="font-size:20px;font-weight:900;color:${cR};margin-bottom:6px;">${corpVal.toUpperCase()}</div>`:html``}
+            ${imcVal!=null?metricRow('IMC', fmt(imcVal,1), cB):html``}
+            ${byCat('sante').filter(s=>!s.entity?.includes('corpulence')).map(s=>
+              metricRow(s.name, sv(s),
+                s.entity?.includes('graisse')||s.entity?.includes('visceral')||s.entity?.includes('fat_mass')?cR:
+                s.entity?.includes('maigre')||s.entity?.includes('fat_free')?cV:cA)
             )}
           </div>
         </div>
