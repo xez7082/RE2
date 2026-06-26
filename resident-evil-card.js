@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v258 (version RICHE : widgets)
+   RESIDENT EVIL CARD v259 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -862,6 +862,8 @@ class ResidentEvilCard extends LitElement {
       case 'map':       return this._renderMapWidget(w, sizeStyle, noBorder);
       case 'appliance': return this._renderApplianceWidget(w, sizeStyle, noBorder);
       case 'atelier':   return this._renderAtelierWidget(w, sizeStyle, noBorder);
+      case 'dreame':    return this._renderDreameWidget(w, sizeStyle, noBorder);
+      case 'mova':      return this._renderMovaWidget(w, sizeStyle, noBorder);
       case 'progress':   return this._renderProgressWidget(w, sizeStyle, noBorder);
       case 'button':     return this._renderButtonWidget(w, sizeStyle, noBorder);
       case 'foundry':    return this._renderFoundryWidget(w, sizeStyle, noBorder);
@@ -3046,6 +3048,35 @@ class ResidentEvilCard extends LitElement {
   }
 
   
+  _renderDreameWidget(w, sizeStyle, noBorder=false) {
+    // Réutilise _renderApplianceWidget avec config robot_vacuum
+    const fakeConfig = {
+      ...w,
+      categories:[{ label:'Robots', icon:'mdi:robot-vacuum', items:[{
+        type:'robot_vacuum', name: w.name||'Dreame', subtitle: w.subtitle||'L10s Pro Ultra Heat',
+        entity: w.entity||'vacuum.walli', map_camera: w.map_camera||'camera.walli_map',
+        img: w.img||'/local/images/l10s.png',
+        rooms: w.rooms||[], sc1: w.sc1||'', sc1Name: w.sc1Name||'', sc2: w.sc2||'', sc2Name: w.sc2Name||'',
+      }]}],
+      view: 0,
+    };
+    return this._renderApplianceWidget(fakeConfig, sizeStyle, noBorder);
+  }
+
+  _renderMovaWidget(w, sizeStyle, noBorder=false) {
+    const fakeConfig = {
+      ...w,
+      categories:[{ label:'Robots', icon:'mdi:robot-vacuum', items:[{
+        type:'robot_mower', name: w.name||'MOVA', subtitle: w.subtitle||'ViAX 250',
+        entity: w.entity||'lawn_mower.eve', map_camera: w.map_camera||'camera.eve_carte',
+        mower_prefix: w.mower_prefix||'eve',
+        img: w.img||'/local/images/viax.png',
+      }]}],
+      view: 0,
+    };
+    return this._renderApplianceWidget(fakeConfig, sizeStyle, noBorder);
+  }
+
   _renderAtelierWidget(w, sizeStyle, noBorder=false) {
     const fv  = (eid) => { if(!eid) return null; const s=this.hass?.states[eid]; if(!s) return null; const v=parseFloat(s.state); return isNaN(v)?null:v; };
     const fmt = (v, d=0) => v!=null ? v.toFixed(d).replace('.',',') : '--';
@@ -7072,6 +7103,16 @@ class ResidentEvilCardEditor extends LitElement {
         {k:'col_accent',l:'Couleur accent',t:'color',d:'#f59e0b'},
         {k:'col_ok',l:'Couleur OK',t:'color',d:'#22c55e'},
         {k:'col_danger',l:'Couleur alerte',t:'color',d:'#ef4444'},
+      ],
+      dreame: [
+        {k:'name',l:'Nom',t:T},{k:'subtitle',l:'Sous-titre',t:T},
+        {k:'entity',l:'Entité vacuum',t:E},{k:'map_camera',l:'Caméra carte',t:E},
+        {k:'img',l:'Image (URL)',t:T},
+      ],
+      mova: [
+        {k:'name',l:'Nom',t:T},{k:'subtitle',l:'Sous-titre',t:T},
+        {k:'entity',l:'Entité lawn_mower',t:E},{k:'map_camera',l:'Caméra carte',t:E},
+        {k:'mower_prefix',l:'Préfixe entités (ex: eve)',t:T},{k:'img',l:'Image (URL)',t:T},
       ],
       appliance: [
         {k:'view',l:'Catégorie affichée (0=Élect 1=Robots 2=Atelier)',t:S,o:['0','1','2']},
