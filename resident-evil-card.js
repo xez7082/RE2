@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v263 (version RICHE : widgets)
+   RESIDENT EVIL CARD v264 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -526,6 +526,15 @@ class ResidentEvilCard extends LitElement {
   firstUpdated() {
     this._decryptTitle();
     this._preloadIframes();
+    // Rafraîchissement scène météo (jour/nuit) toutes les 60s
+    this._wxSceneTimer = setInterval(() => {
+      if (this.shadowRoot?.querySelector('.re-wx-sky')) this.requestUpdate();
+    }, 60000);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback?.();
+    if (this._wxSceneTimer) clearInterval(this._wxSceneTimer);
   }
 
   _preloadIframes() {
@@ -594,7 +603,7 @@ class ResidentEvilCard extends LitElement {
     const wxCanvas = this.shadowRoot ? this.shadowRoot.querySelector('.re-wx-sky') : null;
     if (wxCanvas) {
       const ctrl = this._initWeatherSky(wxCanvas, this._wxAnimated !== false);
-      if (ctrl && this._wxScene) ctrl.setScene(this._wxScene);
+      if (ctrl && this._wxScene) ctrl.setScene(this._wxScene, true);
     }
     // Mise à l'échelle des iframes : plus aucun scroll interne
     const fits = this.shadowRoot ? this.shadowRoot.querySelectorAll('.re-iframe-fit') : [];
@@ -4588,8 +4597,8 @@ class ResidentEvilCard extends LitElement {
     function drawSnow(){S.flakes.forEach(p=>{p.x+=Math.sin(S.tick*.02+p.ph)*.4+p.dx;p.y+=p.spd;if(p.y>S.H+10){p.y=-10;p.x=Math.random()*S.W;}ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(240,248,255,${p.op})`;ctx.fill();});}
     function drawFog(){for(let i=0;i<8;i++){const ox=Math.sin(S.tick*.004+i*1.3)*40,y=30+i*65;const g=ctx.createLinearGradient(0,y-60,0,y+60);g.addColorStop(0,'transparent');g.addColorStop(.5,`rgba(200,215,225,${.08+i*.012})`);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.save();ctx.translate(ox,0);ctx.fillRect(-50,y-60,S.W+100,120);ctx.restore();}}
 
-    function setScene(s){
-      if (S.scene === s && S._seeded) return;
+    function setScene(s, force){
+      if (S.scene === s && S._seeded && !force) return;
       S.scene=s;S._seeded=true;S.drops=[];S.flakes=[];S.sparkles=[];S.clouds=[];
       makeClouds(s);
       if(s==='rain')makeDrops(120);
