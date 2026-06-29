@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v264 (version RICHE : widgets)
+   RESIDENT EVIL CARD v265 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -603,7 +603,13 @@ class ResidentEvilCard extends LitElement {
     const wxCanvas = this.shadowRoot ? this.shadowRoot.querySelector('.re-wx-sky') : null;
     if (wxCanvas) {
       const ctrl = this._initWeatherSky(wxCanvas, this._wxAnimated !== false);
-      if (ctrl && this._wxScene) ctrl.setScene(this._wxScene, true);
+      if (ctrl && this._wxScene) {
+        // Ne mettre à jour que si la scène a réellement changé
+        if (this._wxScene !== this._wxSceneLast) {
+          this._wxSceneLast = this._wxScene;
+          ctrl.setScene(this._wxScene);
+        }
+      }
     }
     // Mise à l'échelle des iframes : plus aucun scroll interne
     const fits = this.shadowRoot ? this.shadowRoot.querySelectorAll('.re-iframe-fit') : [];
