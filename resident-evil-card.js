@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v265 (version RICHE : widgets)
+   RESIDENT EVIL CARD v266 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -4588,14 +4588,14 @@ class ResidentEvilCard extends LitElement {
     }
     function cloudPuff(cx,cy,r,light,alpha){const g=ctx.createRadialGradient(cx,cy-r*.1,r*.05,cx,cy,r);g.addColorStop(0,`rgba(${light},${alpha})`);g.addColorStop(.6,`rgba(${light},${(alpha*.6).toFixed(2)})`);g.addColorStop(1,`rgba(${light},0)`);ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();}
     function drawOneCloud(x,y,sc,dark){
-      const col=dark?'130,145,175':'230,242,255',shad=dark?'70,80,105':'150,175,210';
-      cloudPuff(x,y+10*sc,55*sc,shad,.4);cloudPuff(x+70*sc,y+12*sc,42*sc,shad,.3);
-      cloudPuff(x+35*sc,y+8*sc,58*sc,col,.92);cloudPuff(x,y,48*sc,col,.88);cloudPuff(x+75*sc,y+2*sc,38*sc,col,.82);
-      cloudPuff(x+22*sc,y-25*sc,38*sc,col,.9);cloudPuff(x+55*sc,y-18*sc,32*sc,col,.85);
-      cloudPuff(x-15*sc,y-8*sc,28*sc,col,.75);cloudPuff(x+90*sc,y-5*sc,25*sc,col,.7);
-      cloudPuff(x+32*sc,y-10*sc,20*sc,'255,255,255',dark?.12:.4);
+      const col=dark?'130,145,175':'210,228,248',shad=dark?'70,80,105':'130,160,195';
+      cloudPuff(x,y+8*sc,38*sc,shad,.18);cloudPuff(x+50*sc,y+10*sc,30*sc,shad,.14);
+      cloudPuff(x+25*sc,y+6*sc,40*sc,col,.38);cloudPuff(x,y,34*sc,col,.34);cloudPuff(x+55*sc,y+2*sc,26*sc,col,.30);
+      cloudPuff(x+16*sc,y-18*sc,26*sc,col,.36);cloudPuff(x+40*sc,y-12*sc,22*sc,col,.32);
+      cloudPuff(x-10*sc,y-5*sc,18*sc,col,.26);cloudPuff(x+65*sc,y-3*sc,16*sc,col,.24);
+      cloudPuff(x+24*sc,y-7*sc,14*sc,'255,255,255',dark?.06:.16);
     }
-    function makeClouds(s){S.clouds=[];const n=s==='over'?8:s==='storm'?6:s==='cloud'?5:s==='rain'?6:s==='fog'?4:0,dark=['over','storm','rain','fog'].includes(s);for(let i=0;i<n;i++)S.clouds.push({x:Math.random()*(S.W+600)-600,y:20+Math.random()*(S.H*.38),sc:.5+Math.random()*.8,spd:.18+Math.random()*.28,dark});}
+    function makeClouds(s){S.clouds=[];const n=s==='over'?7:s==='storm'?5:s==='cloud'?4:s==='rain'?5:s==='fog'?3:0,dark=['over','storm','rain','fog'].includes(s);for(let i=0;i<n;i++)S.clouds.push({x:Math.random()*(S.W+400)-400,y:8+Math.random()*(S.H*.22),sc:.32+Math.random()*.48,spd:.15+Math.random()*.22,dark});}
     function drawClouds(){S.clouds.forEach(c=>{c.x+=c.spd;if(c.x>S.W+150){c.x=-600;c.y=20+Math.random()*(S.H*.38);}drawOneCloud(c.x,c.y,c.sc,c.dark);});}
     function makeDrops(n){S.drops=[];for(let i=0;i<n;i++)S.drops.push({x:Math.random()*S.W*1.3,y:Math.random()*S.H,len:8+Math.random()*22,spd:6+Math.random()*10,op:.3+Math.random()*.5,w:.5+Math.random()*1.5});}
     function drawRain(storm){const ang=12*Math.PI/180,sa=Math.sin(ang),ca=Math.cos(ang);if(storm){const t=S.tick%220;if(t<3||(t>7&&t<10)){ctx.fillStyle='rgba(200,220,255,.3)';ctx.fillRect(0,0,S.W,S.H);}}S.drops.forEach(p=>{ctx.strokeStyle=`rgba(180,220,255,${p.op})`;ctx.lineWidth=p.w;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+sa*p.len,p.y+ca*p.len);ctx.stroke();p.y+=p.spd;p.x+=p.spd*.22;if(p.y>S.H+40){p.y=-60;p.x=Math.random()*S.W*1.3;}});}
