@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v277 (version RICHE : widgets)
+   RESIDENT EVIL CARD v278 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -630,6 +630,17 @@ class ResidentEvilCard extends LitElement {
       const minX = parseFloat(g.dataset.minx), minY = parseFloat(g.dataset.miny), H = parseFloat(g.dataset.h);
       const x = (vp.x - minX).toFixed(0), y = (H - (vp.y - minY)).toFixed(0);
       g.setAttribute('transform', `translate(${x},${y}) rotate(${-(vp.a||0)})`);
+    });
+
+    // Idem, pour le marqueur robot superposé sur l'image caméra réelle (overlay FR)
+    this.shadowRoot?.querySelectorAll('[data-dreame-vac-img]').forEach(g => {
+      const eid = g.dataset.entity;
+      const svg = g.closest('svg.dreame-overlay');
+      const tf  = svg && svg.__tf;
+      const vp  = eid && this.hass?.states[eid]?.attributes?.vacuum_position;
+      if (!tf || !vp) return;
+      const p = tf(vp.x, vp.y);
+      g.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${-(vp.a||0)})`);
     });
 
     // Mise à l'échelle des iframes : plus aucun scroll interne
@@ -3876,6 +3887,7 @@ class ResidentEvilCard extends LitElement {
       const attrs = this.hass?.states[mapEntity]?.attributes || {};
       const tf = this._affineFromCalibration(attrs.calibration_points);
       if (!tf) return;
+      svg.__tf = tf; // stocké pour repositionner le robot en direct dans updated()
       const rooms = Object.values(attrs.rooms || {});
       const fs = Math.max(16, W*0.024);
       const sw = Math.max(3, W*0.0035);
@@ -3889,6 +3901,14 @@ class ResidentEvilCard extends LitElement {
                     font-weight="900" paint-order="stroke" stroke="#000000" stroke-width="${sw.toFixed(1)}"
                     stroke-opacity="0.7">${nm}</text>`;
       });
+      // Marqueur robot — toujours visible (l'image native ne le montre que
+      // pendant le nettoyage actif), positionné via la transfo de calibration.
+      const mr = Math.max(8, W*0.035);
+      inner += `<g id="ivac-${mapEntity}" data-dreame-vac-img data-entity="${mapEntity}">
+          <circle r="${(mr*1.7).toFixed(1)}" fill="#818cf8" opacity="0.25"/>
+          <circle r="${mr.toFixed(1)}" fill="#4338ca" stroke="#c7d2fe" stroke-width="${(mr*0.14).toFixed(1)}"/>
+          <polygon points="${(mr*1.25).toFixed(1)},0 ${(mr*0.3).toFixed(1)},-${(mr*0.75).toFixed(1)} ${(mr*0.3).toFixed(1)},${(mr*0.75).toFixed(1)}" fill="#e0e7ff"/>
+        </g>`;
       svg.innerHTML = inner;
       stageEl.__dreameOverlay = true;
     };
