@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v280 (version RICHE : widgets)
+   RESIDENT EVIL CARD v281 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3882,9 +3882,15 @@ class ResidentEvilCard extends LitElement {
     let prog = this._roomProgress[mapEntity];
     if (!prog) { prog = { active: new Set(), done: new Set(), wasIdle: true, lastInside: null }; this._roomProgress[mapEntity] = prog; }
     const job = new Set((activeSegments||[]).map(String));
+    const isCleaning = job.size > 0;
 
-    if (job.size > 0 && prog.wasIdle) { prog.done = new Set(); prog.lastInside = null; }
-    prog.wasIdle = job.size === 0;
+    if (isCleaning && prog.wasIdle) { prog.done = new Set(); prog.lastInside = null; }
+    // Programme entièrement terminé (était en cours, ne l'est plus) →
+    // la dernière pièce où le robot se trouvait passe aussi en terminé.
+    if (!isCleaning && !prog.wasIdle && prog.lastInside) {
+      prog.done.add(prog.lastInside);
+    }
+    prog.wasIdle = !isCleaning;
 
     let insideId = null;
     if (vacuumPos && rooms) {
@@ -3897,8 +3903,8 @@ class ResidentEvilCard extends LitElement {
         }
       }
     }
-    // Le robot a quitté la pièce où il était → elle est terminée (si dans le job)
-    if (prog.lastInside && prog.lastInside !== insideId && job.has(prog.lastInside)) {
+    // Le robot a changé de pièce pendant un programme actif → l'ancienne est terminée
+    if (isCleaning && prog.lastInside && prog.lastInside !== insideId) {
       prog.done.add(prog.lastInside);
     }
     if (insideId) prog.lastInside = insideId;
