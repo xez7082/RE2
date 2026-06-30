@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v279 (version RICHE : widgets)
+   RESIDENT EVIL CARD v280 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3871,73 +3871,103 @@ class ResidentEvilCard extends LitElement {
   }
 
   // ════════════════════════════════════════════════════════════════
-  //  SUIVI DE PROGRESSION DES PIÈCES — l'intégration ne fournit pas de
-  //  flag "terminé" par pièce, seulement active_segments (zone en cours).
-  //  On reconstitue nous-mêmes : une pièce qui était active et ne l'est
-  //  plus = terminée. Réinitialisé au prochain cycle de nettoyage.
+  //  SUIVI DE PROGRESSION DES PIÈCES — active_segments liste TOUTES les
+  //  pièces du programme en cours (ex: "shortcut" multi-pièces), pas
+  //  uniquement celle en train d'être nettoyée. On détermine donc la
+  //  pièce "vraiment active" par géométrie (position du robot dans une
+  //  bounding box de pièce) ; toute pièce du job quittée = terminée.
   // ════════════════════════════════════════════════════════════════
-  _updateRoomProgress(mapEntity, activeSegments) {
+  _updateRoomProgress(mapEntity, activeSegments, vacuumPos, rooms) {
     if (!this._roomProgress) this._roomProgress = {};
     let prog = this._roomProgress[mapEntity];
-    if (!prog) { prog = { active: new Set(), done: new Set(), wasIdle: true }; this._roomProgress[mapEntity] = prog; }
-    const active = new Set((activeSegments||[]).map(String));
-    // Nouveau cycle de nettoyage détecté après une pause → on repart de zéro
-    if (active.size > 0 && prog.wasIdle) prog.done = new Set();
-    prog.active.forEach(id => { if (!active.has(id)) prog.done.add(id); });
-    prog.active = active;
-    prog.wasIdle = active.size === 0;
+    if (!prog) { prog = { active: new Set(), done: new Set(), wasIdle: true, lastInside: null }; this._roomProgress[mapEntity] = prog; }
+    const job = new Set((activeSegments||[]).map(String));
+
+    if (job.size > 0 && prog.wasIdle) { prog.done = new Set(); prog.lastInside = null; }
+    prog.wasIdle = job.size === 0;
+
+    let insideId = null;
+    if (vacuumPos && rooms) {
+      for (const r of rooms) {
+        if (r.x0==null||r.x1==null||r.y0==null||r.y1==null) continue;
+        const xmin=Math.min(r.x0,r.x1), xmax=Math.max(r.x0,r.x1);
+        const ymin=Math.min(r.y0,r.y1), ymax=Math.max(r.y0,r.y1);
+        if (vacuumPos.x>=xmin && vacuumPos.x<=xmax && vacuumPos.y>=ymin && vacuumPos.y<=ymax) {
+          insideId = String(r.room_id); break;
+        }
+      }
+    }
+    // Le robot a quitté la pièce où il était → elle est terminée (si dans le job)
+    if (prog.lastInside && prog.lastInside !== insideId && job.has(prog.lastInside)) {
+      prog.done.add(prog.lastInside);
+    }
+    if (insideId) prog.lastInside = insideId;
+    prog.active = insideId ? new Set([insideId]) : new Set();
     return prog;
   }
 
   _buildDreameOverlay(svg, img, mapEntity) {
     const W = img.naturalWidth, H = img.naturalHeight;
     if (!W || !H) return;
-    if (svg.getAttribute('viewBox') !== `0 0 ${W} ${H}`) svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     const attrs = this.hass?.states[mapEntity]?.attributes || {};
     const tf = this._affineFromCalibration(attrs.calibration_points);
     if (!tf) return;
-    svg.__tf = tf; // stocké pour repositionner le robot en direct si besoin ailleurs
+    svg.__tf = tf;
     const rooms = Object.values(attrs.rooms || {});
-    const prog  = this._updateRoomProgress(mapEntity, attrs.active_segments);
-    const fs = Math.max(16, W*0.024);
-    const sw = Math.max(3, W*0.0035);
-    let inner = '<style>@keyframes _droom_pulse{0%,100%{opacity:.85}50%{opacity:.3}}.\\_droom_pulse{animation:_droom_pulse 1.3s ease-in-out infinite;}</style>';
-    rooms.forEach(r=>{
-      const rid = String(r.room_id);
-      const isActive = prog.active.has(rid);
-      const isDone   = prog.done.has(rid);
-      // Zone colorée (pièce active = orange pulsant, terminée = vert) via
-      // le contour réel approximé par les 4 coins de la bounding box,
-      // transformés par la même calibration (parallélogramme si rotation).
-      if ((isActive || isDone) && r.x0!=null && r.y0!=null && r.x1!=null && r.y1!=null) {
-        const corners = [[r.x0,r.y0],[r.x1,r.y0],[r.x1,r.y1],[r.x0,r.y1]].map(([x,y])=>tf(x,y));
-        const pts = corners.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-        const col = isActive ? '#f59e0b' : '#22c55e';
-        inner += `<polygon points="${pts}" fill="${col}" fill-opacity="0.30" stroke="${col}" stroke-width="${(sw*1.3).toFixed(1)}" class="${isActive?'_droom_pulse':''}"/>`;
-      }
-      if (r.x==null||r.y==null) return;
-      const p = tf(r.x, r.y);
-      const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '').toUpperCase();
-      const badge = isDone ? ' ✓' : isActive ? ' …' : '';
-      const txtCol = isDone ? '#86efac' : isActive ? '#fde68a' : '#ffffff';
-      inner += `<text x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" text-anchor="middle"
-                  font-size="${fs.toFixed(0)}" fill="${txtCol}" font-family="'Courier New',monospace"
-                  font-weight="900" paint-order="stroke" stroke="#000000" stroke-width="${sw.toFixed(1)}"
-                  stroke-opacity="0.7">${nm}${badge}</text>`;
-    });
-    // Marqueur robot — toujours visible (l'image native ne le montre que
-    // pendant le nettoyage actif), positionné via la transfo de calibration.
-    const vp = attrs.vacuum_position;
-    const mr = Math.max(8, W*0.035);
-    if (vp) {
-      const vpos = tf(vp.x, vp.y);
-      inner += `<g transform="translate(${vpos.x.toFixed(1)},${vpos.y.toFixed(1)}) rotate(${-(vp.a||0)})">
+    const vp    = attrs.vacuum_position;
+    const prog  = this._updateRoomProgress(mapEntity, attrs.active_segments, vp, rooms);
+
+    // Empreinte de l'état "pièces" : on ne reconstruit le SVG QUE si elle
+    // change vraiment (sinon l'animation CSS du pulse redémarre à chaque
+    // tick → effet de clignotement/flash au lieu d'un pulse fluide).
+    const fingerprint = [...prog.active].sort().join(',') + '|' + [...prog.done].sort().join(',');
+    const needsRebuild = svg.__lastFp !== fingerprint || !svg.__built;
+
+    if (needsRebuild) {
+      if (svg.getAttribute('viewBox') !== `0 0 ${W} ${H}`) svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      const fs = Math.max(16, W*0.024);
+      const sw = Math.max(3, W*0.0035);
+      let inner = '<style>@keyframes _droom_pulse{0%,100%{opacity:.85}50%{opacity:.3}}.\\_droom_pulse{animation:_droom_pulse 1.3s ease-in-out infinite;}</style>';
+      rooms.forEach(r=>{
+        const rid = String(r.room_id);
+        const isActive = prog.active.has(rid);
+        const isDone   = prog.done.has(rid);
+        if ((isActive || isDone) && r.x0!=null && r.y0!=null && r.x1!=null && r.y1!=null) {
+          const corners = [[r.x0,r.y0],[r.x1,r.y0],[r.x1,r.y1],[r.x0,r.y1]].map(([x,y])=>tf(x,y));
+          const pts = corners.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+          const col = isActive ? '#f59e0b' : '#22c55e';
+          inner += `<polygon points="${pts}" fill="${col}" fill-opacity="0.30" stroke="${col}" stroke-width="${(sw*1.3).toFixed(1)}" class="${isActive?'_droom_pulse':''}"/>`;
+        }
+        if (r.x==null||r.y==null) return;
+        const p = tf(r.x, r.y);
+        const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '').toUpperCase();
+        const badge = isDone ? ' ✓' : isActive ? ' …' : '';
+        const txtCol = isDone ? '#86efac' : isActive ? '#fde68a' : '#ffffff';
+        inner += `<text x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" text-anchor="middle"
+                    font-size="${fs.toFixed(0)}" fill="${txtCol}" font-family="'Courier New',monospace"
+                    font-weight="900" paint-order="stroke" stroke="#000000" stroke-width="${sw.toFixed(1)}"
+                    stroke-opacity="0.7">${nm}${badge}</text>`;
+      });
+      const mr = Math.max(8, W*0.035);
+      inner += `<g data-ivac>
           <circle r="${(mr*1.7).toFixed(1)}" fill="#818cf8" opacity="0.25"/>
           <circle r="${mr.toFixed(1)}" fill="#4338ca" stroke="#c7d2fe" stroke-width="${(mr*0.14).toFixed(1)}"/>
           <polygon points="${(mr*1.25).toFixed(1)},0 ${(mr*0.3).toFixed(1)},-${(mr*0.75).toFixed(1)} ${(mr*0.3).toFixed(1)},${(mr*0.75).toFixed(1)}" fill="#e0e7ff"/>
         </g>`;
+      svg.innerHTML = inner;
+      svg.__lastFp  = fingerprint;
+      svg.__built   = true;
     }
-    svg.innerHTML = inner;
+
+    // Le marqueur, lui, se repositionne à CHAQUE tick sans jamais
+    // reconstruire le reste (mouvement fluide, pas de flash).
+    if (vp) {
+      const marker = svg.querySelector('[data-ivac]');
+      if (marker) {
+        const p = tf(vp.x, vp.y);
+        marker.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${-(vp.a||0)})`);
+      }
+    }
   }
 
   _initDreameOverlay(stageEl, mapEntity) {
@@ -4078,7 +4108,7 @@ class ResidentEvilCard extends LitElement {
     const roomsSorted = [...roomList].sort((a,b) =>
       Math.abs((b.x1-b.x0)*(b.y1-b.y0)) - Math.abs((a.x1-a.x0)*(a.y1-a.y0)));
 
-    const prog = this._updateRoomProgress(mapEntity, a.active_segments);
+    const prog = this._updateRoomProgress(mapEntity, a.active_segments, a.vacuum_position, roomList);
     const pulseStyle = '<style>@keyframes _droom_pulse2{0%,100%{stroke-opacity:.9}50%{stroke-opacity:.3}}.\\_droom_pulse2{animation:_droom_pulse2 1.3s ease-in-out infinite;}</style>';
 
     const roomsSvg = pulseStyle + roomsSorted.map(r=>{
