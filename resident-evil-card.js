@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v284 (version RICHE : widgets)
+   RESIDENT EVIL CARD v285 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3646,6 +3646,33 @@ class ResidentEvilCard extends LitElement {
                 ? html`<div style="width:280px;flex-shrink:0;">${this._renderZoomSVG(nativeSvg, 'dreame-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`
                 : camUrl?html`<div style="width:280px;flex-shrink:0;">${this._renderZoomMap(camUrl, 'dreame-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`:html``}
           </div>
+          ${(() => {
+            // Bandeau de progression : pièce par pièce, calculé en direct
+            // (position réelle du robot dans les bounding box des pièces).
+            if (!item.map_camera) return html``;
+            const camAttrs2 = this.hass?.states[item.map_camera]?.attributes;
+            const roomList2 = camAttrs2 ? Object.values(camAttrs2.rooms||{}) : [];
+            if (!roomList2.length) return html``;
+            const prog2 = this._updateRoomProgress(item.map_camera, state, camAttrs2.vacuum_position, roomList2);
+            return html`
+              <div class="no-scrollbar" style="padding:6px 10px;border-top:1px solid rgba(129,140,248,.1);
+                          display:flex;gap:5px;overflow-x:auto;white-space:nowrap;">
+                ${roomList2.map(r=>{
+                  const rid = String(r.room_id);
+                  const isActive = prog2.active.has(rid), isDone = prog2.done.has(rid);
+                  const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '');
+                  const col = isDone ? 'var(--re-wg)' : isActive ? 'var(--re-wa)' : 'var(--re-wtd)';
+                  const ico = isDone ? '✓' : isActive ? '●' : '○';
+                  return html`<div style="flex-shrink:0;padding:3px 9px;border-radius:4px;
+                              background:${col}12;border:1px solid ${col}33;
+                              font-family:'Courier New',monospace;font-size:12px;color:${col};
+                              ${isActive?'animation:_dpulse2 1.3s ease-in-out infinite;':''}">
+                    ${ico} ${nm}
+                  </div>`;
+                })}
+              </div>
+              <style>@keyframes _dpulse2{0%,100%{opacity:1}50%{opacity:.45}}</style>`;
+          })()}
           <div style="padding:7px 10px;border-top:1px solid rgba(129,140,248,.1);display:flex;flex-wrap:wrap;gap:5px;">
             ${[{l:'▶ DÉMARRER',fn:()=>callVac('start'),col:'var(--re-wg)'},{l:'⏸ PAUSE',fn:()=>callVac('pause'),col:'var(--re-wp)'},{l:'⌂ BASE',fn:()=>callVac('return_to_base'),col:'#06b6d4'},{l:'⊙ LOCALISER',fn:()=>callVac('locate'),col:'var(--re-wa)'},{l:'▣ VIDER BAC',fn:()=>callVac('send_command',{command:'start_wash'}),col:'var(--re-wtd)'}].map(b=>html`<button style="flex:1;min-width:60px;padding:6px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
           </div>
@@ -3921,6 +3948,7 @@ class ResidentEvilCard extends LitElement {
     if (!tf) return;
     svg.__tf = tf;
     const rooms = Object.values(attrs.rooms || {});
+    const vp    = attrs.vacuum_position;
 
     // Les noms de pièces ne bougent jamais → construits une seule fois.
     // (La progression du nettoyage — traînées, ordre, couleurs — est déjà
