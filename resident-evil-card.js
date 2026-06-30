@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v271 (version RICHE : widgets)
+   RESIDENT EVIL CARD v272 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3826,7 +3826,7 @@ class ResidentEvilCard extends LitElement {
         <img src="${camUrl}" draggable="false"
              style="position:absolute;top:50%;left:50%;max-width:none;
                     transform:translate(-50%,-50%) scale(1);transform-origin:center;
-                    user-select:none;pointer-events:none;filter:brightness(.9) contrast(1.05);"/>
+                    user-select:none;pointer-events:none;image-rendering:-webkit-optimize-contrast;"/>
         <div style="position:absolute;bottom:5px;right:5px;display:flex;flex-direction:column;gap:3px;z-index:5;">
           <button data-zp-in    style="${btn}" @click="${(e)=>{e.stopPropagation();}}">+</button>
           <button data-zp-out   style="${btn}" @click="${(e)=>{e.stopPropagation();}}">−</button>
@@ -3854,6 +3854,7 @@ class ResidentEvilCard extends LitElement {
     const clamp = () => { scale = Math.max(MIN, Math.min(MAX, scale)); };
 
     const onDown = (e) => {
+      if (e.target.closest('button')) return; // ne pas démarrer un drag sur les boutons
       container.setPointerCapture?.(e.pointerId);
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 1) {
@@ -3898,9 +3899,17 @@ class ResidentEvilCard extends LitElement {
     container.addEventListener('wheel', onWheel, { passive: false });
     container.addEventListener('dblclick', onDbl);
 
-    container.querySelector('[data-zp-in]')?.addEventListener('click', (e) => { e.stopPropagation(); scale *= 1.25; clamp(); apply(); });
-    container.querySelector('[data-zp-out]')?.addEventListener('click', (e) => { e.stopPropagation(); scale *= 0.8; clamp(); apply(); });
-    container.querySelector('[data-zp-reset]')?.addEventListener('click', (e) => { e.stopPropagation(); scale = 1; tx = 0; ty = 0; apply(); });
+    // Boutons : action directe en pointerdown (plus fiable sur tablette que 'click',
+    // qui peut être absorbé par la capture de pointeur du conteneur parent)
+    const zoomIn  = (e) => { e.preventDefault(); e.stopPropagation(); scale *= 1.25; clamp(); apply(); };
+    const zoomOut = (e) => { e.preventDefault(); e.stopPropagation(); scale *= 0.8;  clamp(); apply(); };
+    const zoomRst = (e) => { e.preventDefault(); e.stopPropagation(); scale = 1; tx = 0; ty = 0; apply(); };
+    const btnIn  = container.querySelector('[data-zp-in]');
+    const btnOut = container.querySelector('[data-zp-out]');
+    const btnRst = container.querySelector('[data-zp-reset]');
+    [['pointerdown',zoomIn],['click',zoomIn]].forEach(([ev,fn])=>btnIn?.addEventListener(ev,fn));
+    [['pointerdown',zoomOut],['click',zoomOut]].forEach(([ev,fn])=>btnOut?.addEventListener(ev,fn));
+    [['pointerdown',zoomRst],['click',zoomRst]].forEach(([ev,fn])=>btnRst?.addEventListener(ev,fn));
 
     apply();
     container.__zp = true;
