@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v268 (version RICHE : widgets)
+   RESIDENT EVIL CARD v269 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2751,7 +2751,7 @@ class ResidentEvilCard extends LitElement {
     if (!canvas || canvas.__anim) return;
     const ctx = canvas.getContext('2d');
     let sweep = 0, pings = [], raf, lastT=0;
-    const FPS=12;
+    const FPS=8;
     const toR = d => d * Math.PI / 180;
 
     const geoCalc = (hLat, hLon, pLat, pLon) => {
@@ -2939,7 +2939,9 @@ class ResidentEvilCard extends LitElement {
             .leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;}
             .leaflet-tile{filter:inherit;visibility:hidden;}
             .leaflet-tile-loaded{visibility:inherit;}
-            .leaflet-zoom-animated{will-change:transform;transition:transform .25s cubic-bezier(0,0,.25,1);}
+            .leaflet-zoom-animated{will-change:auto;transition:none!important;}
+            .leaflet-fade-anim .leaflet-tile{transition:none!important;}
+            .leaflet-fade-anim .leaflet-popup{opacity:1!important;transition:none!important;}
             .leaflet-pane{z-index:400;}
             .leaflet-tile-pane{z-index:200;}
             .leaflet-overlay-pane{z-index:400;}
@@ -2967,7 +2969,11 @@ class ResidentEvilCard extends LitElement {
           this.shadowRoot.appendChild(st);
         }
         // Créer la carte Leaflet sur mon propre div
-        const map = L.map(mapDiv, { zoomControl:false, attributionControl:false });
+        const map = L.map(mapDiv, {
+          zoomControl:false, attributionControl:false,
+          inertia:false, zoomAnimation:false, fadeAnimation:false,
+          markerZoomAnimation:false, preferCanvas:true,
+        });
         // Réinitialiser les marqueurs : les anciens appartenaient à une carte détruite
         // (changement de sous-menu) — sans ça, les icônes restent invisibles jusqu'au reload
         this._myMarkers = {};
