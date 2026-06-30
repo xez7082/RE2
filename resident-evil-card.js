@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v267 (version RICHE : widgets)
+   RESIDENT EVIL CARD v268 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -611,6 +611,15 @@ class ResidentEvilCard extends LitElement {
         }
       }
     }
+    // Rafraîchir position des personnes sur la carte (carte déjà ouverte)
+    const mapDivs = this.shadowRoot ? this.shadowRoot.querySelectorAll('[id^="re-custom-map-"]') : [];
+    mapDivs.forEach(md => {
+      if (!md._leafletMap || !md._mapWidgetCfg) return;
+      const now = Date.now();
+      if (md._lastMarkerRefresh && now - md._lastMarkerRefresh < 4000) return;
+      md._lastMarkerRefresh = now;
+      this._updateMyMapMarkers(md._leafletMap, window.L, md._mapWidgetCfg);
+    });
     // Mise à l'échelle des iframes : plus aucun scroll interne
     const fits = this.shadowRoot ? this.shadowRoot.querySelectorAll('.re-iframe-fit') : [];
     fits.forEach(fit => {
@@ -2959,12 +2968,16 @@ class ResidentEvilCard extends LitElement {
         }
         // Créer la carte Leaflet sur mon propre div
         const map = L.map(mapDiv, { zoomControl:false, attributionControl:false });
+        // Réinitialiser les marqueurs : les anciens appartenaient à une carte détruite
+        // (changement de sous-menu) — sans ça, les icônes restent invisibles jusqu'au reload
+        this._myMarkers = {};
         // Tuiles sombres CartoDB
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
           maxZoom:19, subdomains:'abcd'
         }).addTo(map);
         L.control.zoom({ position:'bottomright' }).addTo(map);
         mapDiv._leafletMap = map;
+        mapDiv._mapWidgetCfg = w;
         // Laisser le DOM se stabiliser avant de calculer la taille
         requestAnimationFrame(() => {
           map.invalidateSize();
