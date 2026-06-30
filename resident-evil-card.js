@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v278 (version RICHE : widgets)
+   RESIDENT EVIL CARD v279 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -632,15 +632,10 @@ class ResidentEvilCard extends LitElement {
       g.setAttribute('transform', `translate(${x},${y}) rotate(${-(vp.a||0)})`);
     });
 
-    // Idem, pour le marqueur robot superposé sur l'image caméra réelle (overlay FR)
-    this.shadowRoot?.querySelectorAll('[data-dreame-vac-img]').forEach(g => {
-      const eid = g.dataset.entity;
-      const svg = g.closest('svg.dreame-overlay');
-      const tf  = svg && svg.__tf;
-      const vp  = eid && this.hass?.states[eid]?.attributes?.vacuum_position;
-      if (!tf || !vp) return;
-      const p = tf(vp.x, vp.y);
-      g.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${-(vp.a||0)})`);
+    // Carte hybride Dreame (image réelle + overlay FR) : reconstruite à
+    // chaque tick pour suivre la progression des pièces et le robot en direct.
+    this.shadowRoot?.querySelectorAll('[data-zp-stage]').forEach(stage => {
+      if (stage.__dreameRun) stage.__dreameRun();
     });
 
     // Mise à l'échelle des iframes : plus aucun scroll interne
@@ -3875,45 +3870,85 @@ class ResidentEvilCard extends LitElement {
     return (vx,vy) => ({ x: A*vx+B*vy+E, y: C*vx+Dd*vy+F });
   }
 
-  _initDreameOverlay(stageEl, mapEntity) {
-    if (!stageEl || stageEl.__dreameOverlay) return;
-    const img = stageEl.querySelector('img');
-    const svg = stageEl.querySelector('svg.dreame-overlay');
-    if (!img || !svg) return;
-    const build = () => {
-      const W = img.naturalWidth, H = img.naturalHeight;
-      if (!W || !H) return;
-      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-      const attrs = this.hass?.states[mapEntity]?.attributes || {};
-      const tf = this._affineFromCalibration(attrs.calibration_points);
-      if (!tf) return;
-      svg.__tf = tf; // stocké pour repositionner le robot en direct dans updated()
-      const rooms = Object.values(attrs.rooms || {});
-      const fs = Math.max(16, W*0.024);
-      const sw = Math.max(3, W*0.0035);
-      let inner = '';
-      rooms.forEach(r=>{
-        if (r.x==null||r.y==null) return;
-        const p = tf(r.x, r.y);
-        const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '').toUpperCase();
-        inner += `<text x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" text-anchor="middle"
-                    font-size="${fs.toFixed(0)}" fill="#ffffff" font-family="'Courier New',monospace"
-                    font-weight="900" paint-order="stroke" stroke="#000000" stroke-width="${sw.toFixed(1)}"
-                    stroke-opacity="0.7">${nm}</text>`;
-      });
-      // Marqueur robot — toujours visible (l'image native ne le montre que
-      // pendant le nettoyage actif), positionné via la transfo de calibration.
-      const mr = Math.max(8, W*0.035);
-      inner += `<g id="ivac-${mapEntity}" data-dreame-vac-img data-entity="${mapEntity}">
+  // ════════════════════════════════════════════════════════════════
+  //  SUIVI DE PROGRESSION DES PIÈCES — l'intégration ne fournit pas de
+  //  flag "terminé" par pièce, seulement active_segments (zone en cours).
+  //  On reconstitue nous-mêmes : une pièce qui était active et ne l'est
+  //  plus = terminée. Réinitialisé au prochain cycle de nettoyage.
+  // ════════════════════════════════════════════════════════════════
+  _updateRoomProgress(mapEntity, activeSegments) {
+    if (!this._roomProgress) this._roomProgress = {};
+    let prog = this._roomProgress[mapEntity];
+    if (!prog) { prog = { active: new Set(), done: new Set(), wasIdle: true }; this._roomProgress[mapEntity] = prog; }
+    const active = new Set((activeSegments||[]).map(String));
+    // Nouveau cycle de nettoyage détecté après une pause → on repart de zéro
+    if (active.size > 0 && prog.wasIdle) prog.done = new Set();
+    prog.active.forEach(id => { if (!active.has(id)) prog.done.add(id); });
+    prog.active = active;
+    prog.wasIdle = active.size === 0;
+    return prog;
+  }
+
+  _buildDreameOverlay(svg, img, mapEntity) {
+    const W = img.naturalWidth, H = img.naturalHeight;
+    if (!W || !H) return;
+    if (svg.getAttribute('viewBox') !== `0 0 ${W} ${H}`) svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const attrs = this.hass?.states[mapEntity]?.attributes || {};
+    const tf = this._affineFromCalibration(attrs.calibration_points);
+    if (!tf) return;
+    svg.__tf = tf; // stocké pour repositionner le robot en direct si besoin ailleurs
+    const rooms = Object.values(attrs.rooms || {});
+    const prog  = this._updateRoomProgress(mapEntity, attrs.active_segments);
+    const fs = Math.max(16, W*0.024);
+    const sw = Math.max(3, W*0.0035);
+    let inner = '<style>@keyframes _droom_pulse{0%,100%{opacity:.85}50%{opacity:.3}}.\\_droom_pulse{animation:_droom_pulse 1.3s ease-in-out infinite;}</style>';
+    rooms.forEach(r=>{
+      const rid = String(r.room_id);
+      const isActive = prog.active.has(rid);
+      const isDone   = prog.done.has(rid);
+      // Zone colorée (pièce active = orange pulsant, terminée = vert) via
+      // le contour réel approximé par les 4 coins de la bounding box,
+      // transformés par la même calibration (parallélogramme si rotation).
+      if ((isActive || isDone) && r.x0!=null && r.y0!=null && r.x1!=null && r.y1!=null) {
+        const corners = [[r.x0,r.y0],[r.x1,r.y0],[r.x1,r.y1],[r.x0,r.y1]].map(([x,y])=>tf(x,y));
+        const pts = corners.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        const col = isActive ? '#f59e0b' : '#22c55e';
+        inner += `<polygon points="${pts}" fill="${col}" fill-opacity="0.30" stroke="${col}" stroke-width="${(sw*1.3).toFixed(1)}" class="${isActive?'_droom_pulse':''}"/>`;
+      }
+      if (r.x==null||r.y==null) return;
+      const p = tf(r.x, r.y);
+      const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '').toUpperCase();
+      const badge = isDone ? ' ✓' : isActive ? ' …' : '';
+      const txtCol = isDone ? '#86efac' : isActive ? '#fde68a' : '#ffffff';
+      inner += `<text x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" text-anchor="middle"
+                  font-size="${fs.toFixed(0)}" fill="${txtCol}" font-family="'Courier New',monospace"
+                  font-weight="900" paint-order="stroke" stroke="#000000" stroke-width="${sw.toFixed(1)}"
+                  stroke-opacity="0.7">${nm}${badge}</text>`;
+    });
+    // Marqueur robot — toujours visible (l'image native ne le montre que
+    // pendant le nettoyage actif), positionné via la transfo de calibration.
+    const vp = attrs.vacuum_position;
+    const mr = Math.max(8, W*0.035);
+    if (vp) {
+      const vpos = tf(vp.x, vp.y);
+      inner += `<g transform="translate(${vpos.x.toFixed(1)},${vpos.y.toFixed(1)}) rotate(${-(vp.a||0)})">
           <circle r="${(mr*1.7).toFixed(1)}" fill="#818cf8" opacity="0.25"/>
           <circle r="${mr.toFixed(1)}" fill="#4338ca" stroke="#c7d2fe" stroke-width="${(mr*0.14).toFixed(1)}"/>
           <polygon points="${(mr*1.25).toFixed(1)},0 ${(mr*0.3).toFixed(1)},-${(mr*0.75).toFixed(1)} ${(mr*0.3).toFixed(1)},${(mr*0.75).toFixed(1)}" fill="#e0e7ff"/>
         </g>`;
-      svg.innerHTML = inner;
-      stageEl.__dreameOverlay = true;
-    };
-    if (img.complete && img.naturalWidth) build();
-    else img.addEventListener('load', build, { once: true });
+    }
+    svg.innerHTML = inner;
+  }
+
+  _initDreameOverlay(stageEl, mapEntity) {
+    if (!stageEl) return;
+    const img = stageEl.querySelector('img');
+    const svg = stageEl.querySelector('svg.dreame-overlay');
+    if (!img || !svg) return;
+    const run = () => this._buildDreameOverlay(svg, img, mapEntity);
+    stageEl.__dreameRun = run; // rappelé à chaque updated() pour suivre la progression en direct
+    if (img.complete && img.naturalWidth) run();
+    if (!stageEl.__dreameLoadBound) { img.addEventListener('load', run); stageEl.__dreameLoadBound = true; }
   }
 
   _renderZoomMapFR(camUrl, key, mapEntity, opts = {}) {
@@ -4043,16 +4078,22 @@ class ResidentEvilCard extends LitElement {
     const roomsSorted = [...roomList].sort((a,b) =>
       Math.abs((b.x1-b.x0)*(b.y1-b.y0)) - Math.abs((a.x1-a.x0)*(a.y1-a.y0)));
 
-    const roomsSvg = roomsSorted.map(r=>{
+    const prog = this._updateRoomProgress(mapEntity, a.active_segments);
+    const pulseStyle = '<style>@keyframes _droom_pulse2{0%,100%{stroke-opacity:.9}50%{stroke-opacity:.3}}.\\_droom_pulse2{animation:_droom_pulse2 1.3s ease-in-out infinite;}</style>';
+
+    const roomsSvg = pulseStyle + roomsSorted.map(r=>{
       const x = toX(Math.min(r.x0,r.x1)), y = toY(Math.max(r.y0,r.y1));
       const w = Math.abs(r.x1-r.x0).toFixed(0), h = Math.abs(r.y1-r.y0).toFixed(0);
-      const col = PAL[(r.color_index||0)%PAL.length];
+      const rid = String(r.room_id);
+      const isActive = prog.active.has(rid), isDone = prog.done.has(rid);
+      const col = isActive ? '#f59e0b' : isDone ? '#22c55e' : PAL[(r.color_index||0)%PAL.length];
+      const fillOp = isActive || isDone ? '0.34' : '0.30';
       const cx = toX(r.x!=null?r.x:(r.x0+r.x1)/2), cy = toY(r.y!=null?r.y:(r.y0+r.y1)/2);
-      const nm = (r.custom_name||r.name||'').toUpperCase();
+      const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '').toUpperCase() + (isDone?' ✓':isActive?' …':'');
       const m2 = (Math.abs((r.x1-r.x0)*(r.y1-r.y0))/1e6).toFixed(1);
       const icon = roomIcon(r);
       const rx = Math.min(70, parseFloat(w)*0.06, parseFloat(h)*0.06).toFixed(0);
-      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${col}" fill-opacity="0.30" stroke="${col}" stroke-width="10"/>
+      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${col}" fill-opacity="${fillOp}" stroke="${col}" stroke-width="10" class="${isActive?'_droom_pulse2':''}"/>
               <text x="${cx}" y="${(parseFloat(cy)-110).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="220">${icon}</text>
               <text x="${cx}" y="${(parseFloat(cy)+60).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="120" fill="#fff" font-family="Courier New,monospace" font-weight="900" style="paint-order:stroke;stroke:#000;stroke-width:14px;stroke-opacity:0.55;">${nm}</text>
               <text x="${cx}" y="${(parseFloat(cy)+190).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="95" fill="${col}" font-family="Courier New,monospace" font-weight="700">${m2} m²</text>`;
