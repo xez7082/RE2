@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v275 (version RICHE : widgets)
+   RESIDENT EVIL CARD v276 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3880,16 +3880,51 @@ class ResidentEvilCard extends LitElement {
     const toX = (x)=> (x-minX).toFixed(0);
     const toY = (y)=> (H-(y-minY)).toFixed(0);
 
-    const PAL = ['#22c55e','#38bdf8','#f59e0b','#a78bfa','#ef4444','#22d3ee','#fb923c','#84cc16'];
+    const PAL = ['#2563eb','#0d9488','#ca8a04','#7c3aed','#dc2626','#0891b2','#ea580c','#65a30d'];
+    // Icônes par mot-clé contenu dans l'icône mdi fournie par l'intégration
+    const ICON_MAP = [
+      [/sofa|salon|living/i,        '🛋'],
+      [/bed|chambre|room-service/i, '🍽'],
+      [/chef|kitchen|cuisine/i,     '🍳'],
+      [/foot|corridor|couloir/i,    '🚶'],
+      [/home-outline|wc|toilet/i,   '🚽'],
+      [/shower|bath|bain/i,         '🚿'],
+      [/desk|office|bureau/i,       '💻'],
+      [/garage/i,                   '🚗'],
+    ];
+    const roomIcon = (r) => {
+      const hit = ICON_MAP.find(([re]) => re.test(r.icon||'') || re.test(r.name||''));
+      return hit ? hit[1] : '▢';
+    };
 
-    const roomsSvg = roomList.map(r=>{
+    // Grille de fond façon plan technique (tous les 500mm)
+    const gridSvg = (() => {
+      const step = 500;
+      let lines = '';
+      for (let gx = Math.ceil(minX/step)*step; gx < maxX; gx += step) lines += `<line x1="${toX(gx)}" y1="0" x2="${toX(gx)}" y2="${H.toFixed(0)}" stroke="#1e2d3d" stroke-width="3"/>`;
+      for (let gy = Math.ceil(minY/step)*step; gy < maxY; gy += step) lines += `<line x1="0" y1="${toY(gy)}" x2="${W.toFixed(0)}" y2="${toY(gy)}" stroke="#1e2d3d" stroke-width="3"/>`;
+      return lines;
+    })();
+
+    // Trié du plus grand au plus petit : les petites pièces (ex. WC nichées
+    // dans un coin) se dessinent PAR-DESSUS en opaque, masquant proprement
+    // le débordement inévitable des rectangles englobants qui se chevauchent.
+    const roomsSorted = [...roomList].sort((a,b) =>
+      Math.abs((b.x1-b.x0)*(b.y1-b.y0)) - Math.abs((a.x1-a.x0)*(a.y1-a.y0)));
+
+    const roomsSvg = roomsSorted.map(r=>{
       const x = toX(Math.min(r.x0,r.x1)), y = toY(Math.max(r.y0,r.y1));
       const w = Math.abs(r.x1-r.x0).toFixed(0), h = Math.abs(r.y1-r.y0).toFixed(0);
       const col = PAL[(r.color_index||0)%PAL.length];
       const cx = toX(r.x!=null?r.x:(r.x0+r.x1)/2), cy = toY(r.y!=null?r.y:(r.y0+r.y1)/2);
       const nm = (r.custom_name||r.name||'').toUpperCase();
-      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${col}22" stroke="${col}88" stroke-width="12"/>
-              <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="150" fill="${col}" font-family="Courier New,monospace" font-weight="700">${nm}</text>`;
+      const m2 = (Math.abs((r.x1-r.x0)*(r.y1-r.y0))/1e6).toFixed(1);
+      const icon = roomIcon(r);
+      const rx = Math.min(70, parseFloat(w)*0.06, parseFloat(h)*0.06).toFixed(0);
+      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${col}" fill-opacity="0.30" stroke="${col}" stroke-width="10"/>
+              <text x="${cx}" y="${(parseFloat(cy)-110).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="220">${icon}</text>
+              <text x="${cx}" y="${(parseFloat(cy)+60).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="120" fill="#fff" font-family="Courier New,monospace" font-weight="900" style="paint-order:stroke;stroke:#000;stroke-width:14px;stroke-opacity:0.55;">${nm}</text>
+              <text x="${cx}" y="${(parseFloat(cy)+190).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="95" fill="${col}" font-family="Courier New,monospace" font-weight="700">${m2} m²</text>`;
     }).join('');
 
     const noGoSvg = (a.no_go_areas||[]).map(z=>{
@@ -3922,7 +3957,7 @@ class ResidentEvilCard extends LitElement {
 
     return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" xmlns="http://www.w3.org/2000/svg"
           style="width:100%;height:100%;display:block;background:#020a02;">
-        ${roomsSvg}${carpetsSvg}${noGoSvg}${obstaclesSvg}${chargerSvg}${vacMarker}
+        ${gridSvg}${roomsSvg}${carpetsSvg}${noGoSvg}${obstaclesSvg}${chargerSvg}${vacMarker}
       </svg>`;
   }
 
