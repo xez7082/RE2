@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v282 (version RICHE : widgets)
+   RESIDENT EVIL CARD v283 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3888,14 +3888,17 @@ class ResidentEvilCard extends LitElement {
     // Nouvelle session : on était à l'arrêt, le robot redémarre → reset
     if (prog.wasDocked && !isDocked) { prog.done = new Set(); prog.lastInside = null; }
 
-    let insideId = null;
+    let insideId = null, bestArea = Infinity;
     if (vacuumPos && rooms) {
       for (const r of rooms) {
         if (r.x0==null||r.x1==null||r.y0==null||r.y1==null) continue;
         const xmin=Math.min(r.x0,r.x1), xmax=Math.max(r.x0,r.x1);
         const ymin=Math.min(r.y0,r.y1), ymax=Math.max(r.y0,r.y1);
         if (vacuumPos.x>=xmin && vacuumPos.x<=xmax && vacuumPos.y>=ymin && vacuumPos.y<=ymax) {
-          insideId = String(r.room_id); break;
+          // Bounding boxes souvent imbriquées (ex: WC entièrement dans la
+          // box du Couloir) → on garde la plus PETITE = la plus spécifique.
+          const area = (xmax-xmin)*(ymax-ymin);
+          if (area < bestArea) { bestArea = area; insideId = String(r.room_id); }
         }
       }
     }
