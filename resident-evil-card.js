@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v274 (version RICHE : widgets)
+   RESIDENT EVIL CARD v275 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -620,6 +620,18 @@ class ResidentEvilCard extends LitElement {
       md._lastMarkerRefresh = now;
       this._updateMyMapMarkers(md._leafletMap, window.L, md._mapWidgetCfg);
     });
+    // Repositionner le marqueur robot Dreame (SVG natif) en direct,
+    // sans recréer le SVG (qui resterait identique entre rendus tant que
+    // la pièce/topologie ne change pas — seul ce <g> bouge).
+    this.shadowRoot?.querySelectorAll('[data-dreame-vac]').forEach(g => {
+      const eid = g.dataset.entity;
+      const vp  = eid && this.hass?.states[eid]?.attributes?.vacuum_position;
+      if (!vp) return;
+      const minX = parseFloat(g.dataset.minx), minY = parseFloat(g.dataset.miny), H = parseFloat(g.dataset.h);
+      const x = (vp.x - minX).toFixed(0), y = (H - (vp.y - minY)).toFixed(0);
+      g.setAttribute('transform', `translate(${x},${y}) rotate(${-(vp.a||0)})`);
+    });
+
     // Mise à l'échelle des iframes : plus aucun scroll interne
     const fits = this.shadowRoot ? this.shadowRoot.querySelectorAll('.re-iframe-fit') : [];
     fits.forEach(fit => {
@@ -3582,6 +3594,7 @@ class ResidentEvilCard extends LitElement {
       const stLbl   = {docked:'EN VEILLE',cleaning:'NETTOYAGE',paused:'EN PAUSE',returning:'RETOUR BASE',idle:'INACTIF',error:'ERREUR'}[state]||state.toUpperCase();
       const stCol   = isOn ? 'var(--re-wp)' : state==='docked' ? 'var(--re-wg)' : 'var(--re-wtd)';
       const camUrl  = item.map_camera && this.hass?.states[item.map_camera]?.attributes?.entity_picture;
+      const nativeSvg = item.map_camera ? this._renderDreameMapSVG(item.map_camera, 'dreame-'+p) : null;
       const callVac = (svc,data={}) => this.hass.callService('vacuum',svc,{entity_id:item.entity,...data});
       const callBtn = (eid) => this.hass.callService('button','press',{entity_id:eid});
       const trOpt   = (s) => ({'Charging':'En charge','Idle':'Inactif','Sleeping':'En veille','Sweeping':'Aspiration','Mopping':'Lavage','Returning':'Retour base','Docked':'En veille','Paused':'En pause','Error':'Erreur','Turbo':'Turbo','Quiet':'Silencieux','Balanced':'Équilibré','Standard':'Standard','Low':'Faible','Medium':'Moyen','High':'Élevé'}[s]||s);
@@ -3619,7 +3632,9 @@ class ResidentEvilCard extends LitElement {
               </div></div>`:html``}
               ${rooms.length>0?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// ZONES</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${rooms.map(r=>html`<button style="padding:4px 9px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#06b6d4;" @click="${(e)=>{e.stopPropagation();callVac('send_command',{command:'segment_clean',params:{segments:[r.id||r]}});}}">⊙ ${r.name||r}</button>`)}</div></div>`:html``}
             </div>
-            ${camUrl?html`<div style="width:280px;flex-shrink:0;">${this._renderZoomMap(camUrl, 'dreame-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`:html``}
+            ${nativeSvg
+              ? html`<div style="width:280px;flex-shrink:0;">${this._renderZoomSVG(nativeSvg, 'dreame-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`
+              : camUrl?html`<div style="width:280px;flex-shrink:0;">${this._renderZoomMap(camUrl, 'dreame-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`:html``}
           </div>
           <div style="padding:7px 10px;border-top:1px solid rgba(129,140,248,.1);display:flex;flex-wrap:wrap;gap:5px;">
             ${[{l:'▶ DÉMARRER',fn:()=>callVac('start'),col:'var(--re-wg)'},{l:'⏸ PAUSE',fn:()=>callVac('pause'),col:'var(--re-wp)'},{l:'⌂ BASE',fn:()=>callVac('return_to_base'),col:'#06b6d4'},{l:'⊙ LOCALISER',fn:()=>callVac('locate'),col:'var(--re-wa)'},{l:'▣ VIDER BAC',fn:()=>callVac('send_command',{command:'start_wash'}),col:'var(--re-wtd)'}].map(b=>html`<button style="flex:1;min-width:60px;padding:6px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
@@ -3824,7 +3839,7 @@ class ResidentEvilCard extends LitElement {
       <div id="zp-${key}" style="position:relative;width:100%;height:${h}px;overflow:hidden;
                   background:rgba(0,0,0,.3);border-radius:6px;touch-action:none;cursor:grab;
                   flex-shrink:0;">
-        <img src="${camUrl}" draggable="false"
+        <img data-zp-stage src="${camUrl}" draggable="false"
              style="position:absolute;top:50%;left:50%;max-width:none;
                     transform:translate(-50%,-50%) scale(1);transform-origin:center;
                     user-select:none;pointer-events:none;image-rendering:-webkit-optimize-contrast;"/>
@@ -3839,9 +3854,112 @@ class ResidentEvilCard extends LitElement {
       </div>`;
   }
 
+  // ════════════════════════════════════════════════════════════════
+  //  CARTE ROBOT NATIVE (SVG) — pour intégrations exposant les données
+  //  brutes de cartographie (ex: Dreame : rooms, vacuum_position,
+  //  charger_position, obstacles…) sur l'entité caméra. Dessinée
+  //  nous-mêmes, indépendante du flux camera_proxy (auth/cache/ban IP).
+  // ════════════════════════════════════════════════════════════════
+  _renderDreameMapSVG(mapEntity, key) {
+    const st = mapEntity && this.hass?.states[mapEntity];
+    const a  = st?.attributes;
+    if (!a || !a.rooms) return null;
+    const roomList = Object.values(a.rooms);
+    if (!roomList.length) return null;
+
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    roomList.forEach(r=>{
+      minX=Math.min(minX,r.x0,r.x1); maxX=Math.max(maxX,r.x0,r.x1);
+      minY=Math.min(minY,r.y0,r.y1); maxY=Math.max(maxY,r.y0,r.y1);
+    });
+    const cp = a.charger_position;
+    if (cp) { minX=Math.min(minX,cp.x); maxX=Math.max(maxX,cp.x); minY=Math.min(minY,cp.y); maxY=Math.max(maxY,cp.y); }
+    const pad = 400;
+    minX-=pad; minY-=pad; maxX+=pad; maxY+=pad;
+    const W = maxX-minX, H = maxY-minY;
+    const toX = (x)=> (x-minX).toFixed(0);
+    const toY = (y)=> (H-(y-minY)).toFixed(0);
+
+    const PAL = ['#22c55e','#38bdf8','#f59e0b','#a78bfa','#ef4444','#22d3ee','#fb923c','#84cc16'];
+
+    const roomsSvg = roomList.map(r=>{
+      const x = toX(Math.min(r.x0,r.x1)), y = toY(Math.max(r.y0,r.y1));
+      const w = Math.abs(r.x1-r.x0).toFixed(0), h = Math.abs(r.y1-r.y0).toFixed(0);
+      const col = PAL[(r.color_index||0)%PAL.length];
+      const cx = toX(r.x!=null?r.x:(r.x0+r.x1)/2), cy = toY(r.y!=null?r.y:(r.y0+r.y1)/2);
+      const nm = (r.custom_name||r.name||'').toUpperCase();
+      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${col}22" stroke="${col}88" stroke-width="12"/>
+              <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="150" fill="${col}" font-family="Courier New,monospace" font-weight="700">${nm}</text>`;
+    }).join('');
+
+    const noGoSvg = (a.no_go_areas||[]).map(z=>{
+      const pts = [[z.x0,z.y0],[z.x1,z.y1],[z.x2,z.y2],[z.x3,z.y3]].map(([x,y])=>`${toX(x)},${toY(y)}`).join(' ');
+      return `<polygon points="${pts}" fill="#ef444433" stroke="#ef4444" stroke-width="10" stroke-dasharray="40,24"/>`;
+    }).join('');
+
+    const carpetsSvg = (a.carpets||[]).map(c=>{
+      const pts = [[c.x0,c.y0],[c.x1,c.y1],[c.x2,c.y2],[c.x3,c.y3]].map(([x,y])=>`${toX(x)},${toY(y)}`).join(' ');
+      return `<polygon points="${pts}" fill="#f59e0b1c" stroke="#f59e0b55" stroke-width="6"/>`;
+    }).join('');
+
+    const obstaclesSvg = Object.values(a.obstacles||{}).map(o=>
+      `<circle cx="${toX(o.x)}" cy="${toY(o.y)}" r="60" fill="#ef444466" stroke="#ef4444" stroke-width="6"/>`
+    ).join('');
+
+    const chargerSvg = cp ? `<g transform="translate(${toX(cp.x)},${toY(cp.y)}) rotate(${-(cp.a||0)})">
+        <rect x="-100" y="-60" width="200" height="120" rx="16" fill="#22c55e" opacity="0.9"/>
+        <text x="0" y="14" text-anchor="middle" font-size="100" fill="#031a03" font-weight="900" font-family="Courier New">⌁</text>
+      </g>` : '';
+
+    // Marqueur robot : id stable + coordonnées de transfo en data-* pour
+    // que updated() puisse le repositionner en direct sans recréer le SVG.
+    const vacMarker = `<g id="dvac-${key}" data-dreame-vac data-entity="${mapEntity}"
+          data-minx="${minX}" data-miny="${minY}" data-h="${H}" transform="translate(${(W/2).toFixed(0)},${(H/2).toFixed(0)})">
+        <circle r="170" fill="#818cf8" opacity="0.22"/>
+        <circle r="105" fill="#4338ca" stroke="#c7d2fe" stroke-width="12"/>
+        <polygon points="120,0 30,-70 30,70" fill="#e0e7ff"/>
+      </g>`;
+
+    return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" xmlns="http://www.w3.org/2000/svg"
+          style="width:100%;height:100%;display:block;background:#020a02;">
+        ${roomsSvg}${carpetsSvg}${noGoSvg}${obstaclesSvg}${chargerSvg}${vacMarker}
+      </svg>`;
+  }
+
+  _renderZoomSVG(svgStr, key, opts = {}) {
+    if (!svgStr) return html``;
+    const h    = opts.height || 230;
+    const live = !!opts.live;
+    const lc   = opts.liveColor || '#818cf8';
+    const btn  = 'width:26px;height:26px;border:none;border-radius:5px;background:rgba(20,20,30,.8);'
+               + 'color:#e2e8f0;font-size:15px;font-weight:700;cursor:pointer;display:flex;'
+               + 'align-items:center;justify-content:center;font-family:inherit;line-height:1;'
+               + 'box-shadow:0 1px 4px rgba(0,0,0,.5);';
+    setTimeout(() => {
+      const el = this.shadowRoot?.querySelector(`#zp-${key}`);
+      if (el) this._initZoomPan(el);
+    }, 80);
+    return html`
+      <div id="zp-${key}" style="position:relative;width:100%;height:${h}px;overflow:hidden;
+                  background:rgba(0,0,0,.3);border-radius:6px;touch-action:none;cursor:grab;
+                  flex-shrink:0;">
+        <div data-zp-stage style="position:absolute;top:50%;left:50%;width:100%;height:100%;
+                    transform:translate(-50%,-50%) scale(1);transform-origin:center;
+                    pointer-events:none;" .innerHTML="${svgStr}"></div>
+        <div style="position:absolute;bottom:5px;right:5px;display:flex;flex-direction:column;gap:3px;z-index:5;">
+          <button data-zp-in    style="${btn}" @click="${(e)=>{e.stopPropagation();}}">+</button>
+          <button data-zp-out   style="${btn}" @click="${(e)=>{e.stopPropagation();}}">−</button>
+          <button data-zp-reset style="${btn}font-size:13px;" @click="${(e)=>{e.stopPropagation();}}">⟲</button>
+        </div>
+        ${live ? html`<div style="position:absolute;top:5px;right:5px;font-size:11px;color:${lc};
+                     font-family:'Courier New',monospace;background:rgba(0,0,0,.6);padding:2px 5px;
+                     border:1px solid ${lc}44;border-radius:3px;z-index:5;">● LIVE</div>` : html``}
+      </div>`;
+  }
+
   _initZoomPan(container) {
     if (!container || container.__zp) return;
-    const img = container.querySelector('img');
+    const img = container.querySelector('[data-zp-stage]');
     if (!img) return;
     let scale = 1, tx = 0, ty = 0, dragging = false;
     let startX = 0, startY = 0, startTx = 0, startTy = 0;
