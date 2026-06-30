@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v273 (version RICHE : widgets)
+   RESIDENT EVIL CARD v274 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3203,7 +3203,8 @@ class ResidentEvilCard extends LitElement {
           <div style="font-size:11px;color:#64748b;white-space:nowrap;width:60px;">${label}</div>
           <select style="flex:1;background:#0d1117;border:1px solid ${cG}33;color:#e2e8f0;padding:4px 6px;
                           font-size:12px;border-radius:4px;font-family:inherit;"
-            @change="${(e)=>{e.stopPropagation();callSel(eid,e.target.value);}}">\
+            .value="${cur||''}"
+            @change="${(e)=>{e.stopPropagation();callSel(eid,e.target.value);}}">
             ${opts.map(o=>html`<option value="${o}" ?selected="${o===cur}">${trOpt(o)}</option>`)}
           </select>
         </div>`;
