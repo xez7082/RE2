@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v281 (version RICHE : widgets)
+   RESIDENT EVIL CARD v282 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3600,7 +3600,7 @@ class ResidentEvilCard extends LitElement {
       const stLbl   = {docked:'EN VEILLE',cleaning:'NETTOYAGE',paused:'EN PAUSE',returning:'RETOUR BASE',idle:'INACTIF',error:'ERREUR'}[state]||state.toUpperCase();
       const stCol   = isOn ? 'var(--re-wp)' : state==='docked' ? 'var(--re-wg)' : 'var(--re-wtd)';
       const camUrl  = item.map_camera && this.hass?.states[item.map_camera]?.attributes?.entity_picture;
-      const nativeSvg = item.map_camera ? this._renderDreameMapSVG(item.map_camera, 'dreame-'+p) : null;
+      const nativeSvg = item.map_camera ? this._renderDreameMapSVG(item.map_camera, 'dreame-'+p, item.entity) : null;
       const camAttrs  = item.map_camera ? this.hass?.states[item.map_camera]?.attributes : null;
       const hasCalib  = (camAttrs?.calibration_points?.length||0) >= 3;
       const callVac = (svc,data={}) => this.hass.callService('vacuum',svc,{entity_id:item.entity,...data});
@@ -3641,7 +3641,7 @@ class ResidentEvilCard extends LitElement {
               ${rooms.length>0?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// ZONES</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${rooms.map(r=>html`<button style="padding:4px 9px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#06b6d4;" @click="${(e)=>{e.stopPropagation();callVac('send_command',{command:'segment_clean',params:{segments:[r.id||r]}});}}">⊙ ${r.name||r}</button>`)}</div></div>`:html``}
             </div>
             ${camUrl && hasCalib
-              ? html`<div style="width:280px;flex-shrink:0;">${this._renderZoomMapFR(camUrl, 'dreame-'+p, item.map_camera, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`
+              ? html`<div style="width:280px;flex-shrink:0;">${this._renderZoomMapFR(camUrl, 'dreame-'+p, item.map_camera, item.entity, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`
               : nativeSvg
                 ? html`<div style="width:280px;flex-shrink:0;">${this._renderZoomSVG(nativeSvg, 'dreame-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`
                 : camUrl?html`<div style="width:280px;flex-shrink:0;">${this._renderZoomMap(camUrl, 'dreame-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`:html``}
@@ -3871,26 +3871,22 @@ class ResidentEvilCard extends LitElement {
   }
 
   // ════════════════════════════════════════════════════════════════
-  //  SUIVI DE PROGRESSION DES PIÈCES — active_segments liste TOUTES les
-  //  pièces du programme en cours (ex: "shortcut" multi-pièces), pas
-  //  uniquement celle en train d'être nettoyée. On détermine donc la
-  //  pièce "vraiment active" par géométrie (position du robot dans une
-  //  bounding box de pièce) ; toute pièce du job quittée = terminée.
+  //  SUIVI DE PROGRESSION DES PIÈCES — active_segments est trop instable
+  //  comme signal (vide/repeuplé en boucle entre pièces dans un job
+  //  "shortcut"). On utilise l'état réel du robot (docked/cleaning/…),
+  //  bien plus stable, pour démarrer/clôturer une session, et la
+  //  géométrie (position robot dans une bounding box) pour détecter
+  //  chaque changement de pièce → la précédente passe en terminé.
   // ════════════════════════════════════════════════════════════════
-  _updateRoomProgress(mapEntity, activeSegments, vacuumPos, rooms) {
+  _updateRoomProgress(mapEntity, vacuumState, vacuumPos, rooms) {
     if (!this._roomProgress) this._roomProgress = {};
     let prog = this._roomProgress[mapEntity];
-    if (!prog) { prog = { active: new Set(), done: new Set(), wasIdle: true, lastInside: null }; this._roomProgress[mapEntity] = prog; }
-    const job = new Set((activeSegments||[]).map(String));
-    const isCleaning = job.size > 0;
+    if (!prog) { prog = { active: new Set(), done: new Set(), lastInside: null, wasDocked: true }; this._roomProgress[mapEntity] = prog; }
 
-    if (isCleaning && prog.wasIdle) { prog.done = new Set(); prog.lastInside = null; }
-    // Programme entièrement terminé (était en cours, ne l'est plus) →
-    // la dernière pièce où le robot se trouvait passe aussi en terminé.
-    if (!isCleaning && !prog.wasIdle && prog.lastInside) {
-      prog.done.add(prog.lastInside);
-    }
-    prog.wasIdle = !isCleaning;
+    const isDocked = ['docked','idle','paused','error'].includes(vacuumState);
+
+    // Nouvelle session : on était à l'arrêt, le robot redémarre → reset
+    if (prog.wasDocked && !isDocked) { prog.done = new Set(); prog.lastInside = null; }
 
     let insideId = null;
     if (vacuumPos && rooms) {
@@ -3903,16 +3899,18 @@ class ResidentEvilCard extends LitElement {
         }
       }
     }
-    // Le robot a changé de pièce pendant un programme actif → l'ancienne est terminée
-    if (isCleaning && prog.lastInside && prog.lastInside !== insideId) {
-      prog.done.add(prog.lastInside);
-    }
+    // Changement de pièce détecté → l'ancienne est terminée
+    if (prog.lastInside && prog.lastInside !== insideId) prog.done.add(prog.lastInside);
     if (insideId) prog.lastInside = insideId;
-    prog.active = insideId ? new Set([insideId]) : new Set();
+    // Robot revenu à la base → la dernière pièce visitée est aussi terminée
+    if (isDocked && prog.lastInside) prog.done.add(prog.lastInside);
+
+    prog.wasDocked = isDocked;
+    prog.active = (insideId && !isDocked) ? new Set([insideId]) : new Set();
     return prog;
   }
 
-  _buildDreameOverlay(svg, img, mapEntity) {
+  _buildDreameOverlay(svg, img, mapEntity, vacuumEntity) {
     const W = img.naturalWidth, H = img.naturalHeight;
     if (!W || !H) return;
     const attrs = this.hass?.states[mapEntity]?.attributes || {};
@@ -3921,7 +3919,8 @@ class ResidentEvilCard extends LitElement {
     svg.__tf = tf;
     const rooms = Object.values(attrs.rooms || {});
     const vp    = attrs.vacuum_position;
-    const prog  = this._updateRoomProgress(mapEntity, attrs.active_segments, vp, rooms);
+    const vState = vacuumEntity ? this.hass?.states[vacuumEntity]?.state : null;
+    const prog  = this._updateRoomProgress(mapEntity, vState, vp, rooms);
 
     // Empreinte de l'état "pièces" : on ne reconstruit le SVG QUE si elle
     // change vraiment (sinon l'animation CSS du pulse redémarre à chaque
@@ -3976,18 +3975,18 @@ class ResidentEvilCard extends LitElement {
     }
   }
 
-  _initDreameOverlay(stageEl, mapEntity) {
+  _initDreameOverlay(stageEl, mapEntity, vacuumEntity) {
     if (!stageEl) return;
     const img = stageEl.querySelector('img');
     const svg = stageEl.querySelector('svg.dreame-overlay');
     if (!img || !svg) return;
-    const run = () => this._buildDreameOverlay(svg, img, mapEntity);
+    const run = () => this._buildDreameOverlay(svg, img, mapEntity, vacuumEntity);
     stageEl.__dreameRun = run; // rappelé à chaque updated() pour suivre la progression en direct
     if (img.complete && img.naturalWidth) run();
     if (!stageEl.__dreameLoadBound) { img.addEventListener('load', run); stageEl.__dreameLoadBound = true; }
   }
 
-  _renderZoomMapFR(camUrl, key, mapEntity, opts = {}) {
+  _renderZoomMapFR(camUrl, key, mapEntity, vacuumEntity, opts = {}) {
     if (!camUrl) return html``;
     const h    = opts.height || 230;
     const live = !!opts.live;
@@ -4000,7 +3999,7 @@ class ResidentEvilCard extends LitElement {
       const el    = this.shadowRoot?.querySelector(`#zp-${key}`);
       if (el) this._initZoomPan(el);
       const stage = el?.querySelector('[data-zp-stage]');
-      if (stage) this._initDreameOverlay(stage, mapEntity);
+      if (stage) this._initDreameOverlay(stage, mapEntity, vacuumEntity);
     }, 80);
     return html`
       <div id="zp-${key}" style="position:relative;width:100%;height:${h}px;overflow:hidden;
@@ -4062,7 +4061,7 @@ class ResidentEvilCard extends LitElement {
   //  charger_position, obstacles…) sur l'entité caméra. Dessinée
   //  nous-mêmes, indépendante du flux camera_proxy (auth/cache/ban IP).
   // ════════════════════════════════════════════════════════════════
-  _renderDreameMapSVG(mapEntity, key) {
+  _renderDreameMapSVG(mapEntity, key, vacuumEntity) {
     const st = mapEntity && this.hass?.states[mapEntity];
     const a  = st?.attributes;
     if (!a || !a.rooms) return null;
@@ -4114,7 +4113,8 @@ class ResidentEvilCard extends LitElement {
     const roomsSorted = [...roomList].sort((a,b) =>
       Math.abs((b.x1-b.x0)*(b.y1-b.y0)) - Math.abs((a.x1-a.x0)*(a.y1-a.y0)));
 
-    const prog = this._updateRoomProgress(mapEntity, a.active_segments, a.vacuum_position, roomList);
+    const vState = vacuumEntity ? this.hass?.states[vacuumEntity]?.state : null;
+    const prog = this._updateRoomProgress(mapEntity, vState, a.vacuum_position, roomList);
     const pulseStyle = '<style>@keyframes _droom_pulse2{0%,100%{stroke-opacity:.9}50%{stroke-opacity:.3}}.\\_droom_pulse2{animation:_droom_pulse2 1.3s ease-in-out infinite;}</style>';
 
     const roomsSvg = pulseStyle + roomsSorted.map(r=>{
