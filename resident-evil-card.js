@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v272 (version RICHE : widgets)
+   RESIDENT EVIL CARD v273 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3241,7 +3241,7 @@ class ResidentEvilCard extends LitElement {
         </div>
 
         <!-- CORPS : 2 COLONNES -->
-        <div style="display:grid;grid-template-columns:1fr 220px;gap:0;">
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:0;">
 
           <!-- COLONNE GAUCHE -->
           <div style="padding:12px 16px;border-right:1px solid ${cG}12;display:flex;flex-direction:column;gap:10px;">
@@ -3293,7 +3293,7 @@ class ResidentEvilCard extends LitElement {
           <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
             <div style="font-size:11px;color:${cG}55;letter-spacing:2px;">📷 CARTE LIVE (pincer pour zoomer)</div>
             ${camUrl
-              ? this._renderZoomMap(camUrl, 'mova-'+p, {height: parseInt(w.map_height)||180, live:isOn, liveColor:cG})
+              ? this._renderZoomMap(camUrl, 'mova-'+p, {height: parseInt(w.map_height)||280, live:isOn, liveColor:cG})
               : html`
               <div style="flex:1;background:#0a1a0a;border:1px solid ${cG}15;border-radius:6px;
                            display:flex;align-items:center;justify-content:center;min-height:180px;">
@@ -3618,7 +3618,7 @@ class ResidentEvilCard extends LitElement {
               </div></div>`:html``}
               ${rooms.length>0?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// ZONES</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${rooms.map(r=>html`<button style="padding:4px 9px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#06b6d4;" @click="${(e)=>{e.stopPropagation();callVac('send_command',{command:'segment_clean',params:{segments:[r.id||r]}});}}">⊙ ${r.name||r}</button>`)}</div></div>`:html``}
             </div>
-            ${camUrl?html`<div style="width:200px;flex-shrink:0;">${this._renderZoomMap(camUrl, 'dreame-'+p, {height: parseInt(item.map_height)||230, live:isOn, liveColor:'#818cf8'})}</div>`:html``}
+            ${camUrl?html`<div style="width:280px;flex-shrink:0;">${this._renderZoomMap(camUrl, 'dreame-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`:html``}
           </div>
           <div style="padding:7px 10px;border-top:1px solid rgba(129,140,248,.1);display:flex;flex-wrap:wrap;gap:5px;">
             ${[{l:'▶ DÉMARRER',fn:()=>callVac('start'),col:'var(--re-wg)'},{l:'⏸ PAUSE',fn:()=>callVac('pause'),col:'var(--re-wp)'},{l:'⌂ BASE',fn:()=>callVac('return_to_base'),col:'#06b6d4'},{l:'⊙ LOCALISER',fn:()=>callVac('locate'),col:'var(--re-wa)'},{l:'▣ VIDER BAC',fn:()=>callVac('send_command',{command:'start_wash'}),col:'var(--re-wtd)'}].map(b=>html`<button style="flex:1;min-width:60px;padding:6px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
@@ -3695,7 +3695,7 @@ class ResidentEvilCard extends LitElement {
               </div>
               ${progNum!=null&&!isNaN(progNum)?html`<div style="margin-top:6px;"><div style="font-size:12px;color:#64748b;letter-spacing:.8px;margin-bottom:4px;">// PROGRESSION</div><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:3px;"><span style="color:#94a3b8;">Tonte</span><span style="font-weight:800;color:#22c55e;">${progNum.toFixed(0)}%</span></div><div style="height:5px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:${progNum.toFixed(0)}%;background:linear-gradient(90deg,#22c55e,#86efac);box-shadow:0 0 6px #22c55e88;"></div></div></div>`:html``}
             </div>
-            ${camUrl?html`<div style="flex:1;">${this._renderZoomMap(camUrl, 'mower-'+p, {height: parseInt(item.map_height)||240, live:isOn, liveColor:'#22c55e'})}</div>`:html``}
+            ${camUrl?html`<div style="flex:1;">${this._renderZoomMap(camUrl, 'mower-'+p, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#22c55e'})}</div>`:html``}
           </div>
           <div style="padding:7px 10px;border-top:1px solid rgba(34,197,94,.1);display:flex;flex-wrap:wrap;gap:5px;">
             ${[{l:'▶ TONDRE',fn:()=>callMow('start_mowing'),col:'#22c55e',flex:2},{l:'⏸ PAUSE',fn:()=>callMow('pause'),col:'#818cf8',flex:1},{l:'⌂ BASE',fn:()=>callMow('dock'),col:'#06b6d4',flex:1},{l:'⌂ BASE DOUX',fn:()=>callBtn('button.'+p+'_revenir_a_la_base_sans_arreter_la_tache'),col:'#475569',flex:1}].map(b=>html`<button style="flex:${b.flex};min-width:60px;padding:7px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
