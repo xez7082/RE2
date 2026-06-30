@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v266 (version RICHE : widgets)
+   RESIDENT EVIL CARD v267 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2741,7 +2741,8 @@ class ResidentEvilCard extends LitElement {
   _initMapRadar(canvas, getPersonsFn, getHomeFn, onPing) {
     if (!canvas || canvas.__anim) return;
     const ctx = canvas.getContext('2d');
-    let sweep = 0, pings = [], raf;
+    let sweep = 0, pings = [], raf, lastT=0;
+    const FPS=12;
     const toR = d => d * Math.PI / 180;
 
     const geoCalc = (hLat, hLon, pLat, pLon) => {
@@ -2755,7 +2756,9 @@ class ResidentEvilCard extends LitElement {
       return { bearing, dist };
     };
 
-    const draw = () => {
+    const draw = (ts=0) => {
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       const W=canvas.width, H=canvas.height, CX=W/2, CY=H/2;
       const R=Math.min(W,H)*0.46;
       ctx.clearRect(0,0,W,H);
@@ -3790,8 +3793,11 @@ class ResidentEvilCard extends LitElement {
     if (!canvas || canvas.__anim) return;
     const W=canvas.width, H=canvas.height, CX=W/2, CY=H/2, R=Math.min(W,H)/2-10;
     const ctx=canvas.getContext('2d');
-    let sweep=0, blips=[], raf;
-    const draw=()=>{
+    let sweep=0, blips=[], raf, lastT=0;
+    const FPS=12;
+    const draw=(ts=0)=>{
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       ctx.clearRect(0,0,W,H);
       ctx.fillStyle='#000a03'; ctx.beginPath(); ctx.arc(CX,CY,R+8,0,Math.PI*2); ctx.fill();
       [0.25,0.5,0.75,1].forEach((r,i)=>{
@@ -3873,9 +3879,12 @@ class ResidentEvilCard extends LitElement {
     const W=canvas.width, H=canvas.height;
     const ctx=canvas.getContext('2d');
     const buf=new Float32Array(W).fill(0);
-    let head=0, t=0, raf;
+    let head=0, t=0, raf, lastT=0;
+    const FPS=15;
     const WAVE=[0,0,0.08,0.08,0,-0.12,-0.12,0,1.0,1.15,-0.32,-0.22,0,0.08,0.08,0,0,0,0,0];
-    const draw=()=>{
+    const draw=(ts=0)=>{
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       const bpm=bpmFn()||72; const col=colorFn()||'#00ff00';
       const speed=Math.max(1,Math.round(W*bpm/600));
       for(let s=0;s<speed;s++){
@@ -3936,10 +3945,13 @@ class ResidentEvilCard extends LitElement {
     if (!canvas||canvas.__anim) return;
     const W=canvas.width, H=canvas.height;
     const ctx=canvas.getContext('2d');
-    let t=0, raf;
+    let t=0, raf, lastT=0;
+    const FPS=12;
     const wave1=(x)=>Math.sin((x/W)*Math.PI*4+t*0.04)*(H*0.015);
     const wave2=(x)=>Math.sin((x/W)*Math.PI*7+t*0.07+1)*(H*0.008);
-    const draw=()=>{
+    const draw=(ts=0)=>{
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       ctx.clearRect(0,0,W,H);
       const pct=Math.max(0,Math.min(100,levelFn()||0));
       const col=colorFn()||'#00aaff';
@@ -4020,8 +4032,11 @@ class ResidentEvilCard extends LitElement {
     const COLS=Math.floor(W/14);
     const drops=Array.from({length:COLS},()=>Math.random()*H/14|0);
     const chars='アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%';
-    let raf;
-    const draw=()=>{
+    let raf, lastT=0;
+    const FPS=10;
+    const draw=(ts=0)=>{
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       const col=colorFn()||'#00ff00';
       ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,W,H);
       const [r,g,b]=[parseInt(col.slice(1,3)||'00',16),parseInt(col.slice(3,5)||'ff',16),parseInt(col.slice(5,7)||'00',16)];
@@ -4064,8 +4079,11 @@ class ResidentEvilCard extends LitElement {
     const W=canvas.width, H=canvas.height, CX=W/2, CY=H/2;
     const R=Math.min(W,H)*0.24;
     const ctx=canvas.getContext('2d');
-    let t=0, raf;
-    const draw=()=>{
+    let t=0, raf, lastT=0;
+    const FPS=15;
+    const draw=(ts=0)=>{
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       ctx.clearRect(0,0,W,H);
       const {color,level}=stateFn();
       const [r,g,b]=[parseInt(color.slice(1,3)||'00',16),parseInt(color.slice(3,5)||'ff',16),parseInt(color.slice(5,7)||'44',16)];
@@ -4155,7 +4173,8 @@ class ResidentEvilCard extends LitElement {
     if (!canvas||canvas.__anim) return;
     const W=canvas.width, H=canvas.height;
     const ctx=canvas.getContext('2d');
-    let needles={}, t=0, raf;
+    let needles={}, t=0, raf, lastT=0;
+    const FPS=15;
     const S=Math.PI*0.75, E=Math.PI*2.25, RANGE=E-S;
     const drawOne=(cx,cy,R,g,idx)=>{
       const pct=Math.max(0,Math.min(100,((g.value||0)-g.min)/(g.max-g.min)*100));
@@ -4190,7 +4209,9 @@ class ResidentEvilCard extends LitElement {
       ctx.fillStyle='#ffffff88';
       ctx.fillText((g.label||'').toUpperCase(),cx,cy+R*0.48);
     };
-    const draw=()=>{
+    const draw=(ts=0)=>{
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       ctx.clearRect(0,0,W,H);
       ctx.fillStyle='#050505'; ctx.fillRect(0,0,W,H);
       const gauges=gaugesFn(); const n=Math.max(1,gauges.length);
@@ -4230,8 +4251,11 @@ class ResidentEvilCard extends LitElement {
     const W=canvas.width, H=canvas.height;
     const ctx=canvas.getContext('2d');
     const buf=new Float32Array(W).fill(0.5);
-    let head=0, raf;
-    const draw=()=>{
+    let head=0, raf, lastT=0;
+    const FPS=15;
+    const draw=(ts=0)=>{
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       const val=valueFn()||0;
       const col=opts.color||'#00ff00';
       const minV=opts.min??-3000, maxV=opts.max??3000;
@@ -4291,7 +4315,8 @@ class ResidentEvilCard extends LitElement {
     const W = canvas.width, H = canvas.height;
     const sX = W/150, sY = H/410;
     const ctx = canvas.getContext('2d');
-    let animT = 0, raf;
+    let animT = 0, raf, lastT=0;
+    const FPS=12;
 
     // Arrondi compatible tous navigateurs
     const rr = (x,y,w,h,r) => {
@@ -4337,7 +4362,9 @@ class ResidentEvilCard extends LitElement {
       ctx.fillStyle='#1a1a35'; rr(8*sX,358*sY,134*sX,14*sY,4*sX); ctx.fill();
     };
 
-    const draw = () => {
+    const draw = (ts=0) => {
+      if (ts-lastT < 1000/FPS) { raf=requestAnimationFrame(draw); return; }
+      lastT=ts;
       ctx.clearRect(0,0,W,H);
       drawTube();
       const pct = Math.max(0, Math.min(100, socFn()));
@@ -4624,7 +4651,15 @@ class ResidentEvilCard extends LitElement {
       if(S.scene==='snow')drawSnow();
       if(S.scene==='fog')drawFog();
     }
-    function loop(){ if (!canvas.isConnected) { controller.destroy(); return; } S.tick++; S.half^=1; if(S.half===0) drawFrame(); S.raf=requestAnimationFrame(loop); }
+    function loop(ts){
+      if (!canvas.isConnected) { controller.destroy(); return; }
+      if (!S._lastT) S._lastT = 0;
+      if (ts - S._lastT < 1000/10) { S.raf = requestAnimationFrame(loop); return; } // 10 fps
+      S._lastT = ts;
+      S.tick++;
+      drawFrame();
+      S.raf = requestAnimationFrame(loop);
+    }
 
     const ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(() => { resize(); drawFrame(); }) : null;
     if (ro) ro.observe(canvas);
