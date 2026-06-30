@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v283 (version RICHE : widgets)
+   RESIDENT EVIL CARD v284 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3921,40 +3921,24 @@ class ResidentEvilCard extends LitElement {
     if (!tf) return;
     svg.__tf = tf;
     const rooms = Object.values(attrs.rooms || {});
-    const vp    = attrs.vacuum_position;
-    const vState = vacuumEntity ? this.hass?.states[vacuumEntity]?.state : null;
-    const prog  = this._updateRoomProgress(mapEntity, vState, vp, rooms);
 
-    // Empreinte de l'état "pièces" : on ne reconstruit le SVG QUE si elle
-    // change vraiment (sinon l'animation CSS du pulse redémarre à chaque
-    // tick → effet de clignotement/flash au lieu d'un pulse fluide).
-    const fingerprint = [...prog.active].sort().join(',') + '|' + [...prog.done].sort().join(',');
-    const needsRebuild = svg.__lastFp !== fingerprint || !svg.__built;
-
-    if (needsRebuild) {
-      if (svg.getAttribute('viewBox') !== `0 0 ${W} ${H}`) svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    // Les noms de pièces ne bougent jamais → construits une seule fois.
+    // (La progression du nettoyage — traînées, ordre, couleurs — est déjà
+    // rendue NATIVEMENT par l'intégration directement dans l'image réelle,
+    // inutile de la recréer nous-mêmes : ça ne fait que désynchroniser.)
+    if (!svg.__built) {
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       const fs = Math.max(16, W*0.024);
       const sw = Math.max(3, W*0.0035);
-      let inner = '<style>@keyframes _droom_pulse{0%,100%{opacity:.85}50%{opacity:.3}}.\\_droom_pulse{animation:_droom_pulse 1.3s ease-in-out infinite;}</style>';
+      let inner = '';
       rooms.forEach(r=>{
-        const rid = String(r.room_id);
-        const isActive = prog.active.has(rid);
-        const isDone   = prog.done.has(rid);
-        if ((isActive || isDone) && r.x0!=null && r.y0!=null && r.x1!=null && r.y1!=null) {
-          const corners = [[r.x0,r.y0],[r.x1,r.y0],[r.x1,r.y1],[r.x0,r.y1]].map(([x,y])=>tf(x,y));
-          const pts = corners.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-          const col = isActive ? '#f59e0b' : '#22c55e';
-          inner += `<polygon points="${pts}" fill="${col}" fill-opacity="0.30" stroke="${col}" stroke-width="${(sw*1.3).toFixed(1)}" class="${isActive?'_droom_pulse':''}"/>`;
-        }
         if (r.x==null||r.y==null) return;
         const p = tf(r.x, r.y);
         const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '').toUpperCase();
-        const badge = isDone ? ' ✓' : isActive ? ' …' : '';
-        const txtCol = isDone ? '#86efac' : isActive ? '#fde68a' : '#ffffff';
         inner += `<text x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" text-anchor="middle"
-                    font-size="${fs.toFixed(0)}" fill="${txtCol}" font-family="'Courier New',monospace"
+                    font-size="${fs.toFixed(0)}" fill="#ffffff" font-family="'Courier New',monospace"
                     font-weight="900" paint-order="stroke" stroke="#000000" stroke-width="${sw.toFixed(1)}"
-                    stroke-opacity="0.7">${nm}${badge}</text>`;
+                    stroke-opacity="0.7">${nm}</text>`;
       });
       const mr = Math.max(8, W*0.035);
       inner += `<g data-ivac>
@@ -3963,8 +3947,7 @@ class ResidentEvilCard extends LitElement {
           <polygon points="${(mr*1.25).toFixed(1)},0 ${(mr*0.3).toFixed(1)},-${(mr*0.75).toFixed(1)} ${(mr*0.3).toFixed(1)},${(mr*0.75).toFixed(1)}" fill="#e0e7ff"/>
         </g>`;
       svg.innerHTML = inner;
-      svg.__lastFp  = fingerprint;
-      svg.__built   = true;
+      svg.__built = true;
     }
 
     // Le marqueur, lui, se repositionne à CHAQUE tick sans jamais
@@ -4116,23 +4099,16 @@ class ResidentEvilCard extends LitElement {
     const roomsSorted = [...roomList].sort((a,b) =>
       Math.abs((b.x1-b.x0)*(b.y1-b.y0)) - Math.abs((a.x1-a.x0)*(a.y1-a.y0)));
 
-    const vState = vacuumEntity ? this.hass?.states[vacuumEntity]?.state : null;
-    const prog = this._updateRoomProgress(mapEntity, vState, a.vacuum_position, roomList);
-    const pulseStyle = '<style>@keyframes _droom_pulse2{0%,100%{stroke-opacity:.9}50%{stroke-opacity:.3}}.\\_droom_pulse2{animation:_droom_pulse2 1.3s ease-in-out infinite;}</style>';
-
-    const roomsSvg = pulseStyle + roomsSorted.map(r=>{
+    const roomsSvg = roomsSorted.map(r=>{
       const x = toX(Math.min(r.x0,r.x1)), y = toY(Math.max(r.y0,r.y1));
       const w = Math.abs(r.x1-r.x0).toFixed(0), h = Math.abs(r.y1-r.y0).toFixed(0);
-      const rid = String(r.room_id);
-      const isActive = prog.active.has(rid), isDone = prog.done.has(rid);
-      const col = isActive ? '#f59e0b' : isDone ? '#22c55e' : PAL[(r.color_index||0)%PAL.length];
-      const fillOp = isActive || isDone ? '0.34' : '0.30';
+      const col = PAL[(r.color_index||0)%PAL.length];
       const cx = toX(r.x!=null?r.x:(r.x0+r.x1)/2), cy = toY(r.y!=null?r.y:(r.y0+r.y1)/2);
-      const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '').toUpperCase() + (isDone?' ✓':isActive?' …':'');
+      const nm = (r.custom_name || this._roomNameFR(r.name) || r.name || '').toUpperCase();
       const m2 = (Math.abs((r.x1-r.x0)*(r.y1-r.y0))/1e6).toFixed(1);
       const icon = roomIcon(r);
       const rx = Math.min(70, parseFloat(w)*0.06, parseFloat(h)*0.06).toFixed(0);
-      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${col}" fill-opacity="${fillOp}" stroke="${col}" stroke-width="10" class="${isActive?'_droom_pulse2':''}"/>
+      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${col}" fill-opacity="0.30" stroke="${col}" stroke-width="10"/>
               <text x="${cx}" y="${(parseFloat(cy)-110).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="220">${icon}</text>
               <text x="${cx}" y="${(parseFloat(cy)+60).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="120" fill="#fff" font-family="Courier New,monospace" font-weight="900" style="paint-order:stroke;stroke:#000;stroke-width:14px;stroke-opacity:0.55;">${nm}</text>
               <text x="${cx}" y="${(parseFloat(cy)+190).toFixed(0)}" text-anchor="middle" dominant-baseline="middle" font-size="95" fill="${col}" font-family="Courier New,monospace" font-weight="700">${m2} m²</text>`;
