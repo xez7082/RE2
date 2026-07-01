@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v287 (version RICHE : widgets)
+   RESIDENT EVIL CARD v288 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -2393,11 +2393,30 @@ class ResidentEvilCard extends LitElement {
     const unit  = (eid) => this.hass?.states[eid]?.attributes?.unit_of_measurement || '';
     const cap   = Number(w.capacity || 1000);
     const level = num(w.tank_level_entity);
-    const vol   = num(w.tank_volume_entity);
-    const lvlPct = level != null ? Math.min(100, Math.max(0, level)) : (vol != null ? Math.min(100, vol/cap*100) : 0);
+    const volRaw = num(w.tank_volume_entity);
+    // Calcul volume fiable : si pourcentage disponible, on calcule depuis cap×%
+    // (évite les erreurs de l'entité HA si elle retourne m³ au lieu de L)
+    const lvlPct = level != null ? Math.min(100, Math.max(0, level))
+                 : (volRaw != null ? Math.min(100, volRaw/cap*100) : 0);
+    const vol = Math.round(lvlPct / 100 * cap);  // toujours cohérent avec cap et %
     const waterCol = '#5ec8ff';
     const alert  = getSt(w.alert_entity) === 'on';
     const fmtNum = (v) => v != null ? v.toLocaleString('fr-FR', {maximumFractionDigits: 1}) : '--';
+    // Gestion entité inflow : switch → ACTIF/INACTIF ; sensor → valeur numérique
+    const inflowEid = w.inflow_entity;
+    const inflowSt  = inflowEid ? this.hass?.states[inflowEid] : null;
+    const inflowIsSwitch = inflowEid?.startsWith('switch.');
+    const inflowVal = inflowIsSwitch
+      ? (inflowSt?.state === 'on' ? 'ACTIF' : inflowSt?.state === 'off' ? 'INACTIF' : '--')
+      : fmtNum(num(inflowEid));
+    const inflowUnit = inflowIsSwitch ? '' : (unit(inflowEid) || 'L');
+    const inflowIcon = inflowIsSwitch ? 'mdi:solar-panel' : 'mdi:water-plus';
+    const inflowBg   = inflowIsSwitch
+      ? (inflowSt?.state === 'on' ? 'rgba(245,158,11,.25)' : 'rgba(100,116,139,.2)')
+      : 'rgba(34,197,94,.2)';
+    const inflowCol  = inflowIsSwitch
+      ? (inflowSt?.state === 'on' ? '#fbbf24' : '#94a3b8')
+      : '#4ade80';
 
     // ── Tuile statistique (icône colorée + libellé + grosse valeur + unité à droite) ──
     const statTile = (iconBg, iconCol, icon, label, value, un, sub) => html`
@@ -2531,7 +2550,7 @@ class ResidentEvilCard extends LitElement {
             <!-- Tuiles 2×2 (élastiques : remplissent l'espace restant) -->
             <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:10px;">
               ${statTile('rgba(79,70,229,.25)','#a5b4fc','mdi:gauge','Volume mesuré', fmtNum(vol)+' L','', 'Niveau: '+lvlPct.toFixed(0)+'%')}
-              ${statTile('rgba(34,197,94,.2)','#4ade80','mdi:water-plus','Pluie Directe', fmtNum(num(w.inflow_entity)), unit(w.inflow_entity)||'L','')}
+              ${statTile(inflowBg, inflowCol, inflowIcon, inflowIsSwitch ? 'Beem IBC' : 'Entrée directe', inflowVal, inflowUnit, '')}
               ${statTile('rgba(56,189,248,.18)','#7dd3fc','mdi:weather-pouring','Précipitations', fmtNum(num(w.rain_entity)), unit(w.rain_entity)||'mm','')}
               ${statTile('rgba(249,115,22,.2)','#fdba74','mdi:thermometer','Temp. Extérieure', fmtNum(num(w.temp_entity)), '°C','')}
             </div>
