@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v289 (version RICHE : widgets)
+   RESIDENT EVIL CARD v290 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3528,11 +3528,21 @@ class ResidentEvilCard extends LitElement {
       const isOn  = st?.state === 'on';
       const cycSt = item.cycle ? this.hass?.states[item.cycle] : null;
       const cyc   = cycSt && !['unavailable','unknown'].includes(cycSt.state) ? cycSt.state : null;
-      const col   = isOn ? 'var(--re-wg)' : '#334155';
-      const borderCol = isOn ? '#22c55e44' : '#0f1a0f';
-      const bgTop = isOn ? '#040c04' : '#050808';
-      const bgBot = isOn ? '#060e06' : '#060a06';
-      const unitId = String(idx+1).padStart(3,'0');
+
+      // ── Variables personnalisables depuis l'éditeur visuel ──
+      const colActive   = w.col_active   || '#22c55e';   // Couleur — Actif
+      const colInactive = w.col_inactive || '#334155';   // Couleur — Inactif
+      const colAlert    = w.col_alert    || '#ef4444';   // Couleur — Alerte conso
+      const nameFs      = (w.name_size   || 20)+'px';   // Taille nom appareil (px)
+      const lblFs       = (w.label_size  || 13)+'px';   // Taille labels (px)
+      const valFs       = (w.value_size  || 24)+'px';   // Taille valeurs (px)
+      const maxPwr      = parseFloat(w.max_power_w) || 2500;
+
+      const col      = isOn ? colActive : colInactive;
+      const borderCol = isOn ? colActive+'44' : '#0f1a0f';
+      const bgTop    = isOn ? '#040c04' : '#050808';
+      const bgBot    = isOn ? '#060e06' : '#060a06';
+      const unitId   = String(idx+1).padStart(3,'0');
 
       // Dictionnaire FR pour les états de programme
       const trCyc = (v) => {
@@ -3577,7 +3587,7 @@ class ResidentEvilCard extends LitElement {
       const pwrSt  = (item.sensors||[]).map(e=>this.hass?.states[e]).find(s=>s?.attributes?.unit_of_measurement==='W');
       const pwr    = pwrSt ? parseFloat(pwrSt.state) : 0;
       const pwrPct = Math.min(100, (pwr/2500)*100);
-      const pwrCol = pwr>2000?'var(--re-wr)':pwr>800?'var(--re-wa)':'var(--re-wg)';
+      const pwrCol = pwr>maxPwr*0.8?colAlert:pwr>maxPwr*0.32?'var(--re-wa)':colActive;
 
       return html`
         <div style="flex:1 1 300px;min-width:280px;background:${bgTop};
@@ -3596,7 +3606,7 @@ class ResidentEvilCard extends LitElement {
                      ${isOn?'':'filter:grayscale(0.8) brightness(0.5);'}"/>
               </div>`:html``}
             <div style="flex:1;min-width:0;">
-              <div style="font-size:20px;font-weight:900;color:#f1f5f9;letter-spacing:.5px;">
+              <div style="font-size:${nameFs};font-weight:900;color:#f1f5f9;letter-spacing:.5px;">
                 ${item.name}
               </div>
               <div style="display:inline-flex;align-items:center;gap:8px;margin-top:6px;
@@ -3648,8 +3658,8 @@ class ResidentEvilCard extends LitElement {
               const dispUnit = (isDoor||isEnd||['unavailable','unknown'].includes(rawVal)) ? '' : un;
               return html`
                 <div style="padding:14px 16px;border-right:${i<(item.sensors||[]).length-1?'1px solid #0f1a0f':'none'};">
-                  <div style="font-size:13px;color:#4b6b4b;letter-spacing:1px;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lbl.toUpperCase()}</div>
-                  <div style="font-size:${isEnd?'17px':'24px'};font-weight:900;color:${vCol};line-height:1;">${dispVal}<span style="font-size:14px;color:#64748b;margin-left:2px;font-weight:400;">${dispUnit}</span></div>
+                  <div style="font-size:${lblFs};color:#4b6b4b;letter-spacing:1px;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lbl.toUpperCase()}</div>
+                  <div style="font-size:${isEnd?'17px':valFs};font-weight:900;color:${vCol};line-height:1;">${dispVal}<span style="font-size:14px;color:#64748b;margin-left:2px;font-weight:400;">${dispUnit}</span></div>
                 </div>`;
             })}
           </div>
