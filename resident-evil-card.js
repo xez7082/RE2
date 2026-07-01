@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v285 (version RICHE : widgets)
+   RESIDENT EVIL CARD v286 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3529,7 +3529,7 @@ class ResidentEvilCard extends LitElement {
                     position:relative;overflow:hidden;font-family:'Courier New',monospace;"
              @click="${(e)=>{e.stopPropagation();toggle(item.entity);}}">
           ${isOn?html`<div style="position:absolute;left:0;right:0;height:1px;background:#00ff0018;z-index:1;pointer-events:none;animation:_re_scan 4s linear infinite;top:0;"></div>`:html``}
-          <div style="position:absolute;top:6px;right:8px;font-size:9px;color:${col}55;letter-spacing:1px;z-index:2;">UNIT-${unitId}</div>
+          <div style="position:absolute;top:6px;right:8px;font-size:11px;color:${col}99;letter-spacing:1px;z-index:2;">UNIT-${unitId}</div>
           <div style="display:flex;align-items:center;gap:10px;padding:10px 12px 8px;">
             ${item.img?html`
               <div style="width:56px;height:56px;flex-shrink:0;background:#080808;border:1px solid #0f1a0f;
@@ -3538,18 +3538,18 @@ class ResidentEvilCard extends LitElement {
                      ${isOn?'':'filter:grayscale(0.8) brightness(0.5);'}"/>
               </div>`:html``}
             <div style="flex:1;min-width:0;padding-right:24px;">
-              <div style="font-size:13px;font-weight:900;color:var(--re-wt);letter-spacing:1px;text-transform:uppercase;">
+              <div style="font-size:15px;font-weight:900;color:var(--re-wt);letter-spacing:1px;text-transform:uppercase;">
                 ${item.name}
               </div>
               <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
                 <div style="width:7px;height:7px;border-radius:50%;background:${col};
                              ${isOn?'animation:_re_pulse 2s ease-in-out infinite;':'opacity:0.4;'}
                              flex-shrink:0;"></div>
-                <span style="font-size:11px;font-weight:700;color:${col};letter-spacing:2px;">
+                <span style="font-size:13px;font-weight:700;color:${col};letter-spacing:2px;">
                   ${isOn?'EN LIGNE':'HORS LIGNE'}
                 </span>
               </div>
-              ${cyc?html`<div style="font-size:10px;color:#334155;margin-top:2px;letter-spacing:1px;">
+              ${cyc?html`<div style="font-size:13px;color:#94a3b8;margin-top:2px;letter-spacing:1px;">
                 &gt; ${cyc.toUpperCase()}
               </div>`:html``}
             </div>
@@ -3570,8 +3570,8 @@ class ResidentEvilCard extends LitElement {
                           : 'var(--re-wt)';
               return html`
                 <div style="background:#080e08;border:1px solid #0f1a0f;border-radius:3px;padding:4px 8px;min-width:0;">
-                  <div style="font-size:9px;color:#2a4a2a;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">${lbl.toUpperCase()}</div>
-                  <div style="font-size:14px;font-weight:900;color:${vCol};letter-spacing:0.5px;">${val}<span style="font-size:9px;color:#334155;"> ${un}</span></div>
+                  <div style="font-size:12px;color:#7dab7d;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${lbl.toUpperCase()}</div>
+                  <div style="font-size:16px;font-weight:900;color:${vCol};letter-spacing:0.5px;">${val}<span style="font-size:12px;color:#64748b;"> ${un}</span></div>
                 </div>`;
             })}
           </div>
