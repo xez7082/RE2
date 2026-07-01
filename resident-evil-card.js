@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v288 (version RICHE : widgets)
+   RESIDENT EVIL CARD v289 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3529,71 +3529,132 @@ class ResidentEvilCard extends LitElement {
       const cycSt = item.cycle ? this.hass?.states[item.cycle] : null;
       const cyc   = cycSt && !['unavailable','unknown'].includes(cycSt.state) ? cycSt.state : null;
       const col   = isOn ? 'var(--re-wg)' : '#334155';
-      const borderCol = isOn ? 'var(--re-wg)30' : '#0f1a0f';
+      const borderCol = isOn ? '#22c55e44' : '#0f1a0f';
+      const bgTop = isOn ? '#040c04' : '#050808';
+      const bgBot = isOn ? '#060e06' : '#060a06';
       const unitId = String(idx+1).padStart(3,'0');
-      const unitPfx = w.unit_prefix || 'UNIT-';
-      const maxW2 = parseFloat(w.max_power_w) || 2500;
-      const nameFs = w.name_size ? w.name_size+'px' : '13px';
-      const lblFs2 = w.label_size ? w.label_size+'px' : '9px';
-      const valFs2 = w.value_size ? w.value_size+'px' : '14px';
-      // Puissance pour la barre
-      const pwrSt = (item.sensors||[]).map(e=>this.hass?.states[e]).find(s=>s?.attributes?.unit_of_measurement==='W');
-      const pwr = pwrSt ? parseFloat(pwrSt.state) : 0;
+
+      // Dictionnaire FR pour les états de programme
+      const trCyc = (v) => {
+        if (!v) return '';
+        const MAP = {
+          'Run':'En cours','Pause':'En pause','End':'Terminé','Ready':'Prêt',
+          'Rinse':'Rinçage','Spin':'Essorage','Wash':'Lavage','Dry':'Séchage',
+          'Pre-Wash':'Pré-lavage','Cool-Down':'Refroidissement','Soak':'Trempage',
+          'Hot water':'Eau chaude','Drain':'Vidange',
+          'idle':'En veille','off':'Arrêté','on':'En marche',
+          'charging_completed':'Chargé','drying':'Séchage','washing':'Lavage',
+          'docked':'En base','cleaning':'Nettoyage','paused':'En pause',
+          'POMPE À CHALEUR':'Pompe à chaleur','Standby':'Veille',
+          'running':'En cours','finished':'Terminé','delaystart':'Démarrage différé',
+        };
+        return MAP[v] || MAP[v.toLowerCase()] || v;
+      };
+
+      // Dictionnaire FR pour les labels capteurs
+      const trLbl = (lbl, eid, un) => {
+        if (un === 'W')    return 'Puissance';
+        if (un === 'V')    return 'Tension';
+        if (un === 'A')    return 'Courant';
+        if (un === 'kWh')  return 'Conso/jour';
+        if (un === '°C')   return 'Température';
+        if (un === '%')    return 'Progression';
+        if (un === 'min')  return 'Durée';
+        if (un === '€')    return 'Coût';
+        // Détection par nom d'entité
+        const e = (eid||'').toLowerCase();
+        if (e.includes('heure_de_fin') || e.includes('end_time')) return 'Fin estimée';
+        if (e.includes('progression'))  return 'Progression';
+        if (e.includes('porte'))        return 'Porte';
+        if (e.includes('duree') || e.includes('duration')) return 'Durée';
+        if (e.includes('cout') || e.includes('cost'))      return 'Coût';
+        if (e.includes('etat') || e.includes('state'))     return 'État';
+        // Repli sur le nom court nettoyé
+        return lbl.replace(/sensor\./i,'').replace(/_/g,' ').slice(-18).toUpperCase();
+      };
+
+      // Puissance pour la barre et l'affichage principal
+      const pwrSt  = (item.sensors||[]).map(e=>this.hass?.states[e]).find(s=>s?.attributes?.unit_of_measurement==='W');
+      const pwr    = pwrSt ? parseFloat(pwrSt.state) : 0;
       const pwrPct = Math.min(100, (pwr/2500)*100);
       const pwrCol = pwr>2000?'var(--re-wr)':pwr>800?'var(--re-wa)':'var(--re-wg)';
+
       return html`
-        <div style="flex:1 1 300px;min-width:280px;background:${isOn?'#030d03':'#050808'};
-                    border:1px solid ${borderCol};border-radius:6px;
+        <div style="flex:1 1 300px;min-width:280px;background:${bgTop};
+                    border:2px solid ${borderCol};border-radius:12px;
                     padding:0;display:flex;flex-direction:column;cursor:pointer;
                     position:relative;overflow:hidden;font-family:'Courier New',monospace;"
              @click="${(e)=>{e.stopPropagation();toggle(item.entity);}}">
           ${isOn?html`<div style="position:absolute;left:0;right:0;height:1px;background:#00ff0018;z-index:1;pointer-events:none;animation:_re_scan 4s linear infinite;top:0;"></div>`:html``}
-          <div style="position:absolute;top:6px;right:8px;font-size:11px;color:${col}99;letter-spacing:1px;z-index:2;">UNIT-${unitId}</div>
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px 8px;">
+
+          <!-- EN-TÊTE : image + nom + statut badge + puissance -->
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 18px;background:${bgTop};">
             ${item.img?html`
-              <div style="width:56px;height:56px;flex-shrink:0;background:#080808;border:1px solid #0f1a0f;
-                           border-radius:4px;overflow:hidden;position:relative;">
+              <div style="width:58px;height:58px;flex-shrink:0;background:#0a0a0a;
+                           border:1px solid #1a2a1a;border-radius:8px;overflow:hidden;">
                 <img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:4px;
                      ${isOn?'':'filter:grayscale(0.8) brightness(0.5);'}"/>
               </div>`:html``}
-            <div style="flex:1;min-width:0;padding-right:24px;">
-              <div style="font-size:15px;font-weight:900;color:var(--re-wt);letter-spacing:1px;text-transform:uppercase;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:20px;font-weight:900;color:#f1f5f9;letter-spacing:.5px;">
                 ${item.name}
               </div>
-              <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
-                <div style="width:7px;height:7px;border-radius:50%;background:${col};
-                             ${isOn?'animation:_re_pulse 2s ease-in-out infinite;':'opacity:0.4;'}
-                             flex-shrink:0;"></div>
-                <span style="font-size:13px;font-weight:700;color:${col};letter-spacing:2px;">
+              <div style="display:inline-flex;align-items:center;gap:8px;margin-top:6px;
+                          padding:5px 14px;border-radius:20px;
+                          background:${isOn?'rgba(34,197,94,.15)':'rgba(100,116,139,.1)'};
+                          border:1px solid ${isOn?'#22c55e44':'#1e2d3d'};">
+                <div style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0;
+                            ${isOn?'animation:_re_pulse 2s ease-in-out infinite;':'opacity:0.4;'}"></div>
+                <span style="font-size:15px;font-weight:700;color:${col};letter-spacing:1px;">
                   ${isOn?'EN LIGNE':'HORS LIGNE'}
                 </span>
+                ${cyc?html`<span style="font-size:14px;color:#94a3b8;border-left:1px solid #334155;padding-left:8px;">
+                  ${trCyc(cyc)}
+                </span>`:html``}
               </div>
-              ${cyc?html`<div style="font-size:13px;color:#94a3b8;margin-top:2px;letter-spacing:1px;">
-                &gt; ${cyc.toUpperCase()}
-              </div>`:html``}
+            </div>
+            <!-- Puissance en vedette -->
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:36px;font-weight:900;color:${pwr>0?pwrCol:'#334155'};line-height:1;">${pwr>0?Math.round(pwr):'—'}</div>
+              <div style="font-size:13px;color:${pwr>0?pwrCol:'#334155'};letter-spacing:1px;">WATTS</div>
             </div>
           </div>
-          ${pwr>0?html`
-            <div style="height:2px;background:#0a100a;margin:0 12px;">
-              <div style="height:100%;width:${pwrPct}%;background:${pwrCol};transition:width .5s;"></div>
-            </div>`:html``}
-          <div style="display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px 10px;">
-            ${(item.sensors||[]).map(eid => {
+
+          <!-- BARRE DE PUISSANCE -->
+          <div style="height:4px;background:#0a100a;margin:0;">
+            <div style="height:100%;width:${pwrPct.toFixed(1)}%;background:${pwrCol};transition:width .5s;"></div>
+          </div>
+
+          <!-- MÉTRIQUES en grille -->
+          <div style="display:grid;grid-template-columns:repeat(${Math.min(4,(item.sensors||[]).length)},1fr);background:${bgBot};">
+            ${(item.sensors||[]).map((eid,i) => {
               const sst = this.hass?.states[eid];
               if (!sst) return html``;
               const un  = sst.attributes?.unit_of_measurement || '';
-              const lbl = (sst.attributes?.friendly_name||eid.split('.').pop()).split(' ').slice(-2).join(' ');
-              const val = fmt(sst.state);
-              const vCol = un==='W'?(parseFloat(sst.state)>1000?'var(--re-wr)':parseFloat(sst.state)>100?'var(--re-wa)':'var(--re-wg)')
-                          : un==='°C'?(parseFloat(sst.state)<-5?'var(--re-wb)':parseFloat(sst.state)>60?'var(--re-wr)':'var(--re-wt)')
-                          : 'var(--re-wt)';
+              const rawLbl = (sst.attributes?.friendly_name||eid.split('.').pop()).replace(/_/g,' ');
+              const lbl = trLbl(rawLbl, eid, un);
+              const rawVal = sst.state;
+              // Format selon le type
+              const isEnd  = eid.includes('heure_de_fin') || eid.includes('end_time');
+              const isProg = un === '%';
+              const isW    = un === 'W';
+              const isDoor = eid.includes('porte');
+              let dispVal, vCol;
+              if (isDoor)       { dispVal = rawVal==='closed'||rawVal==='fermée'?'FERMÉE':'OUVERTE'; vCol = rawVal==='closed'||rawVal==='fermée'?'var(--re-wg)':'var(--re-wr)'; }
+              else if (isW)     { const n=parseFloat(rawVal); dispVal=isNaN(n)?'—':Math.round(n)+''; vCol=n>1000?'var(--re-wr)':n>100?'var(--re-wa)':'var(--re-wg)'; }
+              else if (isProg)  { const n=parseFloat(rawVal); dispVal=isNaN(n)?'—':Math.round(n)+''; vCol='var(--re-wp)'; }
+              else if (un==='°C'){ const n=parseFloat(rawVal); dispVal=isNaN(n)?'—':n.toFixed(1)+''; vCol=n<-5?'var(--re-wb)':n>60?'var(--re-wr)':'var(--re-wt)'; }
+              else              { dispVal=!['unavailable','unknown'].includes(rawVal)?rawVal:'—'; vCol='var(--re-wt)'; }
+              const dispUnit = (isDoor||isEnd||['unavailable','unknown'].includes(rawVal)) ? '' : un;
               return html`
-                <div style="background:#080e08;border:1px solid #0f1a0f;border-radius:3px;padding:4px 8px;min-width:0;">
-                  <div style="font-size:12px;color:#7dab7d;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${lbl.toUpperCase()}</div>
-                  <div style="font-size:16px;font-weight:900;color:${vCol};letter-spacing:0.5px;">${val}<span style="font-size:12px;color:#64748b;"> ${un}</span></div>
+                <div style="padding:14px 16px;border-right:${i<(item.sensors||[]).length-1?'1px solid #0f1a0f':'none'};">
+                  <div style="font-size:13px;color:#4b6b4b;letter-spacing:1px;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lbl.toUpperCase()}</div>
+                  <div style="font-size:${isEnd?'17px':'24px'};font-weight:900;color:${vCol};line-height:1;">${dispVal}<span style="font-size:14px;color:#64748b;margin-left:2px;font-weight:400;">${dispUnit}</span></div>
                 </div>`;
             })}
           </div>
+          <!-- NUMÉRO UNIT discret -->
+          <div style="position:absolute;top:6px;right:10px;font-size:11px;color:${col}66;letter-spacing:1px;z-index:2;">UNIT-${unitId}</div>
         </div>`;
     };
 
