@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v290 (version RICHE : widgets)
+   RESIDENT EVIL CARD v292 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3548,17 +3548,37 @@ class ResidentEvilCard extends LitElement {
       const trCyc = (v) => {
         if (!v) return '';
         const MAP = {
-          'Run':'En cours','Pause':'En pause','End':'Terminé','Ready':'Prêt',
-          'Rinse':'Rinçage','Spin':'Essorage','Wash':'Lavage','Dry':'Séchage',
-          'Pre-Wash':'Pré-lavage','Cool-Down':'Refroidissement','Soak':'Trempage',
-          'Hot water':'Eau chaude','Drain':'Vidange',
-          'idle':'En veille','off':'Arrêté','on':'En marche',
-          'charging_completed':'Chargé','drying':'Séchage','washing':'Lavage',
-          'docked':'En base','cleaning':'Nettoyage','paused':'En pause',
-          'POMPE À CHALEUR':'Pompe à chaleur','Standby':'Veille',
-          'running':'En cours','finished':'Terminé','delaystart':'Démarrage différé',
+          // ═══ LAVE-VAISSELLE — sensor.lave_vaisselle_etat ═══
+          'inactive':'En veille','ready':'Prêt','delayedstart':'Démarrage différé',
+          'run':'En cours','pause':'En pause','actionrequired':'Action requise',
+          'finished':'Terminé','error':'Erreur','aborting':'Arrêt en cours',
+          // ═══ LAVE-LINGE — sensor.lave_linge_job_state ═══
+          'air_wash':'Lavage à l\'air','ai_rinse':'Rinçage IA','ai_spin':'Essorage IA',
+          'ai_wash':'Lavage IA','cooling':'Refroidissement','delay_wash':'Lavage différé',
+          'drying':'Séchage','finish':'Terminé','none':'—',
+          'pre_wash':'Pré-lavage','rinse':'Rinçage','spin':'Essorage',
+          'wash':'Lavage','weight_sensing':'Pesée du linge',
+          'wrinkle_prevent':'Anti-froissage','freeze_protection':'Protection gel',
+          // ═══ États génériques communs ═══
+          'running':'En cours','started':'Démarré','stopped':'Arrêté',
+          'end':'Terminé','ended':'Terminé','paused':'En pause',
+          'standby':'Veille','idle':'En veille','off':'Arrêté','on':'En marche',
+          'xash':'Lavage','xrinse':'Rinçage','xspin':'Essorage',
+          'drain':'Vidange','draining':'Vidange','steam':'Vapeur',
+          'hotwater':'Eau chaude','hot_water':'Eau chaude',
+          'cool_down':'Refroidissement','cooldown':'Refroidissement',
+          'prewash':'Pré-lavage','soak':'Trempage','soaking':'Trempage',
+          'delaystart':'Démarrage différé','delay_start':'Démarrage différé',
+          'interim_spin':'Essorage intermédiaire','interim_rinse':'Rinçage intermédiaire',
+          'water_heating':'Chauffe eau','main_wash':'Lavage principal',
+          'count_down':'Compte à rebours','initial':'Initialisation',
+          // Chauffe-eau / robots
+          'pompe à chaleur':'Pompe à chaleur','charging_completed':'Chargé',
+          'docked':'En base','returning':'Retour base','cleaning':'Nettoyage',
+          'unknown':'—','unavailable':'—',
         };
-        return MAP[v] || MAP[v.toLowerCase()] || v;
+        const key = (v||'').toLowerCase().replace(/-/g,'_').trim();
+        return MAP[key] || MAP[v] || v;
       };
 
       // Dictionnaire FR pour les labels capteurs
@@ -3615,7 +3635,7 @@ class ResidentEvilCard extends LitElement {
                           border:1px solid ${isOn?'#22c55e44':'#1e2d3d'};">
                 <div style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0;
                             ${isOn?'animation:_re_pulse 2s ease-in-out infinite;':'opacity:0.4;'}"></div>
-                <span style="font-size:15px;font-weight:700;color:${col};letter-spacing:1px;">
+                <span style="font-size:13px;font-weight:700;color:${col};letter-spacing:1px;">
                   ${isOn?'EN LIGNE':'HORS LIGNE'}
                 </span>
                 ${cyc?html`<span style="font-size:14px;color:#94a3b8;border-left:1px solid #334155;padding-left:8px;">
