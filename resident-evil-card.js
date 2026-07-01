@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v286 (version RICHE : widgets)
+   RESIDENT EVIL CARD v287 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -3200,7 +3200,7 @@ class ResidentEvilCard extends LitElement {
       const c = val <= 20 ? cR : val <= 50 ? cA : col || cG;
       return html`
         <div style="display:flex;align-items:center;gap:8px;">
-          <div style="font-size:11px;color:#64748b;white-space:nowrap;width:60px;">${label}</div>
+          <div style="font-size:14px;color:#cbd5e1;white-space:nowrap;width:70px;">${label}</div>
           <div style="flex:1;height:5px;background:#1a1a1a;border-radius:3px;overflow:hidden;">
             <div style="height:100%;width:${Math.min(val,100)}%;background:${c};border-radius:3px;"></div>
           </div>
@@ -3310,7 +3310,7 @@ class ResidentEvilCard extends LitElement {
 
           <!-- COLONNE DROITE : CARTE -->
           <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
-            <div style="font-size:11px;color:${cG}55;letter-spacing:2px;">📷 CARTE LIVE (pincer pour zoomer)</div>
+            <div style="font-size:13px;color:${cG}aa;letter-spacing:2px;">📷 CARTE LIVE (pincer pour zoomer)</div>
             ${camUrl
               ? this._renderZoomMap(camUrl, 'mova-'+p, {height: parseInt(w.map_height)||280, live:isOn, liveColor:cG})
               : html`
@@ -3391,7 +3391,7 @@ class ResidentEvilCard extends LitElement {
              [`${circuitMax} A`,'MAX CIRCUIT','#94a3b8'],
              [`${fmt(availA,1)} A`,'DISPONIBLE',cG]].map(([v,l,col])=>html`
             <div style="padding:10px 14px;border-right:1px solid ${cA}22;">
-              <div style="font-size:11px;color:${col};letter-spacing:2px;margin-bottom:5px;font-weight:700;">${l}</div>
+              <div style="font-size:13px;color:${col};letter-spacing:2px;margin-bottom:5px;font-weight:700;">${l}</div>
               <div style="font-size:24px;font-weight:900;color:${col};">${v}</div>
             </div>`)}
         </div>
@@ -3428,21 +3428,21 @@ class ResidentEvilCard extends LitElement {
                   </div>
                   <div style="display:grid;grid-template-columns:1fr 1fr ${m.day!=null?'1fr':''} 1fr;gap:3px;">
                     <div style="background:#0d1117;border:1px solid #1e2744;border-radius:3px;padding:3px 6px;">
-                      <div style="font-size:9px;color:#475569;">TENSION</div>
-                      <div style="font-size:13px;font-weight:700;color:#e2e8f0;">${fmt(m.voltage,0)} V</div>
+                      <div style="font-size:13px;color:#94a3b8;">TENSION</div>
+                      <div style="font-size:15px;font-weight:700;color:#e2e8f0;">${fmt(m.voltage,0)} V</div>
                     </div>
                     <div style="background:#0d1117;border:1px solid #1e2744;border-radius:3px;padding:3px 6px;">
-                      <div style="font-size:9px;color:#475569;">COURANT</div>
-                      <div style="font-size:13px;font-weight:700;color:#818cf8;">${fmt(m.current,2)} A</div>
+                      <div style="font-size:13px;color:#94a3b8;">COURANT</div>
+                      <div style="font-size:15px;font-weight:700;color:#818cf8;">${fmt(m.current,2)} A</div>
                     </div>
                     ${m.day!=null?html`
                     <div style="background:#0d1117;border:1px solid #1e2744;border-radius:3px;padding:3px 6px;">
-                      <div style="font-size:9px;color:#475569;">CONSO/J</div>
-                      <div style="font-size:13px;font-weight:700;color:#94a3b8;">${fmt(m.day,2)} kWh</div>
+                      <div style="font-size:13px;color:#94a3b8;">CONSO/J</div>
+                      <div style="font-size:15px;font-weight:700;color:#94a3b8;">${fmt(m.day,2)} kWh</div>
                     </div>`:html``}
                     <div style="background:${on?mc+'22':'#0d1117'};border:1px solid ${on?mc+'44':'#1e2744'};border-radius:3px;padding:3px 6px;">
-                      <div style="font-size:9px;color:#475569;">PUISSANCE</div>
-                      <div style="font-size:14px;font-weight:900;color:${mc};">${fmt(m.power,0)} W</div>
+                      <div style="font-size:13px;color:#94a3b8;">PUISSANCE</div>
+                      <div style="font-size:17px;font-weight:900;color:${mc};">${fmt(m.power,0)} W</div>
                     </div>
                   </div>
                 </div>`;
@@ -3612,33 +3612,33 @@ class ResidentEvilCard extends LitElement {
       const fanSpeed= attr.fan_speed || null;
       const rooms   = attr.room_list || attr.rooms || [];
       const cons    = [{l:'BROSSE PRINC.',v:attr.main_brush_left},{l:'BROSSE LAT.',v:attr.side_brush_left},{l:'FILTRE',v:attr.filter_left},{l:'SERPILLIÈRE',v:attr.mop_left},{l:'DÉTERGENT',v:attr.detergent_left},{l:'CAPTEURS',v:attr.sensor_dirty_left}].filter(c=>c.v!=null).map(c=>({...c,v:Math.round(c.v)}));
-      const cBar=(label,v)=>{const col=v<=20?'var(--re-wr)':v<=50?'var(--re-wa)':'var(--re-wg)';return html`<div style="display:grid;grid-template-columns:100px 1fr 38px;align-items:center;gap:6px;"><span style="font-size:12px;color:var(--re-wtd);font-family:'Courier New',monospace;">${label}</span><div style="height:5px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:${v}%;background:${col};box-shadow:0 0 4px ${col}66;"></div></div><span style="font-size:13px;font-weight:700;color:${col};text-align:right;">${v}%</span></div>`;};
+      const cBar=(label,v)=>{const col=v<=20?'var(--re-wr)':v<=50?'var(--re-wa)':'var(--re-wg)';return html`<div style="display:grid;grid-template-columns:100px 1fr 38px;align-items:center;gap:6px;"><span style="font-size:14px;color:var(--re-wt);font-family:'Courier New',monospace;">${label}</span><div style="height:5px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:${v}%;background:${col};box-shadow:0 0 4px ${col}66;"></div></div><span style="font-size:13px;font-weight:700;color:${col};text-align:right;">${v}%</span></div>`;};
       return html`
         <div style="flex:1;min-width:0;border:1px solid rgba(129,140,248,.2);border-radius:12px;background:rgba(5,10,20,.85);overflow:hidden;display:flex;flex-direction:column;font-family:'Courier New',monospace;">
           <div style="height:2px;background:linear-gradient(90deg,var(--re-wp),var(--re-wg),transparent);"></div>
           <div style="padding:10px 12px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(129,140,248,.1);">
             ${item.img?html`<div style="width:48px;height:48px;flex-shrink:0;background:rgba(0,0,0,.4);border:1px solid rgba(129,140,248,.2);border-radius:8px;overflow:hidden;"><img src="${item.img}" style="width:100%;height:100%;object-fit:contain;padding:3px;"/></div>`:html``}
-            <div style="flex:1;"><div style="font-size:15px;font-weight:700;color:var(--re-wt);">${item.name}</div>${item.subtitle?html`<div style="font-size:13px;color:var(--re-wtd);">${item.subtitle}</div>`:html``}${fw?html`<div style="font-size:12px;color:var(--re-wtd);">// ${fw}</div>`:html``}</div>
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;color:var(--re-wt);">${item.name}</div>${item.subtitle?html`<div style="font-size:14px;color:var(--re-wt);">${item.subtitle}</div>`:html``}${fw?html`<div style="font-size:14px;color:var(--re-wt);">// ${fw}</div>`:html``}</div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
               ${bat!=null?html`<span style="font-size:14px;font-weight:700;color:${batCol};">⚡ ${bat}%</span>`:html``}
               <span style="font-size:13px;font-weight:700;padding:2px 8px;border:1px solid ${stCol}44;color:${stCol};">${stLbl}</span>
-              ${stateExt?html`<span style="font-size:12px;color:var(--re-wtd);">${trOpt(stateExt)}</span>`:html``}
+              ${stateExt?html`<span style="font-size:14px;color:var(--re-wt);">${trOpt(stateExt)}</span>`:html``}
             </div>
           </div>
           <div style="flex:1;min-height:0;display:flex;gap:0;">
             <div class="no-scrollbar" style="flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-right:1px solid rgba(129,140,248,.08);overflow-y:auto;">
               ${(curRoom||area||dur||fanSpeed)?html`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-                ${curRoom?html`<div style="background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.15);border-radius:4px;padding:3px 8px;"><span style="font-size:12px;color:var(--re-wtd);">PIÈCE </span><span style="font-size:14px;color:var(--re-wp);font-weight:700;">${curRoom}</span></div>`:html``}
-                ${area?html`<div><span style="font-size:17px;font-weight:800;color:var(--re-wp);">${area}</span><span style="font-size:12px;color:var(--re-wtd);"> m²</span></div>`:html``}
-                ${dur?html`<div><span style="font-size:17px;font-weight:800;color:var(--re-wp);">${dur}</span><span style="font-size:12px;color:var(--re-wtd);"> min</span></div>`:html``}
+                ${curRoom?html`<div style="background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.15);border-radius:4px;padding:3px 8px;"><span style="font-size:14px;color:var(--re-wt);">PIÈCE </span><span style="font-size:14px;color:var(--re-wp);font-weight:700;">${curRoom}</span></div>`:html``}
+                ${area?html`<div><span style="font-size:17px;font-weight:800;color:var(--re-wp);">${area}</span><span style="font-size:14px;color:var(--re-wt);"> m²</span></div>`:html``}
+                ${dur?html`<div><span style="font-size:17px;font-weight:800;color:var(--re-wp);">${dur}</span><span style="font-size:14px;color:var(--re-wt);"> min</span></div>`:html``}
                 ${fanSpeed?html`<span style="font-size:12px;padding:2px 7px;border:1px solid #06b6d422;color:#06b6d4;">⚙ ${trOpt(fanSpeed)}</span>`:html``}
               </div>`:html``}
-              ${cons.length>0?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// CONSOMMABLES</div><div style="display:flex;flex-direction:column;gap:5px;">${cons.map(c=>cBar(c.l,c.v))}</div></div>`:html``}
-              ${(sc1St||sc2St)?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// RACCOURCIS</div><div style="display:flex;gap:5px;flex-wrap:wrap;">
+              ${cons.length>0?html`<div><div style="font-size:14px;color:var(--re-wt);letter-spacing:.8px;margin-bottom:4px;">// CONSOMMABLES</div><div style="display:flex;flex-direction:column;gap:5px;">${cons.map(c=>cBar(c.l,c.v))}</div></div>`:html``}
+              ${(sc1St||sc2St)?html`<div><div style="font-size:14px;color:var(--re-wt);letter-spacing:.8px;margin-bottom:4px;">// RACCOURCIS</div><div style="display:flex;gap:5px;flex-wrap:wrap;">
                 ${sc1St?html`<button style="flex:1;padding:6px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.25);color:var(--re-wp);" @click="${(e)=>{e.stopPropagation();callBtn(sc1Eid);}}">⊞ ${sc1Name}</button>`:html``}
                 ${sc2St?html`<button style="flex:1;padding:6px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.25);color:var(--re-wp);" @click="${(e)=>{e.stopPropagation();callBtn(sc2Eid);}}">⊞ ${sc2Name}</button>`:html``}
               </div></div>`:html``}
-              ${rooms.length>0?html`<div><div style="font-size:12px;color:var(--re-wtd);letter-spacing:.8px;margin-bottom:4px;">// ZONES</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${rooms.map(r=>html`<button style="padding:4px 9px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#06b6d4;" @click="${(e)=>{e.stopPropagation();callVac('send_command',{command:'segment_clean',params:{segments:[r.id||r]}});}}">⊙ ${r.name||r}</button>`)}</div></div>`:html``}
+              ${rooms.length>0?html`<div><div style="font-size:14px;color:var(--re-wt);letter-spacing:.8px;margin-bottom:4px;">// ZONES</div><div style="display:flex;gap:4px;flex-wrap:wrap;">${rooms.map(r=>html`<button style="padding:4px 9px;border-radius:4px;font-family:'Courier New',monospace;font-size:14px;cursor:pointer;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);color:#06b6d4;" @click="${(e)=>{e.stopPropagation();callVac('send_command',{command:'segment_clean',params:{segments:[r.id||r]}});}}">⊙ ${r.name||r}</button>`)}</div></div>`:html``}
             </div>
             ${camUrl && hasCalib
               ? html`<div style="width:280px;flex-shrink:0;">${this._renderZoomMapFR(camUrl, 'dreame-'+p, item.map_camera, item.entity, {height: parseInt(item.map_height)||300, live:isOn, liveColor:'#818cf8'})}</div>`
@@ -3674,7 +3674,7 @@ class ResidentEvilCard extends LitElement {
               <style>@keyframes _dpulse2{0%,100%{opacity:1}50%{opacity:.45}}</style>`;
           })()}
           <div style="padding:7px 10px;border-top:1px solid rgba(129,140,248,.1);display:flex;flex-wrap:wrap;gap:5px;">
-            ${[{l:'▶ DÉMARRER',fn:()=>callVac('start'),col:'var(--re-wg)'},{l:'⏸ PAUSE',fn:()=>callVac('pause'),col:'var(--re-wp)'},{l:'⌂ BASE',fn:()=>callVac('return_to_base'),col:'#06b6d4'},{l:'⊙ LOCALISER',fn:()=>callVac('locate'),col:'var(--re-wa)'},{l:'▣ VIDER BAC',fn:()=>callVac('send_command',{command:'start_wash'}),col:'var(--re-wtd)'}].map(b=>html`<button style="flex:1;min-width:60px;padding:6px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
+            ${[{l:'▶ DÉMARRER',fn:()=>callVac('start'),col:'var(--re-wg)'},{l:'⏸ PAUSE',fn:()=>callVac('pause'),col:'var(--re-wp)'},{l:'⌂ BASE',fn:()=>callVac('return_to_base'),col:'#06b6d4'},{l:'⊙ LOCALISER',fn:()=>callVac('locate'),col:'var(--re-wa)'},{l:'▣ VIDER BAC',fn:()=>callVac('send_command',{command:'start_wash'}),col:'var(--re-wtd)'}].map(b=>html`<button style="flex:1;min-width:60px;padding:6px 4px;border-radius:4px;font-family:'Courier New',monospace;font-size:14px;font-weight:700;cursor:pointer;background:${b.col}12;border:1px solid ${b.col}44;color:${b.col};" @click="${(e)=>{e.stopPropagation();b.fn();}}">${b.l}</button>`)}
           </div>
         </div>`;
     };
