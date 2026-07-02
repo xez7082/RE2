@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v293 (version RICHE : widgets)
+   RESIDENT EVIL CARD v294 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -878,32 +878,51 @@ class ResidentEvilCard extends LitElement {
 
   // ════════════════════════════════════════════════════════════════
   //  CAMÉRA PLEIN ÉCRAN — mode camera_full:true dans le sous-menu.
-  //  Affiche une seule caméra (premier sensor de type cam), pleine
-  //  largeur, image rafraîchie via entity_picture toutes les 2s,
-  //  avec nom, horodatage et statut en surimpression style terminal.
+  //  Utilise le stream MJPEG continu (/api/camera_proxy_stream/) :
+  //  pas de rechargement JS, pas de blanc entre frames, latence
+  //  minimale. Repli sur JPEG rafraîchi si le stream n'est pas dispo.
   // ════════════════════════════════════════════════════════════════
   _renderCameraFull(subMenu) {
     const sensor = (subMenu.sensors || []).find(s => (s.type||'') === 'cam' || (s.entity||'').startsWith('camera.'));
     if (!sensor) return html`<div style="color:#334155;padding:2rem;text-align:center;">Aucune caméra configurée</div>`;
-    const eid = sensor.entity || sensor;
-    const st  = this.hass?.states[eid];
-    const pic = st?.attributes?.entity_picture;
-    const name = (st?.attributes?.friendly_name || eid.split('.').pop().replace(/_/g,' ')).toUpperCase();
-    const now  = new Date().toLocaleTimeString('fr-FR');
-    const url  = pic ? (pic.startsWith('http') ? pic : `${location.protocol}//${location.hostname}:${location.port}${pic}`) : null;
-    // Rafraîchissement : on ajoute un timestamp à l'URL pour forcer le rechargement
-    const ts   = Math.floor(Date.now() / 2000) * 2000;
-    const src  = url ? `${url}${url.includes('?') ? '&' : '?'}_t=${ts}` : null;
+    const eid   = sensor.entity || sensor;
+    const st    = this.hass?.states[eid];
+    const token = st?.attributes?.access_token;
+    const name  = (st?.attributes?.friendly_name || eid.split('.').pop().replace(/_/g,' ')).toUpperCase();
+    const now   = new Date().toLocaleTimeString('fr-FR');
+    const base  = `${location.protocol}//${location.hostname}:${location.port}`;
+
+    // URL MJPEG stream continu — le navigateur maintient la connexion
+    // ouverte et affiche chaque frame à la vitesse de la caméra sans
+    // aucun rechargement JS ni flash entre frames.
+    const streamUrl = token
+      ? `${base}/api/camera_proxy_stream/${eid}?token=${token}`
+      : null;
+
+    // Repli : JPEG via entity_picture si pas de token
+    const pic     = st?.attributes?.entity_picture;
+    const jpegUrl = pic ? (pic.startsWith('http') ? pic : `${base}${pic}`) : null;
+
+    const src = streamUrl || jpegUrl;
+
     return html`
       <div style="position:relative;width:100%;height:100%;background:#000;display:flex;
                   align-items:center;justify-content:center;overflow:hidden;">
         ${src ? html`
-          <img src="${src}" style="width:100%;height:100%;object-fit:contain;display:block;"
-               @error="${(e)=>{ e.target.style.opacity='.3'; }}"
-               @load="${(e)=>{ e.target.style.opacity='1'; }}"/>
+          <img src="${src}"
+               style="width:100%;height:100%;object-fit:contain;display:block;"
+               @error="${(e) => {
+                 // Si le stream MJPEG échoue, repli sur JPEG rafraîchi
+                 if (src === streamUrl && jpegUrl) {
+                   e.target.src = jpegUrl + '?_t=' + Date.now();
+                 }
+                 e.target.style.opacity = '.3';
+               }}"
+               @load="${(e) => { e.target.style.opacity = '1'; }}"/>
         ` : html`
-          <div style="color:#334155;font-family:'Courier New',monospace;font-size:16px;">
-            <i class="mdi mdi-camera-off"></i> Flux indisponible
+          <div style="color:#334155;font-family:'Courier New',monospace;font-size:16px;text-align:center;">
+            <div style="font-size:32px;margin-bottom:12px;">📷</div>
+            Flux indisponible
           </div>
         `}
         <!-- Surimpression terminal -->
@@ -914,7 +933,7 @@ class ResidentEvilCard extends LitElement {
             ● ${name}
           </div>
           <div style="font-size:13px;color:#4ade8099;margin-top:3px;">
-            ${eid} · ${now}
+            ${streamUrl ? '⚡ STREAM DIRECT' : '⟳ JPEG'} · ${now}
           </div>
         </div>
         <!-- Badge LIVE bas droit -->
