@@ -1,5 +1,5 @@
 /* ============================================================
-   RESIDENT EVIL CARD v292 (version RICHE : widgets)
+   RESIDENT EVIL CARD v293 (version RICHE : widgets)
    CORRECTIFS vs fichier d'origine :
    1. import unpkg lit (asynchrone → carte "introuvable") REMPLACÉ par
       extraction synchrone de Lit depuis Home Assistant.
@@ -874,6 +874,56 @@ class ResidentEvilCard extends LitElement {
       name: s.attributes.friendly_name || widget.entity,
       state: s.state,
     };
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  CAMÉRA PLEIN ÉCRAN — mode camera_full:true dans le sous-menu.
+  //  Affiche une seule caméra (premier sensor de type cam), pleine
+  //  largeur, image rafraîchie via entity_picture toutes les 2s,
+  //  avec nom, horodatage et statut en surimpression style terminal.
+  // ════════════════════════════════════════════════════════════════
+  _renderCameraFull(subMenu) {
+    const sensor = (subMenu.sensors || []).find(s => (s.type||'') === 'cam' || (s.entity||'').startsWith('camera.'));
+    if (!sensor) return html`<div style="color:#334155;padding:2rem;text-align:center;">Aucune caméra configurée</div>`;
+    const eid = sensor.entity || sensor;
+    const st  = this.hass?.states[eid];
+    const pic = st?.attributes?.entity_picture;
+    const name = (st?.attributes?.friendly_name || eid.split('.').pop().replace(/_/g,' ')).toUpperCase();
+    const now  = new Date().toLocaleTimeString('fr-FR');
+    const url  = pic ? (pic.startsWith('http') ? pic : `${location.protocol}//${location.hostname}:${location.port}${pic}`) : null;
+    // Rafraîchissement : on ajoute un timestamp à l'URL pour forcer le rechargement
+    const ts   = Math.floor(Date.now() / 2000) * 2000;
+    const src  = url ? `${url}${url.includes('?') ? '&' : '?'}_t=${ts}` : null;
+    return html`
+      <div style="position:relative;width:100%;height:100%;background:#000;display:flex;
+                  align-items:center;justify-content:center;overflow:hidden;">
+        ${src ? html`
+          <img src="${src}" style="width:100%;height:100%;object-fit:contain;display:block;"
+               @error="${(e)=>{ e.target.style.opacity='.3'; }}"
+               @load="${(e)=>{ e.target.style.opacity='1'; }}"/>
+        ` : html`
+          <div style="color:#334155;font-family:'Courier New',monospace;font-size:16px;">
+            <i class="mdi mdi-camera-off"></i> Flux indisponible
+          </div>
+        `}
+        <!-- Surimpression terminal -->
+        <div style="position:absolute;top:0;left:0;right:0;padding:10px 14px;
+                    background:linear-gradient(to bottom,rgba(0,0,0,.75),transparent);
+                    font-family:'Courier New',monospace;pointer-events:none;">
+          <div style="font-size:16px;font-weight:900;color:#00ff44;letter-spacing:2px;">
+            ● ${name}
+          </div>
+          <div style="font-size:13px;color:#4ade8099;margin-top:3px;">
+            ${eid} · ${now}
+          </div>
+        </div>
+        <!-- Badge LIVE bas droit -->
+        <div style="position:absolute;bottom:10px;right:12px;
+                    background:rgba(0,0,0,.7);border:1px solid #00ff4444;border-radius:4px;
+                    padding:4px 10px;font-family:'Courier New',monospace;font-size:13px;color:#4ade80;">
+          ● LIVE
+        </div>
+      </div>`;
   }
 
   _renderDesignWidget(w, fillSingle = false) {
@@ -7082,6 +7132,7 @@ class ResidentEvilCard extends LitElement {
     const hasIframe      = activeSubMenu.iframe;
     const isSpaMode      = activeSubMenu.mode === 'spa';
     const isDesignMode   = activeSubMenu.mode === 'design';
+    const isCameraFull   = !!activeSubMenu.camera_full;
     const statusEntity   = this.config.status_entity;
     const statusState    = statusEntity && this.hass.states[statusEntity] ? this.hass.states[statusEntity].state : null;
     const statusOk       = !statusState || statusState === 'on' || statusState === 'home' || statusState === 'active';
@@ -7251,10 +7302,12 @@ class ResidentEvilCard extends LitElement {
                     ${subsub.name}
                   </button>`)}
               </div>` : html``}
-            <div class="re-content-scroll" style="${hasIframe ? 'padding: 0; overflow: hidden; display: flex; flex-direction: column;' : 'overflow-y: auto; overflow-x: hidden;'}">
+            <div class="re-content-scroll" style="${(hasIframe||isCameraFull) ? 'padding: 0; overflow: hidden; display: flex; flex-direction: column;' : 'overflow-y: auto; overflow-x: hidden;'}">
               ${hasIframe
                 ? sensorsRaw.map(id => this.renderEntity(id))
-                : isDesignMode
+                : isCameraFull
+                  ? this._renderCameraFull(activeSubMenu)
+                  : isDesignMode
                   ? html`<div class="design-grid" style="${(activeSubMenu.widgets || []).length === 1 ? 'height:100%;' : ''}">${(activeSubMenu.widgets || []).map(w => this._renderDesignWidget(w, (activeSubMenu.widgets || []).length === 1))}</div>`
                   : html`
                       <div class="re-section-head">
